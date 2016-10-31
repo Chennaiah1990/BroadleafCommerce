@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TimeDTO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common</a> &gt; <span class="el_source">TimeDTO.java</span></div><h1>TimeDTO.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common;
+
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.client.SupportedFieldType;
+import org.broadleafcommerce.common.time.DayOfMonthType;
+import org.broadleafcommerce.common.time.DayOfWeekType;
+import org.broadleafcommerce.common.time.HourOfDayType;
+import org.broadleafcommerce.common.time.MinuteType;
+import org.broadleafcommerce.common.time.MonthType;
+import org.broadleafcommerce.common.time.SystemTime;
+
+import java.util.Calendar;
+import java.util.Date;
+
+/**
+ * Created by bpolster.
+ */
+public class TimeDTO {
+
+    @AdminPresentation(excluded = true)
+    private Calendar cal;
+
+    @AdminPresentation(friendlyName = &quot;TimeDTO_Hour_Of_Day&quot;, fieldType = SupportedFieldType.BROADLEAF_ENUMERATION, broadleafEnumeration = &quot;org.broadleafcommerce.common.time.HourOfDayType&quot;)
+    private Integer hour;
+
+    @AdminPresentation(friendlyName = &quot;TimeDTO_Day_Of_Week&quot;, fieldType = SupportedFieldType.BROADLEAF_ENUMERATION, broadleafEnumeration = &quot;org.broadleafcommerce.common.time.DayOfWeekType&quot;)
+    private Integer dayOfWeek;
+
+    @AdminPresentation(friendlyName = &quot;TimeDTO_Month&quot;, fieldType = SupportedFieldType.BROADLEAF_ENUMERATION, broadleafEnumeration = &quot;org.broadleafcommerce.common.time.MonthType&quot;)
+    private Integer month;
+
+    @AdminPresentation(friendlyName = &quot;TimeDTO_Day_Of_Month&quot;, fieldType = SupportedFieldType.BROADLEAF_ENUMERATION, broadleafEnumeration = &quot;org.broadleafcommerce.common.time.DayOfMonthType&quot;)
+    private Integer dayOfMonth;
+
+    @AdminPresentation(friendlyName = &quot;TimeDTO_Minute&quot;, fieldType = SupportedFieldType.BROADLEAF_ENUMERATION, broadleafEnumeration = &quot;org.broadleafcommerce.common.time.MinuteType&quot;)
+    private Integer minute;
+
+    @AdminPresentation(friendlyName = &quot;TimeDTO_Date&quot;)
+    private Date date;
+
+<span class="nc" id="L60">    public TimeDTO() {</span>
+<span class="nc" id="L61">        cal = SystemTime.asCalendar();</span>
+<span class="nc" id="L62">    }</span>
+
+<span class="nc" id="L64">    public TimeDTO(Calendar cal) {</span>
+<span class="nc" id="L65">        this.cal = cal;</span>
+<span class="nc" id="L66">    }</span>
+
+
+    /**
+     * @return  int representing the hour of day as 0 - 23
+     */
+    public HourOfDayType getHour() {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (hour == null) {</span>
+<span class="nc" id="L74">            hour = cal.get(Calendar.HOUR_OF_DAY);</span>
+        }
+<span class="nc" id="L76">        return HourOfDayType.getInstance(hour.toString());</span>
+    }
+
+    /**
+     * @return int representing the day of week using Calendar.DAY_OF_WEEK values.
+     * 1 = Sunday, 7 = Saturday
+     */
+    public DayOfWeekType getDayOfWeek() {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (dayOfWeek == null) {</span>
+<span class="nc" id="L85">            dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);</span>
+        }
+<span class="nc" id="L87">        return DayOfWeekType.getInstance(dayOfWeek.toString());</span>
+    }
+
+    /**
+     * @return the current day of the month (1-31).
+     */
+    public DayOfMonthType getDayOfMonth() {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if (dayOfMonth == null) {</span>
+<span class="nc" id="L95">            dayOfMonth =  cal.get(Calendar.DAY_OF_MONTH);</span>
+        }
+<span class="nc" id="L97">        return DayOfMonthType.getInstance(dayOfMonth.toString());</span>
+    }
+
+    /**
+     * @return int representing the current month (1-12)
+     */
+    public MonthType getMonth() {
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (month == null) {</span>
+<span class="nc" id="L105">            month = cal.get(Calendar.MONTH);</span>
+        }
+<span class="nc" id="L107">        return MonthType.getInstance(month.toString());</span>
+    }
+
+    public MinuteType getMinute() {
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (minute == null) {</span>
+<span class="nc" id="L112">            minute = cal.get(Calendar.MINUTE);</span>
+        }
+<span class="nc" id="L114">        return MinuteType.getInstance(minute.toString());</span>
+    }
+
+    public Date getDate() {
+<span class="nc bnc" id="L118" title="All 2 branches missed.">        if (date == null) {</span>
+<span class="nc" id="L119">            date = cal.getTime();</span>
+        }
+<span class="nc" id="L121">        return date;</span>
+    }
+
+    public void setCal(Calendar cal) {
+<span class="nc" id="L125">        this.cal = cal;</span>
+<span class="nc" id="L126">    }</span>
+
+    public void setHour(HourOfDayType hour) {
+<span class="nc" id="L129">        this.hour = Integer.valueOf(hour.getType());</span>
+        ;
+<span class="nc" id="L131">    }</span>
+
+    public void setDayOfWeek(DayOfWeekType dayOfWeek) {
+<span class="nc" id="L134">        this.dayOfWeek = Integer.valueOf(dayOfWeek.getType());</span>
+<span class="nc" id="L135">    }</span>
+
+    public void setMonth(MonthType month) {
+<span class="nc" id="L138">        this.month = Integer.valueOf(month.getType());</span>
+<span class="nc" id="L139">    }</span>
+
+    public void setDayOfMonth(DayOfMonthType dayOfMonth) {
+<span class="nc" id="L142">        this.dayOfMonth = Integer.valueOf(dayOfMonth.getType());</span>
+<span class="nc" id="L143">    }</span>
+
+    public void setDate(Date date) {
+<span class="nc" id="L146">        this.date = date;</span>
+<span class="nc" id="L147">    }</span>
+
+    public void setMinute(MinuteType minute) {
+<span class="nc" id="L150">        this.minute = Integer.valueOf(minute.getType());</span>
+        ;
+<span class="nc" id="L152">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

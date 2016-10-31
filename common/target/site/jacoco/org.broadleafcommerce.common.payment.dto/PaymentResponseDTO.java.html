@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PaymentResponseDTO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment.dto</a> &gt; <span class="el_source">PaymentResponseDTO.java</span></div><h1>PaymentResponseDTO.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.payment.dto;
+
+import org.broadleafcommerce.common.money.Money;
+import org.broadleafcommerce.common.payment.PaymentGatewayType;
+import org.broadleafcommerce.common.payment.PaymentTransactionType;
+import org.broadleafcommerce.common.payment.PaymentType;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * &lt;p&gt;The DTO object that represents the response coming back from any call to the Gateway.
+ * This can either wrap an API result call or a translated HTTP Web response.
+ * This can not only be the results of a transaction, but also a request for a Secure Token etc...&lt;/p&gt;
+ *
+ * &lt;p&gt;Note: the success and validity flags are set to true by default, unless otherwise overridden by specific
+ * gateway implementations&lt;/p&gt;
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+public class PaymentResponseDTO {
+
+    /**
+     * Any customer information that relates to this transaction
+     */
+    protected GatewayCustomerDTO&lt;PaymentResponseDTO&gt; customer;
+
+    /**
+     * If shipping information is captured on the gateway, the values sent back will be put here
+     */
+    protected AddressDTO&lt;PaymentResponseDTO&gt; shipTo;
+
+    /**
+     * The billing address associated with this transaction
+     */
+    protected AddressDTO&lt;PaymentResponseDTO&gt; billTo;
+
+    /**
+     * for sale/authorize transactions, this will be the Credit Card object that was charged. This data is useful for showing
+     * on an order confirmation screen.
+     */
+    protected CreditCardDTO&lt;PaymentResponseDTO&gt; creditCard;
+
+    /**
+     * Any gift cards that have been processed. This data is useful for showing
+     * on an order confirmation screen
+     */
+    protected List&lt;GiftCardDTO&lt;PaymentResponseDTO&gt;&gt; giftCards;
+
+    /**
+     * Any customer credit accounts that have been processed. This data is useful for showing
+     * on an order confirmation screen
+     */
+    protected List&lt;CustomerCreditDTO&lt;PaymentResponseDTO&gt;&gt; customerCredits;
+
+    /**
+     * The Payment Gateway Type that this transaction response represents
+     */
+    protected PaymentGatewayType paymentGatewayType;
+
+    /**
+     * The Type of Payment that this transaction response represents
+     */
+    protected PaymentType paymentType;
+
+    /**
+     * The Transaction Type of the Payment that this response represents
+     */
+    protected PaymentTransactionType paymentTransactionType;
+
+    /**
+     * The Order ID that this transaction is associated with
+     */
+    protected String orderId;
+    
+    /**
+     * If this was a Transaction request, it will be the amount that was sent back from the gateway
+     */
+    protected Money amount;
+    
+    /**
+     * Whether or not the transaction on the gateway was successful. This should be provided by the gateway alone.
+     */
+<span class="nc" id="L107">    protected boolean successful = true;</span>
+    
+    /**
+     * Whether or not this response was tampered with. This used to verify that the response that was received on the
+     * endpoint (which is intended to only be invoked from the payment gateway) actually came from the gateway and was not
+     * otherwise maliciously invoked by a 3rd-party. 
+     */
+<span class="nc" id="L114">    protected boolean valid = true;</span>
+
+    /**
+     * &lt;p&gt;Sets whether or not this module should complete checkout on callback.
+     * In most Credit Card gateway implementation, this should be set to 'TRUE' and
+     * should not be configurable as the gateway expects it to tbe the final step
+     * in the checkout process.&lt;/p&gt;
+     *
+     * &lt;p&gt;In gateways where it does not expect to be the last step in the checkout process,
+     * for example BLC Gift Card Module, PayPal Express Checkout, etc... The callback from
+     * the gateway can be configured whether or not to complete checkout.&lt;/p&gt;
+     */
+<span class="nc" id="L126">    protected boolean completeCheckoutOnCallback = true;</span>
+
+    /**
+     * A string representation of the response that came from the gateway. This should be a string serialization of
+     * {@link #responseMap}.
+     */
+    protected String rawResponse;
+    
+    /**
+     * A more convenient representation of {@link #rawResponse} to hold the response from the gateway.
+     */
+    protected Map&lt;String, String&gt; responseMap;
+
+<span class="nc" id="L139">    public PaymentResponseDTO(PaymentType paymentType, PaymentGatewayType gatewayType) {</span>
+<span class="nc" id="L140">        this.paymentType = paymentType;</span>
+<span class="nc" id="L141">        this.paymentGatewayType = gatewayType;</span>
+<span class="nc" id="L142">        this.giftCards = new ArrayList&lt;GiftCardDTO&lt;PaymentResponseDTO&gt;&gt;();</span>
+<span class="nc" id="L143">        this.customerCredits = new ArrayList&lt;CustomerCreditDTO&lt;PaymentResponseDTO&gt;&gt;();</span>
+<span class="nc" id="L144">        this.responseMap = new HashMap&lt;String, String&gt;();</span>
+<span class="nc" id="L145">    }</span>
+
+    public GatewayCustomerDTO&lt;PaymentResponseDTO&gt; customer() {
+<span class="nc" id="L148">        customer = new GatewayCustomerDTO&lt;PaymentResponseDTO&gt;(this);</span>
+<span class="nc" id="L149">        return customer;</span>
+    }
+
+    public CreditCardDTO&lt;PaymentResponseDTO&gt; creditCard() {
+<span class="nc" id="L153">        creditCard = new CreditCardDTO&lt;PaymentResponseDTO&gt;(this);</span>
+<span class="nc" id="L154">        return creditCard;</span>
+    }
+
+    public AddressDTO&lt;PaymentResponseDTO&gt; shipTo() {
+<span class="nc" id="L158">        shipTo = new AddressDTO&lt;PaymentResponseDTO&gt;(this);</span>
+<span class="nc" id="L159">        return shipTo;</span>
+    }
+
+    public AddressDTO&lt;PaymentResponseDTO&gt; billTo() {
+<span class="nc" id="L163">        billTo = new AddressDTO&lt;PaymentResponseDTO&gt;(this);</span>
+<span class="nc" id="L164">        return billTo;</span>
+    }
+
+    public GiftCardDTO&lt;PaymentResponseDTO&gt; giftCard() {
+<span class="nc" id="L168">        GiftCardDTO&lt;PaymentResponseDTO&gt; giftCardDTO = new GiftCardDTO&lt;PaymentResponseDTO&gt;(this);</span>
+<span class="nc" id="L169">        giftCards.add(giftCardDTO);</span>
+<span class="nc" id="L170">        return giftCardDTO;</span>
+    }
+
+    public CustomerCreditDTO&lt;PaymentResponseDTO&gt; customerCredit() {
+<span class="nc" id="L174">        CustomerCreditDTO&lt;PaymentResponseDTO&gt; customerCreditDTO = new CustomerCreditDTO&lt;PaymentResponseDTO&gt;(this);</span>
+<span class="nc" id="L175">        customerCredits.add(customerCreditDTO);</span>
+<span class="nc" id="L176">        return customerCreditDTO;</span>
+    }
+
+    public PaymentResponseDTO responseMap(String key, String value) {
+<span class="nc" id="L180">        responseMap.put(key, value);</span>
+<span class="nc" id="L181">        return this;</span>
+    }
+
+    public PaymentResponseDTO orderId(String orderId) {
+<span class="nc" id="L185">        this.orderId = orderId;</span>
+<span class="nc" id="L186">        return this;</span>
+    }
+
+    public PaymentResponseDTO amount(Money amount) {
+<span class="nc" id="L190">        this.amount = amount;</span>
+<span class="nc" id="L191">        return this;</span>
+    }
+
+    public PaymentResponseDTO paymentTransactionType(PaymentTransactionType paymentTransactionType) {
+<span class="nc" id="L195">        this.paymentTransactionType = paymentTransactionType;</span>
+<span class="nc" id="L196">        return this;</span>
+    }
+
+    public PaymentResponseDTO successful(boolean successful) {
+<span class="nc" id="L200">        this.successful = successful;</span>
+<span class="nc" id="L201">        return this;</span>
+    }
+
+    public PaymentResponseDTO completeCheckoutOnCallback(boolean completeCheckoutOnCallback) {
+<span class="nc" id="L205">        this.completeCheckoutOnCallback = completeCheckoutOnCallback;</span>
+<span class="nc" id="L206">        return this;</span>
+    }
+
+    public PaymentResponseDTO valid(boolean valid) {
+<span class="nc" id="L210">        this.valid = valid;</span>
+<span class="nc" id="L211">        return this;</span>
+    }
+
+    public PaymentResponseDTO rawResponse(String rawResponse) {
+<span class="nc" id="L215">        this.rawResponse = rawResponse;</span>
+<span class="nc" id="L216">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;PaymentResponseDTO&gt; getCustomer() {
+<span class="nc" id="L220">        return customer;</span>
+    }
+
+    public AddressDTO&lt;PaymentResponseDTO&gt; getShipTo() {
+<span class="nc" id="L224">        return shipTo;</span>
+    }
+
+    public AddressDTO&lt;PaymentResponseDTO&gt; getBillTo() {
+<span class="nc" id="L228">        return billTo;</span>
+    }
+
+    public List&lt;GiftCardDTO&lt;PaymentResponseDTO&gt;&gt; getGiftCards() {
+<span class="nc" id="L232">        return giftCards;</span>
+    }
+
+    public List&lt;CustomerCreditDTO&lt;PaymentResponseDTO&gt;&gt; getCustomerCredits() {
+<span class="nc" id="L236">        return customerCredits;</span>
+    }
+
+    public PaymentType getPaymentType() {
+<span class="nc" id="L240">        return paymentType;</span>
+    }
+
+    public PaymentGatewayType getPaymentGatewayType() {
+<span class="nc" id="L244">        return paymentGatewayType;</span>
+    }
+
+    public String getOrderId() {
+<span class="nc" id="L248">        return orderId;</span>
+    }
+
+    public Money getAmount() {
+<span class="nc" id="L252">        return amount;</span>
+    }
+
+    public PaymentTransactionType getPaymentTransactionType() {
+<span class="nc" id="L256">        return paymentTransactionType;</span>
+    }
+
+    public boolean isSuccessful() {
+<span class="nc" id="L260">        return successful;</span>
+    }
+
+    public boolean isValid() {
+<span class="nc" id="L264">        return valid;</span>
+    }
+
+    public boolean isCompleteCheckoutOnCallback() {
+<span class="nc" id="L268">        return completeCheckoutOnCallback;</span>
+    }
+
+    public CreditCardDTO&lt;PaymentResponseDTO&gt; getCreditCard() {
+<span class="nc" id="L272">        return creditCard;</span>
+    }
+
+    public String getRawResponse() {
+<span class="nc" id="L276">        return rawResponse;</span>
+    }
+
+    public Map&lt;String, String&gt; getResponseMap() {
+<span class="nc" id="L280">        return responseMap;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

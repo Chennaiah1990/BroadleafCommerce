@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafThymeleafServletContextTemplateResolver.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafThymeleafServletContextTemplateResolver.java</span></div><h1>BroadleafThymeleafServletContextTemplateResolver.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.broadleafcommerce.common.site.domain.Theme;
+import org.thymeleaf.TemplateProcessingParameters;
+import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
+import org.thymeleaf.util.Validate;
+
+/**
+ * Overrides the Thymeleaf ContextTemplateResolver and appends the org.broadleafcommerce.common.web.Theme path to the url
+ * if it exists.
+ */
+<span class="nc" id="L31">public class BroadleafThymeleafServletContextTemplateResolver extends ServletContextTemplateResolver {    </span>
+    
+<span class="nc" id="L33">    protected String templateFolder = &quot;&quot;;</span>
+
+    @Override
+    protected String computeResourceName(final TemplateProcessingParameters templateProcessingParameters) {
+<span class="nc" id="L37">        String themePath = null;</span>
+    
+<span class="nc" id="L39">        Theme theme = BroadleafRequestContext.getBroadleafRequestContext().getTheme();</span>
+<span class="nc bnc" id="L40" title="All 4 branches missed.">        if (theme != null &amp;&amp; theme.getPath() != null) {</span>
+<span class="nc" id="L41">            themePath = theme.getPath();</span>
+        }             
+
+<span class="nc" id="L44">        checkInitialized();</span>
+
+<span class="nc" id="L46">        final String templateName = templateProcessingParameters.getTemplateName();</span>
+
+<span class="nc" id="L48">        Validate.notNull(templateName, &quot;Template name cannot be null&quot;);</span>
+
+<span class="nc" id="L50">        String unaliasedName = this.getTemplateAliases().get(templateName);</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">        if (unaliasedName == null) {</span>
+<span class="nc" id="L52">            unaliasedName = templateName;</span>
+        }
+
+<span class="nc" id="L55">        final StringBuilder resourceName = new StringBuilder();</span>
+<span class="nc" id="L56">        String prefix = this.getPrefix();</span>
+<span class="nc bnc" id="L57" title="All 4 branches missed.">        if (prefix != null &amp;&amp; ! prefix.trim().equals(&quot;&quot;)) {</span>
+           
+<span class="nc bnc" id="L59" title="All 2 branches missed.">            if (themePath != null) {        </span>
+<span class="nc" id="L60">                resourceName.append(prefix).append(themePath).append('/').append(templateFolder);</span>
+            }
+        }
+<span class="nc" id="L63">        resourceName.append(unaliasedName);</span>
+<span class="nc" id="L64">        String suffix = this.getSuffix();</span>
+<span class="nc bnc" id="L65" title="All 4 branches missed.">        if (suffix != null &amp;&amp; ! suffix.trim().equals(&quot;&quot;)) {</span>
+<span class="nc" id="L66">            resourceName.append(suffix);</span>
+        }
+
+<span class="nc" id="L69">        return resourceName.toString();</span>
+    }
+    
+    public String getTemplateFolder() {
+<span class="nc" id="L73">        return templateFolder;</span>
+    }
+
+    public void setTemplateFolder(String templateFolder) {
+<span class="nc" id="L77">        this.templateFolder = templateFolder;</span>
+<span class="nc" id="L78">    }</span>
+    
+}
+
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

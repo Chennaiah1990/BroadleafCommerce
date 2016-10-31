@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GatewayCustomerDTO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment.dto</a> &gt; <span class="el_source">GatewayCustomerDTO.java</span></div><h1>GatewayCustomerDTO.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.payment.dto;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author Elbert Bautista (elbertbautista)
+ */
+public class GatewayCustomerDTO&lt;T&gt; {
+
+    protected T parent;
+
+    protected Map&lt;String, Object&gt; additionalFields;
+    protected String customerId;
+    protected String firstName;
+    protected String lastName;
+    protected String companyName;
+    protected String phone;
+    protected String mobile;
+    protected String fax;
+    protected String website;
+    protected String email;
+
+<span class="nc" id="L44">    public GatewayCustomerDTO() {</span>
+<span class="nc" id="L45">        this.additionalFields = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L46">    }</span>
+
+<span class="nc" id="L48">    public GatewayCustomerDTO(T parent) {</span>
+<span class="nc" id="L49">        this.additionalFields = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L50">        this.parent = parent;</span>
+<span class="nc" id="L51">    }</span>
+
+    public T done() {
+<span class="nc" id="L54">        return parent;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; additionalFields(String key, Object value) {
+<span class="nc" id="L58">        additionalFields.put(key, value);</span>
+<span class="nc" id="L59">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; customerId(String customerId) {
+<span class="nc" id="L63">        this.customerId = customerId;</span>
+<span class="nc" id="L64">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; firstName(String firstName) {
+<span class="nc" id="L68">        this.firstName = firstName;</span>
+<span class="nc" id="L69">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; lastName(String lastName) {
+<span class="nc" id="L73">        this.lastName = lastName;</span>
+<span class="nc" id="L74">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; companyName(String companyName) {
+<span class="nc" id="L78">        this.companyName = companyName;</span>
+<span class="nc" id="L79">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; phone(String phone) {
+<span class="nc" id="L83">        this.phone = phone;</span>
+<span class="nc" id="L84">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; mobile(String mobile) {
+<span class="nc" id="L88">        this.mobile = mobile;</span>
+<span class="nc" id="L89">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; fax(String fax) {
+<span class="nc" id="L93">        this.fax = fax;</span>
+<span class="nc" id="L94">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; website(String website) {
+<span class="nc" id="L98">        this.website = website;</span>
+<span class="nc" id="L99">        return this;</span>
+    }
+
+    public GatewayCustomerDTO&lt;T&gt; email(String email) {
+<span class="nc" id="L103">        this.email = email;</span>
+<span class="nc" id="L104">        return this;</span>
+    }
+
+    public Map&lt;String, Object&gt; getAdditionalFields() {
+<span class="nc" id="L108">        return additionalFields;</span>
+    }
+
+    public String getCustomerId() {
+<span class="nc" id="L112">        return customerId;</span>
+    }
+
+    public String getFirstName() {
+<span class="nc" id="L116">        return firstName;</span>
+    }
+
+    public String getLastName() {
+<span class="nc" id="L120">        return lastName;</span>
+    }
+
+    public String getCompanyName() {
+<span class="nc" id="L124">        return companyName;</span>
+    }
+
+    public String getPhone() {
+<span class="nc" id="L128">        return phone;</span>
+    }
+
+    public String getMobile() {
+<span class="nc" id="L132">        return mobile;</span>
+    }
+
+    public String getFax() {
+<span class="nc" id="L136">        return fax;</span>
+    }
+
+    public String getWebsite() {
+<span class="nc" id="L140">        return website;</span>
+    }
+
+    public String getEmail() {
+<span class="nc" id="L144">        return email;</span>
+    }
+
+    public boolean customerPopulated() {
+<span class="nc bnc" id="L148" title="All 22 branches missed.">        return ((getAdditionalFields() != null &amp;&amp; !getAdditionalFields().isEmpty()) ||</span>
+                getCustomerId() != null ||
+                getFirstName() != null ||
+                getLastName() != null ||
+                getCompanyName() != null ||
+                getPhone() != null ||
+                getMobile() != null ||
+                getFax() != null ||
+                getWebsite() != null ||
+                getEmail() != null);
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

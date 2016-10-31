@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafContextUtil.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.resource</a> &gt; <span class="el_source">BroadleafContextUtil.java</span></div><h1>BroadleafContextUtil.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.resource;
+
+import org.broadleafcommerce.common.classloader.release.ThreadLocalManager;
+import org.broadleafcommerce.common.util.DeployBehaviorUtil;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.broadleafcommerce.common.web.BroadleafSandBoxResolver;
+import org.broadleafcommerce.common.web.BroadleafSiteResolver;
+import org.broadleafcommerce.common.web.BroadleafThemeResolver;
+import org.broadleafcommerce.common.web.DeployBehavior;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.context.request.WebRequest;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
+/**
+ * &lt;p&gt;
+ * Some resource handlers need a valid site, theme, or sandbox to be available when serving request.
+ * 
+ * &lt;p&gt;
+ * This component provides the {@link #establishThinRequestContext()} method for that purpose.  
+ *
+ * @author bpolster
+ *
+ */
+@Service(&quot;blBroadleafContextUtil&quot;)
+<span class="nc" id="L51">public class BroadleafContextUtil {</span>
+    
+    @javax.annotation.Resource(name = &quot;blSiteResolver&quot;)
+    protected BroadleafSiteResolver siteResolver;
+    
+    @javax.annotation.Resource(name = &quot;blSandBoxResolver&quot;)
+    protected BroadleafSandBoxResolver sbResolver;
+    
+    @javax.annotation.Resource(name = &quot;blThemeResolver&quot;)
+    protected BroadleafThemeResolver themeResolver;
+
+    @javax.annotation.Resource(name = &quot;blDeployBehaviorUtil&quot;)
+    protected DeployBehaviorUtil deployBehaviorUtil;
+
+<span class="nc" id="L65">    protected boolean versioningEnabled = false;</span>
+
+    /**
+     * Creates a BroadleafRequestContext with supported values populated
+     * @see #establishThinRequestContextInternal(boolean, boolean)
+     */
+    public void establishThinRequestContext() {
+<span class="nc" id="L72">        establishThinRequestContextInternal(true, true);</span>
+<span class="nc" id="L73">    }</span>
+
+    /**
+     * Creates a BroadleafRequestContext without a Sandbox
+     * @see #establishThinRequestContextInternal(boolean, boolean)
+     */
+    public void establishThinRequestContextWithoutSandBox() {
+<span class="nc" id="L80">        establishThinRequestContextInternal(true, false);</span>
+<span class="nc" id="L81">    }</span>
+
+    /**
+     * Creates a BroadleafRequestContext without a Theme or Sandbox
+     * @see #establishThinRequestContextInternal(boolean, boolean)
+     */
+    public void establishThinRequestContextWithoutThemeOrSandbox() {
+<span class="nc" id="L88">        establishThinRequestContextInternal(false, false);</span>
+<span class="nc" id="L89">    }</span>
+
+    /**
+     * Adds request and site to the BroadleafRequestContext
+     * 
+     * If includeTheme is true then also adds the Theme.
+     * If includeSandBox is true then also adds the SandBox.
+     * 
+     * @param includeTheme
+     * @param includeSandBox
+     */
+    protected void establishThinRequestContextInternal(boolean includeTheme, boolean includeSandBox) {
+<span class="nc" id="L101">        BroadleafRequestContext brc = BroadleafRequestContext.getBroadleafRequestContext();</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (brc.getRequest() == null) {</span>
+<span class="nc" id="L104">            HttpServletRequest req = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();</span>
+<span class="nc" id="L105">            HttpSession session = req.getSession(false);</span>
+<span class="nc" id="L106">            SecurityContext ctx = readSecurityContextFromSession(session);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            if (ctx != null) {</span>
+<span class="nc" id="L108">                SecurityContextHolder.setContext(ctx);</span>
+            }
+<span class="nc" id="L110">            brc.setRequest(req);</span>
+        }
+
+<span class="nc" id="L113">        WebRequest wr = brc.getWebRequest();</span>
+
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        if (brc.getNonPersistentSite() == null) {</span>
+<span class="nc" id="L116">            brc.setNonPersistentSite(siteResolver.resolveSite(wr, true));</span>
+<span class="nc" id="L117">            brc.setSandBox(sbResolver.resolveSandBox(wr, brc.getNonPersistentSite()));</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">            brc.setDeployBehavior(deployBehaviorUtil.isProductionSandBoxMode() ? DeployBehavior.CLONE_PARENT : DeployBehavior.OVERWRITE_PARENT);</span>
+        }
+
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (includeTheme) {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            if (brc.getTheme() == null) {</span>
+<span class="nc" id="L123">                brc.setTheme(themeResolver.resolveTheme(wr));</span>
+            }
+        }
+<span class="nc" id="L126">    }</span>
+
+    public void clearThinRequestContext() {
+<span class="nc" id="L129">        ThreadLocalManager.remove();</span>
+<span class="nc" id="L130">    }</span>
+
+    protected String getContextName(HttpServletRequest request) {
+<span class="nc" id="L133">        String contextName = request.getServerName();</span>
+<span class="nc" id="L134">        int pos = contextName.indexOf('.');</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        if (pos &gt;= 0) {</span>
+<span class="nc" id="L136">            contextName = contextName.substring(0, contextName.indexOf('.'));</span>
+        }
+<span class="nc" id="L138">        return contextName;</span>
+    }
+
+    // **NOTE** This method is lifted from HttpSessionSecurityContextRepository
+    protected SecurityContext readSecurityContextFromSession(HttpSession httpSession) {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (httpSession == null) {</span>
+<span class="nc" id="L144">            return null;</span>
+        }
+
+<span class="nc" id="L147">        Object ctxFromSession = httpSession.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (ctxFromSession == null) {</span>
+<span class="nc" id="L149">            return null;</span>
+        }
+
+<span class="nc bnc" id="L152" title="All 2 branches missed.">        if (!(ctxFromSession instanceof SecurityContext)) {</span>
+<span class="nc" id="L153">            return null;</span>
+        }
+
+<span class="nc" id="L156">        return (SecurityContext) ctxFromSession;</span>
+    }
+    
+    
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

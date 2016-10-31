@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PaymentGatewayAbstractController.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.payment.controller</a> &gt; <span class="el_source">PaymentGatewayAbstractController.java</span></div><h1>PaymentGatewayAbstractController.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.web.payment.controller;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.payment.dto.PaymentResponseDTO;
+import org.broadleafcommerce.common.payment.service.PaymentGatewayCheckoutService;
+import org.broadleafcommerce.common.payment.service.PaymentGatewayConfiguration;
+import org.broadleafcommerce.common.payment.service.PaymentGatewayWebResponsePrintService;
+import org.broadleafcommerce.common.payment.service.PaymentGatewayWebResponseService;
+import org.broadleafcommerce.common.vendor.service.exception.PaymentException;
+import org.broadleafcommerce.common.web.controller.BroadleafAbstractController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.ui.Model;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * &lt;p&gt;Abstract controller that provides convenience methods and resource declarations for Payment Gateway
+ * Operations that are shared between all gateway controllers belong here.&lt;/p&gt;
+ *
+ * &lt;p&gt;The Core Framework should have an implementation of a &quot;blPaymentGatewayCheckoutService&quot; bean defined.
+ * If you are using the common jars without the framework dependency, you will either have to
+ * implement the blPaymentGatewayCheckoutService yourself, or override the applyPaymentToOrder and
+ * the markPaymentAsInvalid methods accordingly.&lt;/p&gt;
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+<span class="nc" id="L53">public abstract class PaymentGatewayAbstractController extends BroadleafAbstractController {</span>
+
+<span class="nc" id="L55">    protected static final Log LOG = LogFactory.getLog(PaymentGatewayAbstractController.class);</span>
+    public static final String PAYMENT_PROCESSING_ERROR = &quot;PAYMENT_PROCESSING_ERROR&quot;;
+
+<span class="nc" id="L58">    protected static String baseRedirect = &quot;redirect:/&quot;;</span>
+<span class="nc" id="L59">    protected static String baseErrorView = &quot;/error&quot;;</span>
+<span class="nc" id="L60">    protected static String baseOrderReviewRedirect = &quot;redirect:/checkout&quot;;</span>
+<span class="nc" id="L61">    protected static String baseConfirmationRedirect = &quot;redirect:/confirmation&quot;;</span>
+<span class="nc" id="L62">    protected static String baseCartRedirect = &quot;redirect:/cart&quot;;</span>
+
+    //Externalized Generic Payment Error Message
+<span class="nc" id="L65">    protected static String processingErrorMessage = &quot;cart.paymentProcessingError&quot;;</span>
+
+    @Autowired(required=false)
+    @Qualifier(&quot;blPaymentGatewayCheckoutService&quot;)
+    protected PaymentGatewayCheckoutService paymentGatewayCheckoutService;
+
+    @Resource(name = &quot;blPaymentGatewayWebResponsePrintService&quot;)
+    protected PaymentGatewayWebResponsePrintService webResponsePrintService;
+
+    public Long applyPaymentToOrder(PaymentResponseDTO responseDTO) throws IllegalArgumentException {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (LOG.isErrorEnabled()) {</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">            if (paymentGatewayCheckoutService == null) {</span>
+<span class="nc" id="L77">                LOG.trace(&quot;applyPaymentToOrder: PaymentCheckoutService is null. Please check your configuration.&quot;);</span>
+            }
+        }
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (paymentGatewayCheckoutService != null) {</span>
+<span class="nc" id="L82">            return paymentGatewayCheckoutService.applyPaymentToOrder(responseDTO, getConfiguration());</span>
+        }
+<span class="nc" id="L84">        return null;</span>
+    }
+
+    public String initiateCheckout(Long orderId) throws Exception {
+<span class="nc" id="L88">        String orderNumber = null;</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (LOG.isErrorEnabled()) {</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">            if (paymentGatewayCheckoutService == null) {</span>
+<span class="nc" id="L91">                LOG.trace(&quot;initiateCheckout: PaymentCheckoutService is null. Please check your configuration.&quot;);</span>
+            }
+        }
+
+<span class="nc bnc" id="L95" title="All 4 branches missed.">        if (paymentGatewayCheckoutService != null &amp;&amp; orderId != null) {</span>
+<span class="nc" id="L96">            orderNumber = paymentGatewayCheckoutService.initiateCheckout(orderId);</span>
+        }
+
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (orderNumber == null) {</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L101">                LOG.trace(&quot;The result from calling initiateCheckout with paymentCheckoutService and orderId: &quot; + orderId + &quot; is null&quot;);</span>
+            }
+        }
+
+<span class="nc" id="L105">        return orderNumber;</span>
+    }
+
+    public String lookupOrderNumberFromOrderId(PaymentResponseDTO responseDTO) {
+<span class="nc" id="L109">        String orderNumber = null;</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (LOG.isErrorEnabled()) {</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">            if (paymentGatewayCheckoutService == null) {</span>
+<span class="nc" id="L112">                LOG.trace(&quot;lookupOrderNumberFromOrderId: PaymentCheckoutService is null. Please check your configuration.&quot;);</span>
+            }
+        }
+
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (paymentGatewayCheckoutService != null) {</span>
+<span class="nc" id="L117">            orderNumber = paymentGatewayCheckoutService.lookupOrderNumberFromOrderId(responseDTO);</span>
+        }
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (orderNumber == null) {</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L122">                LOG.trace(&quot;The result from calling lookupOrderNumberFromOrderId is null&quot;);</span>
+            }
+        }
+
+<span class="nc" id="L126">        return orderNumber;</span>
+    }
+
+    // ***********************************************
+    // Common Result Processing
+    // ***********************************************
+    /**
+     *
+     * try {
+     *   translate http request to DTO
+     *   apply payment to order
+     *   check success and validity of response
+     *   if (complete checkout on callback == true)
+     *     initiateCheckout(order id);
+     *   else
+     *     show review page;
+     * } catch (Exception e) {
+     *     notify admin user of failure
+     *     handle processing exception
+     * }
+     *
+     */
+    public String process(Model model, HttpServletRequest request,
+                          final RedirectAttributes redirectAttributes) throws PaymentException {
+<span class="nc" id="L150">        Long orderPaymentId = null;</span>
+
+        try {
+<span class="nc" id="L153">            PaymentResponseDTO responseDTO = getWebResponseService().translateWebResponse(request);</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L155">                LOG.trace(&quot;HTTPRequest translated to Raw Response: &quot; +  responseDTO.getRawResponse());</span>
+            }
+
+<span class="nc" id="L158">            orderPaymentId = applyPaymentToOrder(responseDTO);</span>
+
+<span class="nc bnc" id="L160" title="All 2 branches missed.">            if (!responseDTO.isSuccessful()) {</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L162">                    LOG.trace(&quot;The Response DTO is marked as unsuccessful. Delegating to the &quot; +</span>
+                            &quot;payment module to handle an unsuccessful transaction&quot;);
+                }
+
+<span class="nc" id="L166">                handleUnsuccessfulTransaction(model, redirectAttributes, responseDTO);</span>
+<span class="nc" id="L167">                return getErrorViewRedirect();</span>
+            }
+
+<span class="nc bnc" id="L170" title="All 2 branches missed.">            if (!responseDTO.isValid()) {</span>
+<span class="nc" id="L171">                throw new PaymentException(&quot;The validity of the response cannot be confirmed.&quot; +</span>
+                        &quot;Check the Tamper Proof Seal for more details.&quot;);
+            }
+
+<span class="nc" id="L175">            String orderId = responseDTO.getOrderId();</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">            if (orderId == null) {</span>
+<span class="nc" id="L177">                throw new RuntimeException(&quot;Order ID must be set on the Payment Response DTO&quot;);</span>
+            }
+
+<span class="nc bnc" id="L180" title="All 2 branches missed.">            if (responseDTO.isCompleteCheckoutOnCallback()) {</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L182">                    LOG.trace(&quot;The Response DTO for this Gateway is configured to complete checkout on callback. &quot; +</span>
+                            &quot;Initiating Checkout with Order ID: &quot; + orderId);
+                }
+
+<span class="nc" id="L186">                String orderNumber = initiateCheckout(Long.parseLong(orderId));</span>
+<span class="nc" id="L187">                return getConfirmationViewRedirect(orderNumber);</span>
+            } else {
+<span class="nc bnc" id="L189" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L190">                    LOG.trace(&quot;The Gateway is configured to not complete checkout. &quot; +</span>
+                            &quot;Redirecting to the Order Review Page for Order ID: &quot; + orderId);
+                }
+
+<span class="nc" id="L194">                return getOrderReviewRedirect();</span>
+            }
+
+<span class="nc" id="L197">        } catch (Exception e) {</span>
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">            if (LOG.isErrorEnabled()) {</span>
+<span class="nc" id="L200">                LOG.error(&quot;HTTPRequest - &quot; + webResponsePrintService.printRequest(request));</span>
+
+<span class="nc" id="L202">                LOG.error(&quot;An exception was caught either from processing the response and applying the payment to &quot; +</span>
+                        &quot;the order, or an activity in the checkout workflow threw an exception. Attempting to &quot; +
+                        &quot;mark the payment as invalid and delegating to the payment module to handle any other &quot; +
+                        &quot;exception processing. The error caught was: &quot; + e);
+            }
+            
+<span class="nc bnc" id="L208" title="All 4 branches missed.">            if (paymentGatewayCheckoutService != null &amp;&amp; orderPaymentId != null) {</span>
+<span class="nc" id="L209">                paymentGatewayCheckoutService.markPaymentAsInvalid(orderPaymentId);</span>
+            }
+
+<span class="nc" id="L212">            handleProcessingException(e, redirectAttributes);</span>
+        }
+
+<span class="nc" id="L215">        return getErrorViewRedirect();</span>
+    }
+
+    public abstract void handleProcessingException(Exception e, final RedirectAttributes redirectAttributes)
+            throws PaymentException;
+
+    public abstract void handleUnsuccessfulTransaction(Model model, final RedirectAttributes redirectAttributes,
+                                                       PaymentResponseDTO responseDTO) throws PaymentException;
+
+    public abstract String getGatewayContextKey();
+
+    public abstract PaymentGatewayWebResponseService getWebResponseService();
+
+    public abstract PaymentGatewayConfiguration getConfiguration();
+
+    public abstract String returnEndpoint(Model model, HttpServletRequest request,
+                                          final RedirectAttributes redirectAttributes,
+                                          Map&lt;String, String&gt; pathVars) throws PaymentException;
+
+    public abstract String errorEndpoint(Model model, HttpServletRequest request,
+                                         final RedirectAttributes redirectAttributes,
+                                         Map&lt;String, String&gt; pathVars) throws PaymentException;
+
+
+    protected String getErrorViewRedirect() {
+        //delegate to the modules endpoint as there may be additional processing that is involved
+<span class="nc" id="L241">        return baseRedirect + getGatewayContextKey() + baseErrorView;</span>
+    }
+
+    protected String getCartViewRedirect() {
+<span class="nc" id="L245">        return baseCartRedirect;</span>
+    }
+
+    public String getOrderReviewRedirect()  {
+<span class="nc" id="L249">        return baseOrderReviewRedirect;</span>
+    }
+
+    public String getBaseConfirmationRedirect() {
+<span class="nc" id="L253">        return baseConfirmationRedirect;</span>
+    }
+
+    protected String getConfirmationViewRedirect(String orderNumber) {
+<span class="nc" id="L257">        return getBaseConfirmationRedirect() + &quot;/&quot; + orderNumber;</span>
+    }
+
+    public static String getProcessingErrorMessage() {
+<span class="nc" id="L261">        return processingErrorMessage;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

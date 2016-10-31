@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DemoSqlServerSingleLineSqlCommandExtractor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util.sql.importsql</a> &gt; <span class="el_source">DemoSqlServerSingleLineSqlCommandExtractor.java</span></div><h1>DemoSqlServerSingleLineSqlCommandExtractor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util.sql.importsql;
+
+import org.broadleafcommerce.common.logging.SupportLogManager;
+import org.broadleafcommerce.common.logging.SupportLogger;
+import org.hibernate.tool.hbm2ddl.SingleLineSqlCommandExtractor;
+
+import java.io.Reader;
+
+/**
+ * This is a utility class that is only meant to be used for testing the BLC demo on SQL Server. In our current
+ * import sql files, there are a number of value declarations that are incompatible with Sql Server. This
+ * custom extractor takes care of transforming those values into something SQL Server understands.
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L35">public class DemoSqlServerSingleLineSqlCommandExtractor extends SingleLineSqlCommandExtractor {</span>
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L39">    private static final SupportLogger LOGGER = SupportLogManager.getLogger(&quot;UserOverride&quot;, DemoSqlServerSingleLineSqlCommandExtractor.class);</span>
+
+    private static final String BOOLEANTRUEMATCH = &quot;(?i)(true)&quot;;
+    private static final String BOOLEANFALSEMATCH = &quot;(?i)(false)&quot;;
+    private static final String TIMESTAMPMATCH = &quot;(?i)(current_date)&quot;;
+    public static final String TRUE = &quot;'TRUE'&quot;;
+    public static final String FALSE = &quot;'FALSE'&quot;;
+    public static final String CURRENT_TIMESTAMP = &quot;CURRENT_TIMESTAMP&quot;;
+
+<span class="nc" id="L48">    protected boolean alreadyRun = false;</span>
+
+    @Override
+    public String[] extractCommands(Reader reader) {
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (!alreadyRun) {</span>
+<span class="nc" id="L53">            alreadyRun = true;</span>
+<span class="nc" id="L54">            LOGGER.support(&quot;Converting hibernate.hbm2ddl.import_files sql statements for compatibility with SQL Server&quot;);</span>
+        }
+
+<span class="nc" id="L57">        String[] statements = super.extractCommands(reader);</span>
+<span class="nc" id="L58">        handleBooleans(statements);</span>
+
+<span class="nc" id="L60">        return statements;</span>
+    }
+
+    protected void handleBooleans(String[] statements) {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        for (int j=0; j&lt;statements.length; j++) {</span>
+            //try start matches
+<span class="nc" id="L66">            statements[j] = statements[j].replaceAll(BOOLEANTRUEMATCH + &quot;\\s*[,]&quot;, TRUE + &quot;,&quot;);</span>
+<span class="nc" id="L67">            statements[j] = statements[j].replaceAll(BOOLEANFALSEMATCH + &quot;\\s*[,]&quot;, FALSE + &quot;,&quot;);</span>
+<span class="nc" id="L68">            statements[j] = statements[j].replaceAll(TIMESTAMPMATCH + &quot;\\s*[,]&quot;, CURRENT_TIMESTAMP + &quot;,&quot;);</span>
+
+            //try middle matches
+<span class="nc" id="L71">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANTRUEMATCH + &quot;\\s*[,]&quot;, &quot;,&quot; + TRUE + &quot;,&quot;);</span>
+<span class="nc" id="L72">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANFALSEMATCH + &quot;\\s*[,]&quot;, &quot;,&quot; + FALSE + &quot;,&quot;);</span>
+<span class="nc" id="L73">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + TIMESTAMPMATCH + &quot;\\s*[,]&quot;, &quot;,&quot; + CURRENT_TIMESTAMP + &quot;,&quot;);</span>
+
+            //try end matches
+<span class="nc" id="L76">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANTRUEMATCH, &quot;,&quot; + TRUE);</span>
+<span class="nc" id="L77">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANFALSEMATCH, &quot;,&quot; + FALSE);</span>
+<span class="nc" id="L78">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + TIMESTAMPMATCH, &quot;,&quot; + CURRENT_TIMESTAMP);</span>
+
+            //try matches for updates
+<span class="nc" id="L81">            statements[j] = statements[j].replaceAll(&quot;[=]\\s*&quot; + BOOLEANTRUEMATCH, &quot;=&quot; + TRUE);</span>
+<span class="nc" id="L82">            statements[j] = statements[j].replaceAll(&quot;[=]\\s*&quot; + BOOLEANFALSEMATCH, &quot;=&quot; + FALSE);</span>
+        }
+<span class="nc" id="L84">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

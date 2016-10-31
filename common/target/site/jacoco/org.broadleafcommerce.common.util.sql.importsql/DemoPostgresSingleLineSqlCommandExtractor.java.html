@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DemoPostgresSingleLineSqlCommandExtractor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util.sql.importsql</a> &gt; <span class="el_source">DemoPostgresSingleLineSqlCommandExtractor.java</span></div><h1>DemoPostgresSingleLineSqlCommandExtractor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util.sql.importsql;
+
+import org.broadleafcommerce.common.logging.SupportLogManager;
+import org.broadleafcommerce.common.logging.SupportLogger;
+import org.hibernate.tool.hbm2ddl.SingleLineSqlCommandExtractor;
+
+import java.io.Reader;
+
+/**
+ * 
+ * Command extractor that does Postgres specific logic in order for the DemoSite load scripts to import correctly.&lt;br/&gt;&lt;br/&gt;
+ * 
+ * Add:&lt;br/&gt;
+ *  {@code blPU.hibernate.hbm2ddl.import_files_sql_extractor=org.broadleafcommerce.common.util.sql.importsql.DemoPostgresSingleLineSqlCommandExtractor
+ *  blEventPU.hibernate.hbm2ddl.import_files_sql_extractor=org.broadleafcommerce.common.util.sql.importsql.DemoPostgresSingleLineSqlCommandExtractor}&lt;br&gt;
+ *  
+ *  in properties file to run load scripts through this extractor
+ * 
+ * @author Jay Aisenbrey (cja769)
+ *
+ */
+<span class="nc" id="L41">public class DemoPostgresSingleLineSqlCommandExtractor extends SingleLineSqlCommandExtractor {</span>
+
+    private static final long serialVersionUID = 1L;
+    
+<span class="nc" id="L45">    private static final SupportLogger LOGGER = SupportLogManager.getLogger(&quot;UserOverride&quot;, DemoPostgresSingleLineSqlCommandExtractor.class);</span>
+    
+    @Override
+    public String[] extractCommands(Reader reader) {
+        
+<span class="nc" id="L50">        String[] commands = super.extractCommands(reader);</span>
+<span class="nc" id="L51">        String[] newCommands = new String[commands.length];</span>
+<span class="nc" id="L52">        int i = 0;</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">        for (String command : commands) {</span>
+<span class="nc" id="L54">            String newCommand = command;</span>
+            
+            // Replacing all double single quotes with double double quotes to simplify regex. Original regex caused
+            // StackOverFlow exception by exploiting a known issue in java. See - http://bugs.java.com/view_bug.do?bug_id=5050507
+<span class="nc" id="L58">            newCommand = newCommand.replaceAll(&quot;''&quot;, &quot;\&quot;\&quot;&quot;);</span>
+            
+            // Find all string values being set and put an 'E' outside. This has to be done in Postgres so that escapes
+            // are evaluated correctly
+<span class="nc" id="L62">            newCommand = newCommand.replaceAll(&quot;('.*?')&quot;, &quot;E$1&quot;);</span>
+<span class="nc" id="L63">            newCommand = newCommand.replaceAll(&quot;\&quot;\&quot;&quot;, &quot;''&quot;);</span>
+<span class="nc" id="L64">            newCommands[i] = newCommand;</span>
+<span class="nc" id="L65">            i++;</span>
+        }
+<span class="nc" id="L67">        return newCommands;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

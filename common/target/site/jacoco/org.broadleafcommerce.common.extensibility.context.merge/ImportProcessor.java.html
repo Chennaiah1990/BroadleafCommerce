@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ImportProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.context.merge</a> &gt; <span class="el_source">ImportProcessor.java</span></div><h1>ImportProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.context.merge;
+
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.util.Arrays;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extensibility.context.ResourceInputStream;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeException;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+/**
+ * This class serves to parse any passed in source application context files and
+ * look for the Spring &quot;import&quot; element. If found, the resource of the import element
+ * is retrieved and set as another source element after the current one. Also, once the
+ * resource is retrieved and included, the import element is deleted from the source
+ * document.
+ *
+ * @author Jeff Fischer
+ */
+public class ImportProcessor {
+
+<span class="nc" id="L61">    private static final Log LOG = LogFactory.getLog(ImportProcessor.class);</span>
+    private static final String IMPORT_PATH = &quot;/beans/import&quot;;
+
+    protected ResourceLoader loader;
+    protected DocumentBuilder builder;
+    protected XPath xPath;
+
+<span class="nc" id="L68">    public ImportProcessor(ResourceLoader loader) {</span>
+<span class="nc" id="L69">        this.loader = loader;</span>
+<span class="nc" id="L70">        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();</span>
+        try {
+<span class="nc" id="L72">            builder = dbf.newDocumentBuilder();</span>
+<span class="nc" id="L73">            XPathFactory factory=XPathFactory.newInstance();</span>
+<span class="nc" id="L74">            xPath=factory.newXPath();</span>
+<span class="nc" id="L75">        } catch (ParserConfigurationException e) {</span>
+<span class="nc" id="L76">            LOG.error(&quot;Unable to create document builder&quot;, e);</span>
+<span class="nc" id="L77">            throw new RuntimeException(e);</span>
+<span class="nc" id="L78">        }</span>
+<span class="nc" id="L79">    }</span>
+
+    public ResourceInputStream[] extract(ResourceInputStream[] sources) throws MergeException {
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (sources == null) {</span>
+<span class="nc" id="L83">            return null;</span>
+        }
+        try {
+<span class="nc" id="L86">            DynamicResourceIterator resourceList = new DynamicResourceIterator();</span>
+<span class="nc" id="L87">            resourceList.addAll(Arrays.asList(sources));</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">            while(resourceList.hasNext()) {</span>
+<span class="nc" id="L89">                ResourceInputStream myStream = resourceList.nextResource();</span>
+<span class="nc" id="L90">                Document doc = builder.parse(myStream);</span>
+<span class="nc" id="L91">                NodeList nodeList = (NodeList) xPath.evaluate(IMPORT_PATH, doc, XPathConstants.NODESET);</span>
+<span class="nc" id="L92">                int length = nodeList.getLength();</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">                for (int j=0;j&lt;length;j++) {</span>
+<span class="nc" id="L94">                    Element element = (Element) nodeList.item(j);</span>
+<span class="nc" id="L95">                    Resource resource = loader.getResource(element.getAttribute(&quot;resource&quot;));</span>
+<span class="nc" id="L96">                    ResourceInputStream ris = new ResourceInputStream(resource.getInputStream(), resource.getURL().toString());</span>
+<span class="nc" id="L97">                    resourceList.addEmbeddedResource(ris);</span>
+<span class="nc" id="L98">                    element.getParentNode().removeChild(element);</span>
+                }
+<span class="nc bnc" id="L100" title="All 2 branches missed.">                if (length &gt; 0) {</span>
+<span class="nc" id="L101">                    TransformerFactory tFactory = TransformerFactory.newInstance();</span>
+<span class="nc" id="L102">                    Transformer xmlTransformer = tFactory.newTransformer();</span>
+<span class="nc" id="L103">                    xmlTransformer.setOutputProperty(OutputKeys.VERSION, &quot;1.0&quot;);</span>
+<span class="nc" id="L104">                    xmlTransformer.setOutputProperty(OutputKeys.ENCODING, &quot;UTF-8&quot;);</span>
+<span class="nc" id="L105">                    xmlTransformer.setOutputProperty(OutputKeys.METHOD, &quot;xml&quot;);</span>
+<span class="nc" id="L106">                    xmlTransformer.setOutputProperty(OutputKeys.INDENT, &quot;yes&quot;);</span>
+
+<span class="nc" id="L108">                    DOMSource source = new DOMSource(doc);</span>
+<span class="nc" id="L109">                    ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L110">                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(baos));</span>
+<span class="nc" id="L111">                    StreamResult result = new StreamResult(writer);</span>
+<span class="nc" id="L112">                    xmlTransformer.transform(source, result);</span>
+
+<span class="nc" id="L114">                    byte[] itemArray = baos.toByteArray();</span>
+
+<span class="nc" id="L116">                    resourceList.set(resourceList.getPosition() - 1, new ResourceInputStream(new ByteArrayInputStream(itemArray), null, myStream.getNames()));</span>
+<span class="nc" id="L117">                } else {</span>
+<span class="nc" id="L118">                    myStream.reset();</span>
+                }
+<span class="nc" id="L120">            }</span>
+
+<span class="nc" id="L122">            return resourceList.toArray(new ResourceInputStream[resourceList.size()]);</span>
+<span class="nc" id="L123">        } catch (Exception e) {</span>
+<span class="nc" id="L124">            throw new MergeException(e);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

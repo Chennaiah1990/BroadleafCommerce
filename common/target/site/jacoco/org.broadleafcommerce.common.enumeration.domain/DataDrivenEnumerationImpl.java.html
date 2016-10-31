@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DataDrivenEnumerationImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.enumeration.domain</a> &gt; <span class="el_source">DataDrivenEnumerationImpl.java</span></div><h1>DataDrivenEnumerationImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.enumeration.domain;
+
+import org.broadleafcommerce.common.copy.CreateResponse;
+import org.broadleafcommerce.common.copy.MultiTenantCopyContext;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.broadleafcommerce.common.presentation.AdminPresentationCollection;
+import org.broadleafcommerce.common.presentation.PopulateToOneFieldsEnum;
+import org.broadleafcommerce.common.presentation.client.AddMethodType;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Index;
+import org.hibernate.annotations.Parameter;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name=&quot;BLC_DATA_DRVN_ENUM&quot;)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region=&quot;blStandardElements&quot;)
+@AdminPresentationClass(populateToOneFields = PopulateToOneFieldsEnum.TRUE, friendlyName = &quot;DataDrivenEnumerationImpl_friendyName&quot;)
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.SANDBOX, skipOverlaps=true),
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_SITE)
+})
+<span class="nc" id="L60">public class DataDrivenEnumerationImpl implements DataDrivenEnumeration {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator = &quot;DataDrivenEnumerationId&quot;)
+    @GenericGenerator(
+        name=&quot;DataDrivenEnumerationId&quot;,
+        strategy=&quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+        parameters = {
+            @Parameter(name=&quot;segment_value&quot;, value=&quot;DataDrivenEnumerationImpl&quot;),
+            @Parameter(name=&quot;entity_name&quot;, value=&quot;org.broadleafcommerce.common.enumeration.domain.DataDrivenEnumerationImpl&quot;)
+        }
+    )
+    @Column(name = &quot;ENUM_ID&quot;)
+    protected Long id;
+    
+    @Column(name = &quot;ENUM_KEY&quot;)
+    @Index(name = &quot;ENUM_KEY_INDEX&quot;, columnNames = {&quot;KEY&quot;})
+    @AdminPresentation(friendlyName = &quot;DataDrivenEnumerationImpl_Key&quot;, order = 1, gridOrder = 1, prominent = true)
+    protected String key;
+    
+<span class="nc" id="L82">    @Column(name = &quot;MODIFIABLE&quot;)</span>
+    @AdminPresentation(friendlyName = &quot;DataDrivenEnumerationImpl_Modifiable&quot;, order = 2, gridOrder = 2, prominent = true)
+    protected Boolean modifiable = false;
+
+<span class="nc" id="L86">    @OneToMany(mappedBy = &quot;type&quot;, targetEntity = DataDrivenEnumerationValueImpl.class, cascade = {CascadeType.ALL})</span>
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region=&quot;blStandardElements&quot;)
+    @AdminPresentationCollection(addType = AddMethodType.PERSIST, friendlyName = &quot;DataDrivenEnumerationImpl_Enum_Values&quot;, order = 3)
+    protected List&lt;DataDrivenEnumerationValue&gt; enumValues = new ArrayList&lt;DataDrivenEnumerationValue&gt;();
+    
+    @Override
+    public Long getId() {
+<span class="nc" id="L93">        return id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L98">        this.id = id;</span>
+<span class="nc" id="L99">    }</span>
+
+    @Override
+    public String getKey() {
+<span class="nc" id="L103">        return key;</span>
+    }
+
+    @Override
+    public void setKey(String key) {
+<span class="nc" id="L108">        this.key = key;</span>
+<span class="nc" id="L109">    }</span>
+
+    @Override
+    public Boolean getModifiable() {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (modifiable == null) {</span>
+<span class="nc" id="L114">            return Boolean.FALSE;</span>
+        } else {
+<span class="nc" id="L116">            return modifiable;</span>
+        }
+    }
+
+    @Override
+    public void setModifiable(Boolean modifiable) {
+<span class="nc" id="L122">        this.modifiable = modifiable;</span>
+<span class="nc" id="L123">    }</span>
+
+    @Override
+    public List&lt;DataDrivenEnumerationValue&gt; getEnumValues() {
+<span class="nc" id="L127">        return enumValues;</span>
+    }
+
+    @Override
+    public void setEnumValues(List&lt;DataDrivenEnumerationValue&gt; enumValues) {
+<span class="nc" id="L132">        this.enumValues = enumValues;</span>
+<span class="nc" id="L133">    }</span>
+
+    @Override
+    @Deprecated
+    public List&lt;DataDrivenEnumerationValue&gt; getOrderItems() {
+<span class="nc" id="L138">        return enumValues;</span>
+    }
+
+    @Override
+    @Deprecated
+    public void setOrderItems(List&lt;DataDrivenEnumerationValue&gt; orderItems) {
+<span class="nc" id="L144">        this.enumValues = orderItems;</span>
+<span class="nc" id="L145">    }</span>
+
+    @Override
+    public &lt;G extends DataDrivenEnumeration&gt; CreateResponse&lt;G&gt; createOrRetrieveCopyInstance(MultiTenantCopyContext context)
+            throws CloneNotSupportedException {
+<span class="nc" id="L150">        CreateResponse&lt;G&gt; createResponse = context.createOrRetrieveCopyInstance(this);</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (createResponse.isAlreadyPopulated()) {</span>
+<span class="nc" id="L152">            return createResponse;</span>
+        }
+<span class="nc" id="L154">        DataDrivenEnumeration cloned = createResponse.getClone();</span>
+<span class="nc" id="L155">        cloned.setKey(key);</span>
+<span class="nc" id="L156">        cloned.setModifiable(modifiable);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        for (DataDrivenEnumerationValue value : enumValues) {</span>
+<span class="nc" id="L158">            DataDrivenEnumerationValue clonedValue = value.createOrRetrieveCopyInstance(context).getClone();</span>
+<span class="nc" id="L159">            cloned.getEnumValues().add(clonedValue);</span>
+<span class="nc" id="L160">        }</span>
+<span class="nc" id="L161">        return createResponse;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

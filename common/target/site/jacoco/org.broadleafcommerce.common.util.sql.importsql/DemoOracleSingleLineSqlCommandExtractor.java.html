@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DemoOracleSingleLineSqlCommandExtractor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util.sql.importsql</a> &gt; <span class="el_source">DemoOracleSingleLineSqlCommandExtractor.java</span></div><h1>DemoOracleSingleLineSqlCommandExtractor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util.sql.importsql;
+
+import org.broadleafcommerce.common.logging.SupportLogManager;
+import org.broadleafcommerce.common.logging.SupportLogger;
+import org.hibernate.tool.hbm2ddl.SingleLineSqlCommandExtractor;
+
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * This is a utility class that is only meant to be used for testing the BLC demo on Oracle. In our current
+ * import sql files, there are a number of value declarations that are incompatible with Oracle. This
+ * custom extractor takes care of transforming those values into something Oracle understands.
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L40">public class DemoOracleSingleLineSqlCommandExtractor extends SingleLineSqlCommandExtractor {</span>
+
+<span class="nc" id="L42">    private static final SupportLogger LOGGER = SupportLogManager.getLogger(&quot;UserOverride&quot;, DemoOracleSingleLineSqlCommandExtractor.class);</span>
+
+    private static final String BOOLEANTRUEMATCH = &quot;(?i)(true)&quot;;
+    private static final String BOOLEANFALSEMATCH = &quot;(?i)(false)&quot;;
+    private static final String TIMESTAMPMATCH = &quot;(?&lt;!\\{ts\\s)('\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}')&quot;;
+    public static final String TRUE = &quot;1&quot;;
+    public static final String FALSE = &quot;0&quot;;
+
+<span class="nc" id="L50">    protected boolean alreadyRun = false;</span>
+
+    @Override
+    public String[] extractCommands(Reader reader) {
+<span class="nc bnc" id="L54" title="All 2 branches missed.">        if (!alreadyRun) {</span>
+<span class="nc" id="L55">            alreadyRun = true;</span>
+<span class="nc" id="L56">            LOGGER.support(&quot;Converting hibernate.hbm2ddl.import_files sql statements for compatibility with Oracle&quot;);</span>
+        }
+
+<span class="nc" id="L59">        String[] statements = super.extractCommands(reader);</span>
+<span class="nc" id="L60">        handleBooleans(statements);</span>
+
+        //remove Oracle incompatible - multi-row inserts
+<span class="nc" id="L63">        List&lt;String&gt; stringList = new ArrayList&lt;String&gt;(Arrays.asList(statements)); //Arrays.asList is immutable</span>
+<span class="nc" id="L64">        int j=0;</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        for (String statement : statements) {</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">            if (statement.matches(&quot;.*[)]\\s*[,].*&quot;)) {</span>
+<span class="nc" id="L67">                int pos = statement.toUpperCase().indexOf(&quot;VALUES &quot;) + &quot;VALUES &quot;.length();</span>
+<span class="nc" id="L68">                String prefix = statement.substring(0, pos);</span>
+<span class="nc" id="L69">                stringList.remove(j);</span>
+<span class="nc" id="L70">                String values = statement.substring(pos, statement.length());</span>
+<span class="nc" id="L71">                String[] tokens = values.split(&quot;[)]\\s*[,]\\s*[(]&quot;);</span>
+<span class="nc" id="L72">                String[] newStatements = new String[tokens.length];</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">                for (int i=0; i&lt;tokens.length; i++) {</span>
+<span class="nc" id="L74">                    String suffix = tokens[i];</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">                    if (!suffix.startsWith(&quot;(&quot;)) {</span>
+<span class="nc" id="L76">                        suffix = &quot;(&quot; + suffix;</span>
+                    }
+<span class="nc bnc" id="L78" title="All 2 branches missed.">                    if (!suffix.endsWith(&quot;)&quot;)) {</span>
+<span class="nc" id="L79">                        suffix += &quot;)&quot;;</span>
+                    }
+<span class="nc" id="L81">                    newStatements[i] = prefix + suffix;</span>
+                }
+<span class="nc" id="L83">                stringList.addAll(j, Arrays.asList(newStatements));</span>
+<span class="nc" id="L84">                j += tokens.length;</span>
+<span class="nc" id="L85">            } else {</span>
+<span class="nc" id="L86">                j++;</span>
+            }
+        }
+
+        //Address raw string dates, if any, for Oracle
+<span class="nc" id="L91">        Pattern pattern = Pattern.compile(TIMESTAMPMATCH);</span>
+<span class="nc" id="L92">        statements = stringList.toArray(new String[stringList.size()]);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        for (int x=0; x&lt;statements.length; x++) {</span>
+<span class="nc" id="L94">            Matcher matcher = pattern.matcher(statements[x]);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            while (matcher.find()) {</span>
+<span class="nc" id="L96">                String date = matcher.group(1);</span>
+<span class="nc" id="L97">                String temp = statements[x].substring(0, statements[x].indexOf(date)) + &quot;{ts &quot; + date + &quot;}&quot; +</span>
+                        statements[x].substring(statements[x].indexOf(date) + date.length(), statements[x].length());
+<span class="nc" id="L99">                statements[x] = temp;</span>
+<span class="nc" id="L100">            }</span>
+        }
+
+<span class="nc" id="L103">        return statements;</span>
+    }
+
+    protected void handleBooleans(String[] statements) {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        for (int j=0; j&lt;statements.length; j++) {</span>
+            //try start matches
+<span class="nc" id="L109">            statements[j] = statements[j].replaceAll(BOOLEANTRUEMATCH + &quot;\\s*[,]&quot;, TRUE + &quot;,&quot;);</span>
+<span class="nc" id="L110">            statements[j] = statements[j].replaceAll(BOOLEANFALSEMATCH + &quot;\\s*[,]&quot;, FALSE + &quot;,&quot;);</span>
+
+            //try middle matches
+<span class="nc" id="L113">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANTRUEMATCH + &quot;\\s*[,]&quot;, &quot;,&quot; + TRUE + &quot;,&quot;);</span>
+<span class="nc" id="L114">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANFALSEMATCH + &quot;\\s*[,]&quot;, &quot;,&quot; + FALSE + &quot;,&quot;);</span>
+
+            //try end matches
+<span class="nc" id="L117">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANTRUEMATCH, &quot;,&quot; + TRUE);</span>
+<span class="nc" id="L118">            statements[j] = statements[j].replaceAll(&quot;[,]\\s*&quot; + BOOLEANFALSEMATCH, &quot;,&quot; + FALSE);</span>
+
+            //try matches for updates
+<span class="nc" id="L121">            statements[j] = statements[j].replaceAll(&quot;[=]\\s*&quot; + BOOLEANTRUEMATCH, &quot;=&quot; + TRUE);</span>
+<span class="nc" id="L122">            statements[j] = statements[j].replaceAll(&quot;[=]\\s*&quot; + BOOLEANFALSEMATCH, &quot;=&quot; + FALSE);</span>
+        }
+<span class="nc" id="L124">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

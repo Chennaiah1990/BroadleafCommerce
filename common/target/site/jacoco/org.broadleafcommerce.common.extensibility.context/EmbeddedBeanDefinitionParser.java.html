@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EmbeddedBeanDefinitionParser.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.context</a> &gt; <span class="el_source">EmbeddedBeanDefinitionParser.java</span></div><h1>EmbeddedBeanDefinitionParser.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.context;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.exception.ExceptionHelper;
+import org.broadleafcommerce.common.extensibility.context.merge.ImportProcessor;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeException;
+import org.springframework.beans.FatalBeanException;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.xml.AbstractBeanDefinitionParser;
+import org.springframework.beans.factory.xml.ParserContext;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.util.xml.DomUtils;
+import org.w3c.dom.Element;
+
+/**
+ * Provides merged xml bean import into a declaring Spring application context. Generally, implementation overrides and custom
+ * beans are included in a client implementation's war file and declared in a patchConfigLocations context-param in web.xml, which
+ * is utilized by {@link org.broadleafcommerce.common.web.extensibility.MergeContextLoaderListener}. However, in some circumstances,
+ * it may be desirable to load all the Broadleaf Commerce Spring beans into a declaring application context without the
+ * aid of MergeContextLoaderListener. A sample use case for this would be a system that needs to run Broadleaf Commerce
+ * as a set of embedded services, perhaps not inside of a traditional web container. Usage is as follows:
+ *
+ * {@code
+ * &lt;embedded:mergeImport&gt;
+ *     &lt;embedded:location value=&quot;classpath:/my_app_context.xml&quot;/&gt;
+ *     ...
+ * &lt;/embedded:mergeImport&gt;
+ * }
+ *
+ * Since a new custom namespace is introduced, this special syntax requires the introduction of a new schema into app context
+ * xml:
+ *
+ * {@code
+ * &lt;beans xmlns=&quot;http://www.springframework.org/schema/beans&quot;
+        xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+        xmlns:context=&quot;http://www.springframework.org/schema/context&quot;
+        xmlns:embedded=&quot;http://schema.broadleafcommerce.org/embedded&quot;
+        xsi:schemaLocation=&quot;http://www.springframework.org/schema/beans
+                http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+                http://www.springframework.org/schema/context
+                http://www.springframework.org/schema/context/spring-context-4.1.xsd
+                http://schema.broadleafcommerce.org/embedded
+                http://schema.broadleafcommerce.org/embedded/embedded-3.1.xsd&quot;&gt;
+ * }
+ *
+ * Note the introduction of the new embedded namespace. Using this syntax, Broadleaf Commerce merge functionality can be
+ * achieved on a declared list of app context files and the resulting merged app context will be imported into the
+ * declaring app context. This is conceptually similar to Spring's standard {@code &lt;import location=&quot;...&quot;/&gt;} syntax for
+ * importing additional app context xml files.
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L80">public class EmbeddedBeanDefinitionParser extends AbstractBeanDefinitionParser {</span>
+
+<span class="nc" id="L82">    private static Log LOG = LogFactory.getLog(EmbeddedBeanDefinitionParser.class);</span>
+
+    @Override
+    protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
+        try {
+<span class="nc" id="L87">            String[] broadleafConfigLocations = StandardConfigLocations.retrieveAll(StandardConfigLocations.APPCONTEXTTYPE);</span>
+
+<span class="nc" id="L89">            ArrayList&lt;ResourceInputStream&gt; sources = new ArrayList&lt;ResourceInputStream&gt;(20);</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">            for (String location : broadleafConfigLocations) {</span>
+<span class="nc" id="L91">                InputStream source = getClass().getClassLoader().getResourceAsStream(location);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">                if (source != null) {</span>
+<span class="nc" id="L93">                    sources.add(new ResourceInputStream(source, location));</span>
+                }
+            }
+<span class="nc" id="L96">            ResourceInputStream[] filteredSources = new ResourceInputStream[]{};</span>
+<span class="nc" id="L97">            filteredSources = sources.toArray(filteredSources);</span>
+
+<span class="nc" id="L99">            List&lt;Resource&gt; locations = new ArrayList&lt;Resource&gt;();</span>
+<span class="nc" id="L100">            List&lt;Element&gt; overrideItemElements = DomUtils.getChildElementsByTagName(element, &quot;location&quot;);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">            for (Element overrideItem : overrideItemElements) {</span>
+<span class="nc" id="L102">                String location = overrideItem.getAttribute(&quot;value&quot;);</span>
+<span class="nc" id="L103">                Resource[] resources = ((ResourcePatternResolver) parserContext.getReaderContext().getResourceLoader()).getResources(location);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">                if (ArrayUtils.isEmpty(resources)) {</span>
+<span class="nc" id="L105">                    LOG.warn(&quot;Unable to find the resource: &quot; + location);</span>
+                } else {
+<span class="nc" id="L107">                    locations.add(resources[0]);</span>
+                }
+<span class="nc" id="L109">            }</span>
+
+<span class="nc" id="L111">            ResourceInputStream[] patches = new ResourceInputStream[locations.size()];</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">            for (int i = 0; i &lt; locations.size(); i++) {</span>
+<span class="nc" id="L113">                patches[i] = new ResourceInputStream(locations.get(i).getInputStream(), locations.get(i).getDescription());</span>
+
+<span class="nc bnc" id="L115" title="All 4 branches missed.">                if (patches[i] == null || patches[i].available() &lt;= 0) {</span>
+<span class="nc" id="L116">                    throw new IOException(&quot;Unable to open an input stream on specified application context resource: &quot; + locations.get(i).getDescription());</span>
+                }
+            }
+
+<span class="nc" id="L120">            ImportProcessor importProcessor = new ImportProcessor(parserContext.getReaderContext().getResourceLoader());</span>
+            try {
+<span class="nc" id="L122">                filteredSources = importProcessor.extract(filteredSources);</span>
+<span class="nc" id="L123">                patches = importProcessor.extract(patches);</span>
+<span class="nc" id="L124">            } catch (MergeException e) {</span>
+<span class="nc" id="L125">                throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L126">            }</span>
+
+<span class="nc" id="L128">            Resource[] resources = new MergeApplicationContextXmlConfigResource().getConfigResources(filteredSources, patches);</span>
+<span class="nc" id="L129">            parserContext.getReaderContext().getReader().loadBeanDefinitions(resources[0]);</span>
+<span class="nc" id="L130">            return null;</span>
+<span class="nc" id="L131">        } catch (IOException e) {</span>
+<span class="nc" id="L132">            throw ExceptionHelper.refineException(e);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

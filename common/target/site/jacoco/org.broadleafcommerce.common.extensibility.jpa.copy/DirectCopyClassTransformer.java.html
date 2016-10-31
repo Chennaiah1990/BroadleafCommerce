@@ -1,0 +1,658 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DirectCopyClassTransformer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa.copy</a> &gt; <span class="el_source">DirectCopyClassTransformer.java</span></div><h1>DirectCopyClassTransformer.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa.copy;
+
+import org.apache.commons.lang3.StringUtils;
+import org.broadleafcommerce.common.extensibility.jpa.convert.BroadleafClassTransformer;
+import org.broadleafcommerce.common.logging.LifeCycleEvent;
+import org.broadleafcommerce.common.logging.SupportLogManager;
+import org.broadleafcommerce.common.logging.SupportLogger;
+import org.broadleafcommerce.common.weave.ConditionalDirectCopyTransformMemberDto;
+import org.broadleafcommerce.common.weave.ConditionalDirectCopyTransformersManager;
+
+import java.io.ByteArrayInputStream;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
+import javax.annotation.Resource;
+import javax.persistence.EntityListeners;
+
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtConstructor;
+import javassist.CtField;
+import javassist.CtMethod;
+import javassist.LoaderClassPath;
+import javassist.NotFoundException;
+import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.ClassFile;
+import javassist.bytecode.ConstPool;
+import javassist.bytecode.annotation.Annotation;
+import javassist.bytecode.annotation.AnnotationMemberValue;
+import javassist.bytecode.annotation.ArrayMemberValue;
+import javassist.bytecode.annotation.BooleanMemberValue;
+import javassist.bytecode.annotation.MemberValue;
+import javassist.bytecode.annotation.StringMemberValue;
+
+/**
+ * This class transformer will copy fields, methods, and interface definitions from a source class to a target class,
+ * based on the xformTemplates map. It will fail if it encounters any duplicate definitions.
+ *
+ * @author Andre Azzolini (apazzolini)
+ * @author Jeff Fischer
+ */
+public class DirectCopyClassTransformer extends AbstractClassTransformer implements BroadleafClassTransformer {
+
+<span class="nc" id="L73">    protected static List&lt;String&gt; transformedMethods = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L74">    protected static List&lt;String&gt; annotationTransformedClasses = new ArrayList&lt;String&gt;();</span>
+
+    protected SupportLogger logger;
+    protected String moduleName;
+<span class="nc" id="L78">    protected Map&lt;String, String&gt; xformTemplates = new HashMap&lt;String, String&gt;();</span>
+<span class="nc" id="L79">    protected Boolean renameMethodOverlaps = false;</span>
+<span class="nc" id="L80">    protected String renameMethodPrefix = &quot;__&quot;;</span>
+<span class="nc" id="L81">    protected Boolean skipOverlaps = false;</span>
+<span class="nc" id="L82">    protected Map&lt;String, String&gt; templateTokens = new HashMap&lt;String, String&gt;();</span>
+
+<span class="nc" id="L84">    @Resource(name=&quot;blDirectCopyIgnorePatterns&quot;)</span>
+    protected List&lt;DirectCopyIgnorePattern&gt; ignorePatterns = new ArrayList&lt;DirectCopyIgnorePattern&gt;();
+
+    @Resource(name=&quot;blConditionalDirectCopyTransformersManager&quot;)
+    protected ConditionalDirectCopyTransformersManager conditionalDirectCopyTransformersManager;
+
+<span class="nc" id="L90">    public DirectCopyClassTransformer(String moduleName) {</span>
+<span class="nc" id="L91">        this.moduleName = moduleName;</span>
+<span class="nc" id="L92">        logger = SupportLogManager.getLogger(moduleName, this.getClass());</span>
+<span class="nc" id="L93">    }</span>
+
+    @Override
+    public void compileJPAProperties(Properties props, Object key) throws Exception {
+        // When simply copying properties over for Java class files, JPA properties do not need modification
+<span class="nc" id="L98">    }</span>
+
+    @Override
+    public byte[] transform(ClassLoader loader, String className, Class&lt;?&gt; classBeingRedefined,
+            ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+
+        // Lambdas and anonymous methods in Java 8 do not have a class name defined and so no transformation should be done
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (className == null) {</span>
+<span class="nc" id="L106">            return null;</span>
+        }
+
+        //Be careful with Apache library usage in this class (e.g. ArrayUtils). Usage will likely cause a ClassCircularityError
+        //under JRebel. Favor not including outside libraries and unnecessary classes.
+<span class="nc" id="L111">        CtClass clazz = null;</span>
+        try {
+<span class="nc" id="L113">            boolean mySkipOverlaps = skipOverlaps;</span>
+<span class="nc" id="L114">            boolean myRenameMethodOverlaps = renameMethodOverlaps;</span>
+<span class="nc" id="L115">            String convertedClassName = className.replace('/', '.');</span>
+<span class="nc" id="L116">            ClassPool classPool = null;</span>
+<span class="nc" id="L117">            String xformKey = convertedClassName;</span>
+<span class="nc" id="L118">            String[] xformVals = null;</span>
+<span class="nc" id="L119">            Boolean[] xformSkipOverlaps = null;</span>
+<span class="nc" id="L120">            Boolean[] xformRenameMethodOverlaps = null;</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">            if (!xformTemplates.isEmpty()) {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">                if (xformTemplates.containsKey(xformKey)) {</span>
+<span class="nc" id="L123">                    xformVals = xformTemplates.get(xformKey).split(&quot;,&quot;);</span>
+<span class="nc" id="L124">                    classPool = ClassPool.getDefault();</span>
+<span class="nc" id="L125">                    clazz = classPool.makeClass(new ByteArrayInputStream(classfileBuffer), false);</span>
+                }
+            } else {
+<span class="nc bnc" id="L128" title="All 2 branches missed.">                if (annotationTransformedClasses.contains(convertedClassName)) {</span>
+<span class="nc" id="L129">                    logger.warn(convertedClassName + &quot; has already been transformed by a previous instance of DirectCopyTransfomer. &quot; +</span>
+                            &quot;Skipping this annotation based transformation. Generally, annotation-based transformation is handled &quot; +
+                            &quot;by bean id blAnnotationDirectCopyClassTransformer with template tokens being added to &quot; +
+                            &quot;blDirectCopyTransformTokenMap via EarlyStageMergeBeanPostProcessor.&quot;);
+                }
+<span class="nc" id="L134">                boolean isValidPattern = true;</span>
+<span class="nc" id="L135">                List&lt;DirectCopyIgnorePattern&gt; matchedPatterns = new ArrayList&lt;DirectCopyIgnorePattern&gt;();</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">                for (DirectCopyIgnorePattern pattern : ignorePatterns) {</span>
+<span class="nc" id="L137">                    boolean isPatternMatch = false;</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">                    for (String patternString : pattern.getPatterns()) {</span>
+<span class="nc" id="L139">                        isPatternMatch = convertedClassName.matches(patternString);</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">                        if (isPatternMatch) {</span>
+<span class="nc" id="L141">                            break;</span>
+                        }
+                    }
+<span class="nc bnc" id="L144" title="All 2 branches missed.">                    if (isPatternMatch) {</span>
+<span class="nc" id="L145">                        matchedPatterns.add(pattern);</span>
+                    }
+<span class="nc bnc" id="L147" title="All 4 branches missed.">                    isValidPattern = !(isPatternMatch &amp;&amp; pattern.getTemplateTokenPatterns() == null);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">                    if (!isValidPattern) {</span>
+<span class="nc" id="L149">                        return null;</span>
+                    }
+<span class="nc" id="L151">                }</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                if (isValidPattern) {</span>
+<span class="nc" id="L153">                    classPool = ClassPool.getDefault();</span>
+<span class="nc" id="L154">                    clazz = classPool.makeClass(new ByteArrayInputStream(classfileBuffer), false);</span>
+<span class="nc" id="L155">                    XFormParams params = reviewDirectCopyTransformAnnotations(clazz, mySkipOverlaps, myRenameMethodOverlaps, matchedPatterns);</span>
+<span class="nc" id="L156">                    XFormParams conditionalParams = reviewConditionalDirectCopyTransforms(convertedClassName, matchedPatterns);</span>
+<span class="nc bnc" id="L157" title="All 4 branches missed.">                    if (conditionalParams != null &amp;&amp; !conditionalParams.isEmpty()) {</span>
+<span class="nc" id="L158">                        params = combineXFormParams(params, conditionalParams);</span>
+                    }
+<span class="nc" id="L160">                    xformVals = params.getXformVals();</span>
+<span class="nc" id="L161">                    xformSkipOverlaps = params.getXformSkipOverlaps();</span>
+<span class="nc" id="L162">                    xformRenameMethodOverlaps = params.getXformRenameMethodOverlaps();</span>
+                }
+            }
+<span class="nc bnc" id="L165" title="All 4 branches missed.">            if (xformVals != null &amp;&amp; xformVals.length &gt; 0) {</span>
+<span class="nc" id="L166">                logger.debug(String.format(&quot;[%s] - Transform - Copying into [%s] from [%s]&quot;, LifeCycleEvent.END, xformKey,</span>
+                        StringUtils.join(xformVals, &quot;,&quot;)));
+                // Load the destination class and defrost it so it is eligible for modifications
+<span class="nc" id="L169">                clazz.defrost();</span>
+
+<span class="nc" id="L171">                int index = 0;</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">                for (String xformVal : xformVals) {</span>
+                    // Load the source class
+<span class="nc" id="L174">                    String trimmed = xformVal.trim();</span>
+<span class="nc" id="L175">                    classPool.appendClassPath(new LoaderClassPath(Class.forName(trimmed).getClassLoader()));</span>
+<span class="nc" id="L176">                    CtClass template = classPool.get(trimmed);</span>
+
+                    // Add in extra interfaces
+<span class="nc" id="L179">                    CtClass[] interfacesToCopy = template.getInterfaces();</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">                    for (CtClass i : interfacesToCopy) {</span>
+                        checkInterfaces: {
+<span class="nc" id="L182">                            CtClass[] myInterfaces = clazz.getInterfaces();</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">                            for (CtClass myInterface : myInterfaces) {</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">                                if (myInterface.getName().equals(i.getName())) {</span>
+<span class="nc bnc" id="L185" title="All 4 branches missed.">                                    if (xformSkipOverlaps != null &amp;&amp; xformSkipOverlaps[index]) {</span>
+<span class="nc" id="L186">                                        break checkInterfaces;</span>
+                                    } else {
+<span class="nc" id="L188">                                        throw new RuntimeException(&quot;Duplicate interface detected &quot; + myInterface.getName());</span>
+                                    }
+                                }
+                            }
+<span class="nc" id="L192">                            logger.debug(String.format(&quot;Adding interface [%s]&quot;, i.getName()));</span>
+<span class="nc" id="L193">                            clazz.addInterface(i);</span>
+                        }
+                    }
+
+                    //copy over any EntityListeners
+<span class="nc" id="L198">                    ClassFile classFile = clazz.getClassFile();</span>
+<span class="nc" id="L199">                    ClassFile templateFile = template.getClassFile();</span>
+<span class="nc" id="L200">                    ConstPool constantPool = classFile.getConstPool();</span>
+<span class="nc" id="L201">                    buildClassLevelAnnotations(classFile, templateFile, constantPool);</span>
+
+                    // Copy over all declared fields from the template class
+                    // Note that we do not copy over fields with the @NonCopiedField annotation
+<span class="nc" id="L205">                    CtField[] fieldsToCopy = template.getDeclaredFields();</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">                    for (CtField field : fieldsToCopy) {</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">                        if (field.hasAnnotation(NonCopied.class)) {</span>
+<span class="nc" id="L208">                            logger.debug(String.format(&quot;Not adding field [%s]&quot;, field.getName()));</span>
+                        } else {
+                            try {
+<span class="nc" id="L211">                                CtField ctField = clazz.getDeclaredField(field.getName());</span>
+<span class="nc" id="L212">                                String originalSignature = ctField.getSignature();</span>
+<span class="nc" id="L213">                                String mySignature = field.getSignature();</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">                                if (!originalSignature.equals(mySignature)) {</span>
+<span class="nc" id="L215">                                    throw new IllegalArgumentException(&quot;Field with name (&quot;+field.getName()+&quot;) and signature &quot; +</span>
+                                            &quot;(&quot;+field.getSignature()+&quot;) is targeted for weaving into (&quot;+clazz.getName()+&quot;). &quot; +
+                                            &quot;An incompatible field of the same name and signature of (&quot;+ctField.getSignature()+&quot;) &quot; +
+                                            &quot;already exists. The field in the target class should be updated to a different name, &quot; +
+                                            &quot;or made to have a matching type.&quot;);
+                                }
+<span class="nc bnc" id="L221" title="All 4 branches missed.">                                if (xformSkipOverlaps != null &amp;&amp; xformSkipOverlaps[index]) {</span>
+<span class="nc" id="L222">                                    logger.debug(String.format(&quot;Skipping overlapped field [%s]&quot;, field.getName()));</span>
+<span class="nc" id="L223">                                    continue;</span>
+                                }
+<span class="nc" id="L225">                            } catch (NotFoundException e) {</span>
+                                //do nothing -- field does not exist
+<span class="nc" id="L227">                            }</span>
+<span class="nc" id="L228">                            logger.debug(String.format(&quot;Adding field [%s]&quot;, field.getName()));</span>
+<span class="nc" id="L229">                            CtField copiedField = new CtField(field, clazz);</span>
+
+<span class="nc" id="L231">                            boolean defaultConstructorFound = false;</span>
+
+<span class="nc" id="L233">                            String implClass = getImplementationType(field.getType().getName());</span>
+
+                            // Look through all of the constructors in the implClass to see
+                            // if there is one that takes zero parameters
+                            try {
+<span class="nc" id="L238">                                CtConstructor[] implConstructors = classPool.get(implClass).getConstructors();</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">                                if (implConstructors != null) {</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">                                    for (CtConstructor cons : implConstructors) {</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">                                        if (cons.getParameterTypes().length == 0) {</span>
+<span class="nc" id="L242">                                            defaultConstructorFound = true;</span>
+<span class="nc" id="L243">                                            break;</span>
+                                        }
+                                    }
+                                }
+<span class="nc" id="L247">                            } catch (NotFoundException e) {</span>
+                                // Do nothing -- if we don't find this implementation, it's probably because it's
+                                // an array. In this case, we will not initialize the field.
+<span class="nc" id="L250">                            }</span>
+
+<span class="nc bnc" id="L252" title="All 2 branches missed.">                            if (defaultConstructorFound) {</span>
+<span class="nc" id="L253">                                clazz.addField(copiedField, &quot;new &quot; + implClass + &quot;()&quot;);</span>
+                            } else {
+<span class="nc" id="L255">                                clazz.addField(copiedField);</span>
+                            }
+                        }
+                    }
+
+                    // Copy over all declared methods from the template class
+<span class="nc" id="L261">                    CtMethod[] methodsToCopy = template.getDeclaredMethods();</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">                    for (CtMethod method : methodsToCopy) {</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">                        if (method.hasAnnotation(NonCopied.class)) {</span>
+<span class="nc" id="L264">                            logger.debug(String.format(&quot;Not adding method [%s]&quot;, method.getName()));</span>
+                        } else {
+                            try {
+<span class="nc" id="L267">                                CtClass[] paramTypes = method.getParameterTypes();</span>
+<span class="nc" id="L268">                                CtMethod originalMethod = clazz.getDeclaredMethod(method.getName(), paramTypes);</span>
+
+<span class="nc bnc" id="L270" title="All 4 branches missed.">                                if (xformSkipOverlaps != null &amp;&amp; xformSkipOverlaps[index]) {</span>
+<span class="nc" id="L271">                                    logger.debug(String.format(&quot;Skipping overlapped method [%s]&quot;, methodDescription(originalMethod)));</span>
+<span class="nc" id="L272">                                    continue;</span>
+                                }
+
+<span class="nc bnc" id="L275" title="All 2 branches missed.">                                if (transformedMethods.contains(methodDescription(originalMethod))) {</span>
+<span class="nc" id="L276">                                    throw new RuntimeException(&quot;Method already replaced &quot; + methodDescription(originalMethod));</span>
+                                } else {
+<span class="nc" id="L278">                                    logger.debug(String.format(&quot;Marking as replaced [%s]&quot;, methodDescription(originalMethod)));</span>
+<span class="nc" id="L279">                                    transformedMethods.add(methodDescription(originalMethod));</span>
+                                }
+
+<span class="nc" id="L282">                                logger.debug(String.format(&quot;Removing method [%s]&quot;, method.getName()));</span>
+<span class="nc bnc" id="L283" title="All 4 branches missed.">                                if (xformRenameMethodOverlaps != null &amp;&amp; xformRenameMethodOverlaps[index]) {</span>
+<span class="nc" id="L284">                                    originalMethod.setName(renameMethodPrefix + method.getName());</span>
+                                } else {
+<span class="nc" id="L286">                                    clazz.removeMethod(originalMethod);</span>
+                                }
+<span class="nc" id="L288">                            } catch (NotFoundException e) {</span>
+                                // Do nothing -- we don't need to remove a method because it doesn't exist
+<span class="nc" id="L290">                            }</span>
+
+<span class="nc" id="L292">                            logger.debug(String.format(&quot;Adding method [%s]&quot;, method.getName()));</span>
+<span class="nc" id="L293">                            CtMethod copiedMethod = new CtMethod(method, clazz, null);</span>
+<span class="nc" id="L294">                            clazz.addMethod(copiedMethod);</span>
+                        }
+                    }
+<span class="nc" id="L297">                    index++;</span>
+                }
+
+<span class="nc bnc" id="L300" title="All 2 branches missed.">                if (xformTemplates.isEmpty()) {</span>
+<span class="nc" id="L301">                    annotationTransformedClasses.add(convertedClassName);</span>
+                }
+<span class="nc" id="L303">                logger.debug(String.format(&quot;[%s] - Transform - Copying into [%s] from [%s]&quot;, LifeCycleEvent.END, xformKey,</span>
+                                    StringUtils.join(xformVals, &quot;,&quot;)));
+<span class="nc" id="L305">                return clazz.toBytecode();</span>
+            }
+<span class="nc" id="L307">        } catch (ClassCircularityError error) {</span>
+<span class="nc" id="L308">            error.printStackTrace();</span>
+<span class="nc" id="L309">            throw error;</span>
+<span class="nc" id="L310">        } catch (Exception e) {</span>
+<span class="nc" id="L311">            throw new RuntimeException(&quot;Unable to transform class&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L313" title="All 8 branches missed.">            if (clazz != null) {</span>
+                try {
+<span class="nc" id="L315">                    clazz.detach();</span>
+<span class="nc" id="L316">                } catch (Exception e) {</span>
+                    //do nothing
+<span class="nc" id="L318">                }</span>
+            }
+        }
+
+<span class="nc" id="L322">        return null;</span>
+    }
+
+
+    /**
+     * Combines two {@link org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyClassTransformer.XFormParams} together with
+     * first passed in xformParama supercedes the second passed in parameter.
+     *
+     * @param defaultParams
+     * @param conditionalParams
+     * @return
+     */
+    protected XFormParams combineXFormParams(XFormParams defaultParams, XFormParams conditionalParams) {
+
+<span class="nc" id="L336">        XFormParams response = new XFormParams();</span>
+<span class="nc" id="L337">        Map&lt;String, Boolean&gt; templateSkipMap = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L338">        List&lt;String&gt; templates = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L339">        List&lt;Boolean&gt; skips = new ArrayList&lt;Boolean&gt;();</span>
+<span class="nc" id="L340">        List&lt;Boolean&gt; renames = new ArrayList&lt;Boolean&gt;();</span>
+        // Add the default Params
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        if (!defaultParams.isEmpty()) {</span>
+<span class="nc bnc" id="L343" title="All 2 branches missed.">            for (int iter = 0; iter &lt; defaultParams.getXformVals().length; iter++) {</span>
+<span class="nc" id="L344">                String defaultParam = defaultParams.getXformVals()[iter];</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">                if (!templateSkipMap.containsKey(defaultParam)) {</span>
+<span class="nc" id="L346">                    templateSkipMap.put(defaultParam, true);</span>
+<span class="nc" id="L347">                    templates.add(defaultParam);</span>
+<span class="nc" id="L348">                    skips.add(defaultParams.getXformSkipOverlaps()[iter]);</span>
+<span class="nc" id="L349">                    renames.add(defaultParams.getXformRenameMethodOverlaps()[iter]);</span>
+                }
+            }
+        }
+
+        // Only add Conditional Params if they are not already included
+<span class="nc bnc" id="L355" title="All 2 branches missed.">        for (int iter = 0; iter &lt; conditionalParams.getXformVals().length; iter++) {</span>
+<span class="nc" id="L356">            String conditionalValue = conditionalParams.getXformVals()[iter];</span>
+<span class="nc bnc" id="L357" title="All 2 branches missed.">            if (!templateSkipMap.containsKey(conditionalValue)) {</span>
+<span class="nc" id="L358">                templates.add(conditionalValue);</span>
+<span class="nc" id="L359">                skips.add(conditionalParams.getXformSkipOverlaps()[iter]);</span>
+<span class="nc" id="L360">                renames.add(conditionalParams.getXformRenameMethodOverlaps()[iter]);</span>
+            }
+        }
+
+
+        // convert list to arrays
+<span class="nc" id="L366">        response.setXformVals(templates.toArray(new String[templates.size()]));</span>
+<span class="nc" id="L367">        response.setXformSkipOverlaps(skips.toArray(new Boolean[skips.size()]));</span>
+<span class="nc" id="L368">        response.setXformRenameMethodOverlaps(renames.toArray(new Boolean[renames.size()]));</span>
+<span class="nc" id="L369">        return response;</span>
+    }
+
+    /**
+     * Retrieves {@link DirectCopyTransformTypes} that are placed as annotations on classes.
+     * @param clazz
+     * @param mySkipOverlaps
+     * @param myRenameMethodOverlaps
+     * @param matchedPatterns
+     * @return
+     */
+    protected XFormParams reviewDirectCopyTransformAnnotations(CtClass clazz, boolean mySkipOverlaps, boolean myRenameMethodOverlaps, List&lt;DirectCopyIgnorePattern&gt; matchedPatterns) {
+<span class="nc" id="L381">        List&lt;?&gt; attributes = clazz.getClassFile().getAttributes();</span>
+<span class="nc" id="L382">        Iterator&lt;?&gt; itr = attributes.iterator();</span>
+<span class="nc" id="L383">        List&lt;String&gt; templates = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L384">        List&lt;Boolean&gt; skips = new ArrayList&lt;Boolean&gt;();</span>
+<span class="nc" id="L385">        List&lt;Boolean&gt; renames = new ArrayList&lt;Boolean&gt;();</span>
+<span class="nc" id="L386">        XFormParams response = new XFormParams();</span>
+        check: {
+<span class="nc bnc" id="L388" title="All 2 branches missed.">            while(itr.hasNext()) {</span>
+<span class="nc" id="L389">                Object object = itr.next();</span>
+<span class="nc bnc" id="L390" title="All 2 branches missed.">                if (AnnotationsAttribute.class.isAssignableFrom(object.getClass())) {</span>
+<span class="nc" id="L391">                    AnnotationsAttribute attr = (AnnotationsAttribute) object;</span>
+<span class="nc" id="L392">                    Annotation[] items = attr.getAnnotations();</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">                    for (Annotation annotation : items) {</span>
+<span class="nc" id="L394">                        String typeName = annotation.getTypeName();</span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">                        if (typeName.equals(DirectCopyTransform.class.getName())) {</span>
+<span class="nc" id="L396">                            ArrayMemberValue arrayMember = (ArrayMemberValue) annotation.getMemberValue(&quot;value&quot;);</span>
+<span class="nc bnc" id="L397" title="All 2 branches missed.">                            for (MemberValue arrayMemberValue : arrayMember.getValue()) {</span>
+<span class="nc" id="L398">                                AnnotationMemberValue member = (AnnotationMemberValue) arrayMemberValue;</span>
+<span class="nc" id="L399">                                Annotation memberAnnot = member.getValue();</span>
+<span class="nc" id="L400">                                ArrayMemberValue annot = (ArrayMemberValue) memberAnnot.getMemberValue(&quot;templateTokens&quot;);</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">                                for (MemberValue memberValue : annot.getValue()) {</span>
+<span class="nc" id="L402">                                    String val = ((StringMemberValue) memberValue).getValue();</span>
+<span class="nc" id="L403">                                    reviewTemplateTokens(matchedPatterns, templates, val);</span>
+                                }
+<span class="nc" id="L405">                                BooleanMemberValue skipAnnot = (BooleanMemberValue) memberAnnot.getMemberValue(&quot;skipOverlaps&quot;);</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">                                if (skipAnnot != null) {</span>
+<span class="nc" id="L407">                                    skips.add(skipAnnot.getValue());</span>
+                                } else {
+<span class="nc" id="L409">                                    skips.add(mySkipOverlaps);</span>
+                                }
+<span class="nc" id="L411">                                BooleanMemberValue renameAnnot = (BooleanMemberValue) memberAnnot.getMemberValue(&quot;renameMethodOverlaps&quot;);</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">                                if (renameAnnot != null) {</span>
+<span class="nc" id="L413">                                    renames.add(renameAnnot.getValue());</span>
+                                } else {
+<span class="nc" id="L415">                                    renames.add(myRenameMethodOverlaps);</span>
+                                }
+                            }
+<span class="nc" id="L418">                            response.setXformVals(templates.toArray(new String[templates.size()]));</span>
+<span class="nc" id="L419">                            response.setXformSkipOverlaps(skips.toArray(new Boolean[skips.size()]));</span>
+<span class="nc" id="L420">                            response.setXformRenameMethodOverlaps(renames.toArray(new Boolean[renames.size()]));</span>
+<span class="nc" id="L421">                            break check;</span>
+                        }
+                    }
+                }
+<span class="nc" id="L425">            }</span>
+        }
+<span class="nc" id="L427">        return response;</span>
+    }
+
+    /**
+     * Retrieves {@link DirectCopyTransformTypes} that are conditionally/optionally included via properties file.
+     * @see org.broadleafcommerce.common.weave.ConditionalDirectCopyTransformersManager
+     *
+     * @param convertedClassName
+     * @param matchedPatterns
+     * @return
+     */
+    protected XFormParams reviewConditionalDirectCopyTransforms(String convertedClassName, List&lt;DirectCopyIgnorePattern&gt; matchedPatterns) {
+<span class="nc" id="L439">        XFormParams response = new XFormParams();</span>
+<span class="nc" id="L440">        List&lt;String&gt; templates = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L441">        List&lt;Boolean&gt; skips = new ArrayList&lt;Boolean&gt;();</span>
+<span class="nc" id="L442">        List&lt;Boolean&gt; renames = new ArrayList&lt;Boolean&gt;();</span>
+<span class="nc bnc" id="L443" title="All 2 branches missed.">        if (conditionalDirectCopyTransformersManager.isEntityEnabled(convertedClassName)) {</span>
+<span class="nc" id="L444">            ConditionalDirectCopyTransformMemberDto dto = conditionalDirectCopyTransformersManager.getTransformMember(convertedClassName);</span>
+<span class="nc bnc" id="L445" title="All 2 branches missed.">            for (String templateToken : dto.getTemplateTokens()) {</span>
+<span class="nc" id="L446">                reviewTemplateTokens(matchedPatterns, templates, templateToken);</span>
+            }
+            // For each of the templates being applied, ensure that they all have configured the right overlap configs
+            // Looping through templates and not templateTokens because 1 template token can drive multiple templates
+            // (e.g. 
+<span class="nc bnc" id="L451" title="All 2 branches missed.">            for (int i = 0; i &lt; templates.size(); i++) {</span>
+<span class="nc" id="L452">                skips.add(dto.isSkipOverlaps());</span>
+<span class="nc" id="L453">                renames.add(dto.isRenameMethodOverlaps());</span>
+            }
+            
+<span class="nc" id="L456">            response.setXformVals(templates.toArray(new String[templates.size()]));</span>
+<span class="nc" id="L457">            response.setXformSkipOverlaps(skips.toArray(new Boolean[skips.size()]));</span>
+<span class="nc" id="L458">            response.setXformRenameMethodOverlaps(renames.toArray(new Boolean[renames.size()]));</span>
+        }
+<span class="nc" id="L460">        return response;</span>
+    }
+
+    protected void reviewTemplateTokens(List&lt;DirectCopyIgnorePattern&gt; matchedPatterns, List&lt;String&gt; templates, String val) {
+<span class="nc bnc" id="L464" title="All 4 branches missed.">        if (val != null &amp;&amp; templateTokens.containsKey(val)) {</span>
+            templateCheck: {
+<span class="nc bnc" id="L466" title="All 2 branches missed.">                for (DirectCopyIgnorePattern matchedPattern : matchedPatterns) {</span>
+<span class="nc bnc" id="L467" title="All 2 branches missed.">                    for (String ignoreToken : matchedPattern.getTemplateTokenPatterns()) {</span>
+<span class="nc bnc" id="L468" title="All 2 branches missed.">                        if (val.matches(ignoreToken)) {</span>
+<span class="nc" id="L469">                            break templateCheck;</span>
+                        }
+                    }
+<span class="nc" id="L472">                }</span>
+<span class="nc" id="L473">                String[] templateVals = templateTokens.get(val).split(&quot;,&quot;);</span>
+<span class="nc" id="L474">                templates.addAll(Arrays.asList(templateVals));</span>
+            }
+        }
+<span class="nc" id="L477">    }</span>
+
+    protected void buildClassLevelAnnotations(ClassFile classFile, ClassFile templateClassFile, ConstPool constantPool) throws NotFoundException {
+<span class="nc" id="L480">        List&lt;?&gt; templateAttributes = templateClassFile.getAttributes();</span>
+<span class="nc" id="L481">        Iterator&lt;?&gt; templateItr = templateAttributes.iterator();</span>
+<span class="nc" id="L482">        Annotation templateEntityListeners = null;</span>
+<span class="nc bnc" id="L483" title="All 2 branches missed.">        while(templateItr.hasNext()) {</span>
+<span class="nc" id="L484">            Object object = templateItr.next();</span>
+<span class="nc bnc" id="L485" title="All 2 branches missed.">            if (AnnotationsAttribute.class.isAssignableFrom(object.getClass())) {</span>
+<span class="nc" id="L486">                AnnotationsAttribute attr = (AnnotationsAttribute) object;</span>
+<span class="nc" id="L487">                Annotation[] items = attr.getAnnotations();</span>
+<span class="nc bnc" id="L488" title="All 2 branches missed.">                for (Annotation annotation : items) {</span>
+<span class="nc" id="L489">                    String typeName = annotation.getTypeName();</span>
+<span class="nc bnc" id="L490" title="All 2 branches missed.">                    if (typeName.equals(EntityListeners.class.getName())) {</span>
+<span class="nc" id="L491">                        templateEntityListeners = annotation;</span>
+                    }
+                }
+            }
+<span class="nc" id="L495">        }</span>
+
+<span class="nc bnc" id="L497" title="All 2 branches missed.">        if (templateEntityListeners != null) {</span>
+<span class="nc" id="L498">            AnnotationsAttribute annotationsAttribute = new AnnotationsAttribute(constantPool, AnnotationsAttribute.visibleTag);</span>
+<span class="nc" id="L499">            List&lt;?&gt; attributes = classFile.getAttributes();</span>
+<span class="nc" id="L500">            Iterator&lt;?&gt; itr = attributes.iterator();</span>
+<span class="nc" id="L501">            Annotation existingEntityListeners = null;</span>
+<span class="nc bnc" id="L502" title="All 2 branches missed.">            while(itr.hasNext()) {</span>
+<span class="nc" id="L503">                Object object = itr.next();</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">                if (AnnotationsAttribute.class.isAssignableFrom(object.getClass())) {</span>
+<span class="nc" id="L505">                    AnnotationsAttribute attr = (AnnotationsAttribute) object;</span>
+<span class="nc" id="L506">                    Annotation[] items = attr.getAnnotations();</span>
+<span class="nc bnc" id="L507" title="All 2 branches missed.">                    for (Annotation annotation : items) {</span>
+<span class="nc" id="L508">                        String typeName = annotation.getTypeName();</span>
+<span class="nc bnc" id="L509" title="All 2 branches missed.">                        if (typeName.equals(EntityListeners.class.getName())) {</span>
+<span class="nc" id="L510">                            logger.debug(&quot;Stripping out previous EntityListeners annotation at the class level - will merge into new EntityListeners&quot;);</span>
+<span class="nc" id="L511">                            existingEntityListeners = annotation;</span>
+<span class="nc" id="L512">                            continue;</span>
+                        }
+<span class="nc" id="L514">                        annotationsAttribute.addAnnotation(annotation);</span>
+                    }
+<span class="nc" id="L516">                    itr.remove();</span>
+                }
+<span class="nc" id="L518">            }</span>
+
+<span class="nc" id="L520">            Annotation entityListeners = getEntityListeners(constantPool, existingEntityListeners, templateEntityListeners);</span>
+<span class="nc" id="L521">            annotationsAttribute.addAnnotation(entityListeners);</span>
+
+<span class="nc" id="L523">            classFile.addAttribute(annotationsAttribute);</span>
+        }
+<span class="nc" id="L525">    }</span>
+
+    protected Annotation getEntityListeners(ConstPool constantPool, Annotation existingEntityListeners, Annotation templateEntityListeners) {
+<span class="nc" id="L528">        Annotation listeners = new Annotation(EntityListeners.class.getName(), constantPool);</span>
+<span class="nc" id="L529">        ArrayMemberValue listenerArray = new ArrayMemberValue(constantPool);</span>
+<span class="nc" id="L530">        Set&lt;MemberValue&gt; listenerMemberValues = new HashSet&lt;MemberValue&gt;();</span>
+        {
+<span class="nc" id="L532">            ArrayMemberValue templateListenerValues = (ArrayMemberValue) templateEntityListeners.getMemberValue(&quot;value&quot;);</span>
+<span class="nc" id="L533">            listenerMemberValues.addAll(Arrays.asList(templateListenerValues.getValue()));</span>
+<span class="nc" id="L534">            logger.debug(&quot;Adding template values to new EntityListeners&quot;);</span>
+        }
+<span class="nc bnc" id="L536" title="All 2 branches missed.">        if (existingEntityListeners != null) {</span>
+<span class="nc" id="L537">            ArrayMemberValue oldListenerValues = (ArrayMemberValue) existingEntityListeners.getMemberValue(&quot;value&quot;);</span>
+<span class="nc" id="L538">            listenerMemberValues.addAll(Arrays.asList(oldListenerValues.getValue()));</span>
+<span class="nc" id="L539">            logger.debug(&quot;Adding previous values to new EntityListeners&quot;);</span>
+        }
+<span class="nc" id="L541">        listenerArray.setValue(listenerMemberValues.toArray(new MemberValue[listenerMemberValues.size()]));</span>
+<span class="nc" id="L542">        listeners.addMemberValue(&quot;value&quot;, listenerArray);</span>
+
+<span class="nc" id="L544">        return listeners;</span>
+
+    }
+
+    /**
+     * This method will do its best to return an implementation type for a given classname. This will allow weaving
+     * template classes to have initialized values.
+     *
+     * We provide default implementations for List, Map, and Set, and will attempt to utilize a default constructor for
+     * other classes.
+     *
+     * If the className contains an '[', we will return null.
+     */
+    protected String getImplementationType(String className) {
+<span class="nc bnc" id="L558" title="All 2 branches missed.">        if (className.equals(&quot;java.util.List&quot;)) {</span>
+<span class="nc" id="L559">            return &quot;java.util.ArrayList&quot;;</span>
+<span class="nc bnc" id="L560" title="All 2 branches missed.">        } else if (className.equals(&quot;java.util.Map&quot;)) {</span>
+<span class="nc" id="L561">            return &quot;java.util.HashMap&quot;;</span>
+<span class="nc bnc" id="L562" title="All 2 branches missed.">        } else if (className.equals(&quot;java.util.Set&quot;)) {</span>
+<span class="nc" id="L563">            return &quot;java.util.HashSet&quot;;</span>
+<span class="nc bnc" id="L564" title="All 2 branches missed.">        } else if (className.contains(&quot;[&quot;)) {</span>
+<span class="nc" id="L565">            return null;</span>
+        }
+
+<span class="nc" id="L568">        return className;</span>
+    }
+
+    protected String methodDescription(CtMethod method) {
+<span class="nc" id="L572">        return method.getDeclaringClass().getName() + &quot;|&quot; + method.getName() + &quot;|&quot; + method.getSignature();</span>
+    }
+
+    public Map&lt;String, String&gt; getXformTemplates() {
+<span class="nc" id="L576">        return xformTemplates;</span>
+    }
+
+    public void setXformTemplates(Map&lt;String, String&gt; xformTemplates) {
+<span class="nc" id="L580">        this.xformTemplates = xformTemplates;</span>
+<span class="nc" id="L581">    }</span>
+
+    public Boolean getRenameMethodOverlaps() {
+<span class="nc" id="L584">        return renameMethodOverlaps;</span>
+    }
+
+    public void setRenameMethodOverlaps(Boolean renameMethodOverlaps) {
+<span class="nc" id="L588">        this.renameMethodOverlaps = renameMethodOverlaps;</span>
+<span class="nc" id="L589">    }</span>
+
+    public String getRenameMethodPrefix() {
+<span class="nc" id="L592">        return renameMethodPrefix;</span>
+    }
+
+    public void setRenameMethodPrefix(String renameMethodPrefix) {
+<span class="nc" id="L596">        this.renameMethodPrefix = renameMethodPrefix;</span>
+<span class="nc" id="L597">    }</span>
+
+    public Boolean getSkipOverlaps() {
+<span class="nc" id="L600">        return skipOverlaps;</span>
+    }
+
+    public void setSkipOverlaps(Boolean skipOverlaps) {
+<span class="nc" id="L604">        this.skipOverlaps = skipOverlaps;</span>
+<span class="nc" id="L605">    }</span>
+
+    public Map&lt;String, String&gt; getTemplateTokens() {
+<span class="nc" id="L608">        return templateTokens;</span>
+    }
+
+    public void setTemplateTokens(Map&lt;String, String&gt; templateTokens) {
+<span class="nc" id="L612">        this.templateTokens = templateTokens;</span>
+<span class="nc" id="L613">    }</span>
+
+    public List&lt;DirectCopyIgnorePattern&gt; getIgnorePatterns() {
+<span class="nc" id="L616">        return ignorePatterns;</span>
+    }
+
+    public void setIgnorePatterns(List&lt;DirectCopyIgnorePattern&gt; ignorePatterns) {
+<span class="nc" id="L620">        this.ignorePatterns = ignorePatterns;</span>
+<span class="nc" id="L621">    }</span>
+
+<span class="nc" id="L623">    private class XFormParams {</span>
+
+<span class="nc" id="L625">        String[] xformVals = null;</span>
+<span class="nc" id="L626">        Boolean[] xformSkipOverlaps = null;</span>
+<span class="nc" id="L627">        Boolean[] xformRenameMethodOverlaps = null;</span>
+
+        public String[] getXformVals() {
+<span class="nc" id="L630">            return xformVals;</span>
+        }
+
+        public void setXformVals(String[] xformVals) {
+<span class="nc" id="L634">            this.xformVals = xformVals;</span>
+<span class="nc" id="L635">        }</span>
+
+        public Boolean[] getXformSkipOverlaps() {
+<span class="nc" id="L638">            return xformSkipOverlaps;</span>
+        }
+
+        public void setXformSkipOverlaps(Boolean[] xformSkipOverlaps) {
+<span class="nc" id="L642">            this.xformSkipOverlaps = xformSkipOverlaps;</span>
+<span class="nc" id="L643">        }</span>
+
+        public Boolean[] getXformRenameMethodOverlaps() {
+<span class="nc" id="L646">            return xformRenameMethodOverlaps;</span>
+        }
+
+        public void setXformRenameMethodOverlaps(Boolean[] xformRenameMethodOverlaps) {
+<span class="nc" id="L650">            this.xformRenameMethodOverlaps = xformRenameMethodOverlaps;</span>
+<span class="nc" id="L651">        }</span>
+
+        public boolean isEmpty() {
+<span class="nc bnc" id="L654" title="All 4 branches missed.">            return xformVals == null || xformVals.length == 0;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

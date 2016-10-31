@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>InstrumentationRuntimeFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility</a> &gt; <span class="el_source">InstrumentationRuntimeFactory.java</span></div><h1>InstrumentationRuntimeFactory.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.lang.instrument.Instrumentation;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.security.AccessController;
+import java.security.CodeSource;
+import java.security.PrivilegedAction;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+/**
+ * This class is based on the OpenJPA's org.apache.openjpa.enhance.InstrumentationFactory.  It essentially does
+ * its best to install an instrumentation agent.  The preferred or prescribed way to install an instrumentation agent
+ * is to add the agent as an argument on the command line when starting the JVM.  This class attempts to do the
+ * same thing after the JVM has already started.  Unfortunately, this is the only way we know of to attach an agent to
+ * the JVM except by adding a &quot;javaagent:...&quot; flag on the command line.
+ *
+ * @author Kelly Tisdell
+ * @deprecated Because of classloader differences, this approach is not reliable for some containers. Use the javaagent jvm argument instead to set instrumentation.
+ */
+@Deprecated
+<span class="nc" id="L55">public class InstrumentationRuntimeFactory {</span>
+<span class="nc" id="L56">    private static final Log LOG = LogFactory.getLog(InstrumentationRuntimeFactory.class);</span>
+    private static final String IBM_VM_CLASS = &quot;com.ibm.tools.attach.VirtualMachine&quot;;
+    private static final String SUN_VM_CLASS = &quot;com.sun.tools.attach.VirtualMachine&quot;;
+<span class="nc" id="L59">    private static boolean isIBM = false;</span>
+    private static Instrumentation inst;
+
+    /**
+     * This method is called by the JVM to set the instrumentation.  We can't synchronize this because it will cause
+     * a deadlock with the thread calling the getInstrumentation() method when the instrumentation is installed.
+     *
+     * @param agentArgs
+     * @param instrumentation
+     */
+    public static void agentmain(String agentArgs, Instrumentation instrumentation) {
+<span class="nc" id="L70">        inst = instrumentation;</span>
+<span class="nc" id="L71">    }</span>
+
+    /**
+     * This method returns the Instrumentation object provided by the JVM. If the Instrumentation object is null,
+     * it does its best to add an instrumentation agent to the JVM and then the instrumentation object.
+     * @return Instrumentation
+     */
+    public static synchronized Instrumentation getInstrumentation() {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (inst != null) {</span>
+<span class="nc" id="L80">            return inst;</span>
+        }
+        
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        if (System.getProperty(&quot;java.vendor&quot;).toUpperCase().contains(&quot;IBM&quot;)) {</span>
+<span class="nc" id="L84">            isIBM = true;</span>
+        }
+
+<span class="nc" id="L87">        AccessController.doPrivileged(new PrivilegedAction&lt;Object&gt;() {</span>
+            public Object run() {
+                try {
+<span class="nc bnc" id="L90" title="All 2 branches missed.">                    if (!InstrumentationRuntimeFactory.class.getClassLoader().equals(</span>
+                            ClassLoader.getSystemClassLoader())) {
+<span class="nc" id="L92">                        return null;</span>
+                    }
+<span class="nc" id="L94">                } catch (Throwable t) {</span>
+<span class="nc" id="L95">                    return null;</span>
+<span class="nc" id="L96">                }</span>
+<span class="nc" id="L97">                File toolsJar = null;</span>
+                // When running on IBM, the attach api classes are packaged in vm.jar which is a part
+                // of the default vm classpath.
+<span class="nc bnc" id="L100" title="All 2 branches missed.">                if (! isIBM) {</span>
+                    // If we can't find the tools.jar and we're not on IBM we can't load the agent.
+<span class="nc" id="L102">                    toolsJar = findToolsJar();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">                    if (toolsJar == null) {</span>
+<span class="nc" id="L104">                        return null;</span>
+                    }
+                }
+
+<span class="nc" id="L108">                Class&lt;?&gt; vmClass = loadVMClass(toolsJar);</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">                if (vmClass == null) {</span>
+<span class="nc" id="L110">                    return null;</span>
+                }
+<span class="nc" id="L112">                String agentPath = getAgentJar();</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">                if (agentPath == null) {</span>
+<span class="nc" id="L114">                    return null;</span>
+                }
+<span class="nc" id="L116">                loadAgent(agentPath, vmClass);</span>
+<span class="nc" id="L117">                return null;</span>
+            }
+        });
+
+<span class="nc" id="L121">        return inst;</span>
+    }
+
+    private static File findToolsJar() {
+<span class="nc" id="L125">        String javaHome = System.getProperty(&quot;java.home&quot;);</span>
+<span class="nc" id="L126">        File javaHomeFile = new File(javaHome);</span>
+
+<span class="nc" id="L128">        File toolsJarFile = new File(javaHomeFile, &quot;lib&quot; + File.separator + &quot;tools.jar&quot;);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (!toolsJarFile.exists()) {</span>
+            // If we're on an IBM SDK, then remove /jre off of java.home and try again.
+<span class="nc bnc" id="L131" title="All 2 branches missed.">            if (javaHomeFile.getAbsolutePath().endsWith(File.separator + &quot;jre&quot;)) {</span>
+<span class="nc" id="L132">                javaHomeFile = javaHomeFile.getParentFile();</span>
+<span class="nc" id="L133">                toolsJarFile = new File(javaHomeFile, &quot;lib&quot; + File.separator + &quot;tools.jar&quot;);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">            } else if (System.getProperty(&quot;os.name&quot;).toLowerCase().contains(&quot;mac&quot;)) {</span>
+                // If we're on a Mac, then change the search path to use ../Classes/classes.jar.
+<span class="nc bnc" id="L136" title="All 2 branches missed.">                if (javaHomeFile.getAbsolutePath().endsWith(File.separator + &quot;Home&quot;)) {</span>
+<span class="nc" id="L137">                    javaHomeFile = javaHomeFile.getParentFile();</span>
+<span class="nc" id="L138">                    toolsJarFile = new File(javaHomeFile, &quot;Classes&quot; + File.separator + &quot;classes.jar&quot;);</span>
+
+                }
+            }
+        }
+
+<span class="nc bnc" id="L144" title="All 2 branches missed.">        if (! toolsJarFile.exists()) {</span>
+<span class="nc" id="L145">            return null;</span>
+        } else {
+<span class="nc" id="L147">            return toolsJarFile;</span>
+        }
+    }
+
+    private static String createAgentJar() throws IOException {
+<span class="nc" id="L152">        File file =</span>
+                File.createTempFile(InstrumentationRuntimeFactory.class.getName(), &quot;.jar&quot;);
+<span class="nc" id="L154">        file.deleteOnExit();</span>
+
+<span class="nc" id="L156">        ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(file));</span>
+<span class="nc" id="L157">        zout.putNextEntry(new ZipEntry(&quot;META-INF/MANIFEST.MF&quot;));</span>
+
+<span class="nc" id="L159">        PrintWriter writer = new PrintWriter(new OutputStreamWriter(zout));</span>
+
+<span class="nc" id="L161">        writer.println(&quot;Agent-Class: &quot; + InstrumentationRuntimeFactory.class.getName());</span>
+<span class="nc" id="L162">        writer.println(&quot;Can-Redefine-Classes: true&quot;);</span>
+        // IBM doesn't support retransform
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        writer.println(&quot;Can-Retransform-Classes: &quot; + Boolean.toString(!isIBM));</span>
+
+<span class="nc" id="L166">        writer.close();</span>
+
+<span class="nc" id="L168">        return file.getAbsolutePath();</span>
+    }
+
+    private static String getAgentJar() {
+<span class="nc" id="L172">        File agentJarFile = null;</span>
+        // Find the name of the File that this class was loaded from. That
+        // jar *should* be the same location as our agent.
+<span class="nc" id="L175">        CodeSource cs =</span>
+                InstrumentationRuntimeFactory.class.getProtectionDomain().getCodeSource();
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        if (cs != null) {</span>
+<span class="nc" id="L178">            URL loc = cs.getLocation();</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">            if (loc != null) {</span>
+<span class="nc" id="L180">                agentJarFile = new File(loc.getFile());</span>
+            }
+        }
+
+        // Determine whether the File that this class was loaded from has this
+        // class defined as the Agent-Class.
+<span class="nc" id="L186">        boolean createJar = false;</span>
+<span class="nc bnc" id="L187" title="All 6 branches missed.">        if (cs == null || agentJarFile == null</span>
+                || agentJarFile.isDirectory()) {
+<span class="nc" id="L189">            createJar = true;</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        } else if (!validateAgentJarManifest(agentJarFile, InstrumentationRuntimeFactory.class.getName())) {</span>
+            // We have an agentJarFile, but this class isn't the Agent-Class.
+<span class="nc" id="L192">            createJar = true;</span>
+        }
+
+        String agentJar;
+<span class="nc bnc" id="L196" title="All 2 branches missed.">        if (createJar) {</span>
+            try {
+<span class="nc" id="L198">                agentJar = createAgentJar();</span>
+<span class="nc" id="L199">            } catch (IOException ioe) {</span>
+<span class="nc" id="L200">                agentJar = null;</span>
+<span class="nc" id="L201">            }</span>
+        } else {
+<span class="nc" id="L203">            agentJar = agentJarFile.getAbsolutePath();</span>
+        }
+
+<span class="nc" id="L206">        return agentJar;</span>
+    }
+
+    private static void loadAgent(String agentJar, Class&lt;?&gt; vmClass) {
+        try {
+            // first obtain the PID of the currently-running process
+            // ### this relies on the undocumented convention of the
+            // RuntimeMXBean's
+            // ### name starting with the PID, but there appears to be no other
+            // ### way to obtain the current process' id, which we need for
+            // ### the attach process
+<span class="nc" id="L217">            RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();</span>
+<span class="nc" id="L218">            String pid = runtime.getName();</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">            if (pid.contains(&quot;@&quot;))</span>
+<span class="nc" id="L220">                pid = pid.substring(0, pid.indexOf(&quot;@&quot;));</span>
+
+            // JDK1.6: now attach to the current VM so we can deploy a new agent
+            // ### this is a Sun JVM specific feature; other JVMs may offer
+            // ### this feature, but in an implementation-dependent way
+<span class="nc" id="L225">            Object vm = vmClass.getMethod(&quot;attach&quot;, new Class&lt;?&gt;[]{String.class}).invoke(null, pid);</span>
+<span class="nc" id="L226">            vmClass.getMethod(&quot;loadAgent&quot;, new Class[]{String.class}).invoke(vm, agentJar);</span>
+<span class="nc" id="L227">            vmClass.getMethod(&quot;detach&quot;, new Class[]{}).invoke(vm);</span>
+<span class="nc" id="L228">        } catch (Throwable t) {</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L230">                LOG.trace(&quot;Problem loading the agent&quot;, t);</span>
+            }
+<span class="nc" id="L232">        }</span>
+<span class="nc" id="L233">    }</span>
+
+    private static Class&lt;?&gt; loadVMClass(File toolsJar) {
+        try {
+<span class="nc" id="L237">            ClassLoader loader = Thread.currentThread().getContextClassLoader();</span>
+<span class="nc" id="L238">            String cls = SUN_VM_CLASS;</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">            if (isIBM) {</span>
+<span class="nc" id="L240">                cls = IBM_VM_CLASS;</span>
+            } else {
+<span class="nc" id="L242">                loader = new URLClassLoader(new URL[]{toolsJar.toURI().toURL()}, loader);</span>
+            }
+<span class="nc" id="L244">            return loader.loadClass(cls);</span>
+<span class="nc" id="L245">        } catch (Exception e) {</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L247">                LOG.trace(&quot;Failed to load the virtual machine class&quot;, e);</span>
+            }
+        }
+<span class="nc" id="L250">        return null;</span>
+    }
+
+    private static boolean validateAgentJarManifest(File agentJarFile,
+                                                    String agentClassName) {
+        try {
+<span class="nc" id="L256">            JarFile jar = new JarFile(agentJarFile);</span>
+<span class="nc" id="L257">            Manifest manifest = jar.getManifest();</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">            if (manifest == null) {</span>
+<span class="nc" id="L259">                return false;</span>
+            }
+<span class="nc" id="L261">            Attributes attributes = manifest.getMainAttributes();</span>
+<span class="nc" id="L262">            String ac = attributes.getValue(&quot;Agent-Class&quot;);</span>
+<span class="nc bnc" id="L263" title="All 4 branches missed.">            if (ac != null &amp;&amp; ac.equals(agentClassName)) {</span>
+<span class="nc" id="L264">                return true;</span>
+            }
+<span class="nc" id="L266">        } catch (Exception e) {</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L268">                LOG.trace(&quot;Unexpected exception occured.&quot;, e);</span>
+            }
+<span class="nc" id="L270">        }</span>
+<span class="nc" id="L271">        return false;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

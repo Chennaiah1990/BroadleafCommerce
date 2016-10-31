@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HydratedCacheManagerImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.cache.engine</a> &gt; <span class="el_source">HydratedCacheManagerImpl.java</span></div><h1>HydratedCacheManagerImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.cache.engine;
+
+import net.sf.ehcache.CacheException;
+import net.sf.ehcache.Ehcache;
+import net.sf.ehcache.Element;
+import net.sf.ehcache.event.CacheEventListener;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hibernate.cache.spi.CacheKey;
+
+import java.io.Serializable;
+import java.lang.reflect.Method;
+import java.util.Hashtable;
+import java.util.Map;
+
+/**
+ * 
+ * @author jfischer
+ *
+ */
+@Deprecated
+public class HydratedCacheManagerImpl implements CacheEventListener, HydratedCacheManager, HydratedAnnotationManager {
+
+<span class="nc" id="L43">    private static final Log LOG = LogFactory.getLog(HydratedCacheManagerImpl.class);</span>
+<span class="nc" id="L44">    private static final HydratedCacheManagerImpl MANAGER = new HydratedCacheManagerImpl();</span>
+
+    public static HydratedCacheManagerImpl getInstance() {
+<span class="nc" id="L47">        return MANAGER;</span>
+    }
+
+<span class="nc" id="L50">    private HydratedCacheManagerImpl()  {}</span>
+
+<span class="nc" id="L52">    private Map&lt;String, HydratedCache&gt; hydratedCacheContainer = new Hashtable&lt;String, HydratedCache&gt;(100);</span>
+<span class="nc" id="L53">    private Map&lt;String, HydrationDescriptor&gt; hydrationDescriptors = new Hashtable&lt;String, HydrationDescriptor&gt;(100);</span>
+
+    public void addHydratedCache(final HydratedCache cache) {
+<span class="nc" id="L56">        hydratedCacheContainer.put(cache.getCacheRegion() + &quot;_&quot; + cache.getCacheName(), cache);</span>
+<span class="nc" id="L57">    }</span>
+
+    public HydratedCache removeHydratedCache(final String cacheRegion, final String cacheName) {
+<span class="nc" id="L60">        return hydratedCacheContainer.remove(cacheRegion + &quot;_&quot; + cacheName);</span>
+    }
+
+    public  HydratedCache getHydratedCache(final String cacheRegion, final String cacheName) {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (!containsCache(cacheRegion, cacheName)) {</span>
+<span class="nc" id="L65">            HydratedCache cache = new HydratedCache(cacheRegion, cacheName);</span>
+<span class="nc" id="L66">            addHydratedCache(cache);</span>
+        }
+<span class="nc" id="L68">        return hydratedCacheContainer.get(cacheRegion + &quot;_&quot; + cacheName);</span>
+    }
+    
+    public boolean containsCache(String cacheRegion, String cacheName) {
+<span class="nc" id="L72">        return hydratedCacheContainer.containsKey(cacheRegion + &quot;_&quot; + cacheName);</span>
+    }
+    
+    public HydrationDescriptor getHydrationDescriptor(Object entity) {
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (hydrationDescriptors.containsKey(entity.getClass().getName())) {</span>
+<span class="nc" id="L77">            return hydrationDescriptors.get(entity.getClass().getName());</span>
+        }
+<span class="nc" id="L79">        HydrationDescriptor descriptor = new HydrationDescriptor();</span>
+<span class="nc" id="L80">        Class&lt;?&gt; topEntityClass = getTopEntityClass(entity);</span>
+<span class="nc" id="L81">        HydrationScanner scanner = new HydrationScanner(topEntityClass, entity.getClass());</span>
+<span class="nc" id="L82">        scanner.init();</span>
+<span class="nc" id="L83">        descriptor.setHydratedMutators(scanner.getCacheMutators());</span>
+<span class="nc" id="L84">        Map&lt;String, Method[]&gt; mutators = scanner.getIdMutators();</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (mutators.size() != 1) {</span>
+<span class="nc" id="L86">            throw new RuntimeException(&quot;Broadleaf Commerce Hydrated Cache currently only supports entities with a single @Id annotation.&quot;);</span>
+        }
+<span class="nc" id="L88">        Method[] singleMutators = mutators.values().iterator().next();</span>
+<span class="nc" id="L89">        descriptor.setIdMutators(singleMutators);</span>
+<span class="nc" id="L90">        String cacheRegion = scanner.getCacheRegion();</span>
+<span class="nc bnc" id="L91" title="All 4 branches missed.">        if (cacheRegion == null || &quot;&quot;.equals(cacheRegion)) {</span>
+<span class="nc" id="L92">            cacheRegion = topEntityClass.getName();</span>
+        }
+<span class="nc" id="L94">        descriptor.setCacheRegion(cacheRegion);</span>
+<span class="nc" id="L95">        hydrationDescriptors.put(entity.getClass().getName(), descriptor);</span>
+<span class="nc" id="L96">        return descriptor;</span>
+    }
+    
+    public Class&lt;?&gt; getTopEntityClass(Object entity) {
+<span class="nc" id="L100">        Class&lt;?&gt; myClass = entity.getClass();</span>
+<span class="nc" id="L101">        Class&lt;?&gt; superClass = entity.getClass().getSuperclass();</span>
+<span class="nc bnc" id="L102" title="All 4 branches missed.">        while (superClass != null &amp;&amp; superClass.getName().startsWith(&quot;org.broadleaf&quot;)) {</span>
+<span class="nc" id="L103">            myClass = superClass;</span>
+<span class="nc" id="L104">            superClass = superClass.getSuperclass();</span>
+        }
+<span class="nc" id="L106">        return myClass;</span>
+    }
+    
+    public Object getHydratedCacheElementItem(String cacheRegion, String cacheName, Serializable elementKey, String elementItemName) {
+<span class="nc" id="L110">        Object response = null;</span>
+<span class="nc" id="L111">        HydratedCache hydratedCache = getHydratedCache(cacheRegion, cacheName);</span>
+<span class="nc" id="L112">        HydratedCacheElement element = hydratedCache.getCacheElement(cacheRegion, cacheName, elementKey);</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (element != null) {</span>
+<span class="nc" id="L114">            response = element.getCacheElementItem(elementItemName, elementKey);</span>
+        }
+<span class="nc" id="L116">        return response;</span>
+    }
+    
+    public void addHydratedCacheElementItem(String cacheRegion, String cacheName, Serializable elementKey, String elementItemName, Object elementValue) {
+<span class="nc" id="L120">        HydratedCache hydratedCache = getHydratedCache(cacheRegion, cacheName);</span>
+<span class="nc" id="L121">        HydratedCacheElement element = hydratedCache.getCacheElement(cacheRegion, cacheName, elementKey);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (element == null) {</span>
+<span class="nc" id="L123">            element = new HydratedCacheElement();</span>
+<span class="nc" id="L124">            hydratedCache.addCacheElement(cacheRegion, cacheName, elementKey, element);</span>
+        }
+<span class="nc" id="L126">        element.putCacheElementItem(elementItemName, elementKey, elementValue);</span>
+<span class="nc" id="L127">    }</span>
+
+    public void dispose() {
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (LOG.isInfoEnabled()) {</span>
+<span class="nc" id="L131">            LOG.info(&quot;Disposing of all hydrated cache members&quot;);</span>
+        }
+<span class="nc" id="L133">        hydratedCacheContainer.clear();</span>
+<span class="nc" id="L134">    }</span>
+
+    private void removeCache(String cacheRegion, Serializable key) {
+<span class="nc" id="L137">        String cacheName = cacheRegion;</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (key instanceof CacheKey) {</span>
+<span class="nc" id="L139">            cacheName = ((CacheKey) key).getEntityOrRoleName();</span>
+<span class="nc" id="L140">            key = ((CacheKey) key).getKey();</span>
+        }
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (containsCache(cacheRegion, cacheName)) {</span>
+<span class="nc" id="L143">            HydratedCache cache = hydratedCacheContainer.get(cacheRegion + &quot;_&quot; + cacheName);</span>
+<span class="nc" id="L144">            String myKey = cacheRegion + &quot;_&quot; + cacheName + &quot;_&quot; + key;</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">            if (cache.containsKey(myKey)) {</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                if (LOG.isInfoEnabled()) {</span>
+<span class="nc" id="L147">                    LOG.info(&quot;Clearing hydrated cache for cache name: &quot; + cacheRegion + &quot;_&quot; + cacheName + &quot;_&quot; + key);</span>
+                }
+<span class="nc" id="L149">                cache.removeCacheElement(cacheRegion, cacheName, key);</span>
+            }
+        }
+<span class="nc" id="L152">    }</span>
+    
+    private void removeAll(String cacheName) {
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        if (hydratedCacheContainer.containsKey(cacheName)) {</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">            if (LOG.isInfoEnabled()) {</span>
+<span class="nc" id="L157">                LOG.info(&quot;Clearing all hydrated caches for cache name: &quot; + cacheName);</span>
+            }
+<span class="nc" id="L159">            hydratedCacheContainer.remove(cacheName);</span>
+        }
+<span class="nc" id="L161">    }</span>
+
+    public void notifyElementEvicted(Ehcache arg0, Element arg1) {
+<span class="nc" id="L164">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L165">    }</span>
+
+    public void notifyElementExpired(Ehcache arg0, Element arg1) {
+<span class="nc" id="L168">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L169">    }</span>
+
+    public void notifyElementPut(Ehcache arg0, Element arg1) throws CacheException {
+        //do nothing
+<span class="nc" id="L173">    }</span>
+
+    public void notifyElementRemoved(Ehcache arg0, Element arg1) throws CacheException {
+<span class="nc" id="L176">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L177">    }</span>
+
+    public void notifyElementUpdated(Ehcache arg0, Element arg1) throws CacheException {
+<span class="nc" id="L180">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L181">    }</span>
+
+    public void notifyRemoveAll(Ehcache arg0) {
+<span class="nc" id="L184">        removeAll(arg0.getName());</span>
+<span class="nc" id="L185">    }</span>
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+<span class="nc" id="L189">        return this;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

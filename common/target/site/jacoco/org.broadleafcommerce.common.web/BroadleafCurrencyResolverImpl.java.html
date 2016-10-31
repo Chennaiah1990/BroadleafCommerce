@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafCurrencyResolverImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafCurrencyResolverImpl.java</span></div><h1>BroadleafCurrencyResolverImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.currency.domain.BroadleafCurrency;
+import org.broadleafcommerce.common.currency.domain.BroadleafRequestedCurrencyDto;
+import org.broadleafcommerce.common.currency.service.BroadleafCurrencyService;
+import org.broadleafcommerce.common.locale.domain.Locale;
+import org.broadleafcommerce.common.util.BLCRequestUtils;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * Author: jerryocanas
+ * Date: 9/6/12
+ */
+
+/**
+ * Responsible for returning the currency to use for the current request.
+ */
+@Component(&quot;blCurrencyResolver&quot;)
+<span class="nc" id="L45">public class BroadleafCurrencyResolverImpl implements BroadleafCurrencyResolver {</span>
+
+<span class="nc" id="L47">    private final Log LOG = LogFactory.getLog(BroadleafCurrencyResolverImpl.class);</span>
+
+    /**
+     * Parameter/Attribute name for the current currency code
+     */
+<span class="nc" id="L52">    public static String CURRENCY_CODE_PARAM = &quot;blCurrencyCode&quot;;</span>
+
+    /**
+     * Parameter/Attribute name for the current currency
+     */
+<span class="nc" id="L57">    public static String CURRENCY_VAR = &quot;blCurrency&quot;;</span>
+
+    @Resource(name = &quot;blCurrencyService&quot;)
+    private BroadleafCurrencyService broadleafCurrencyService;
+
+    /**
+     * Responsible for returning the currency to use for the current request.
+     */
+    @Override
+    public BroadleafRequestedCurrencyDto resolveCurrency(HttpServletRequest request) {
+<span class="nc" id="L67">        return resolveCurrency(new ServletWebRequest(request));</span>
+    }
+
+    @Override
+    public BroadleafRequestedCurrencyDto resolveCurrency(WebRequest request) {
+<span class="nc" id="L72">        BroadleafCurrency desiredCurrency = null;</span>
+
+        // 1) Check request for currency
+<span class="nc" id="L75">        desiredCurrency = (BroadleafCurrency) request.getAttribute(CURRENCY_VAR, WebRequest.SCOPE_REQUEST);</span>
+
+        // 2) Check for a request parameter
+<span class="nc bnc" id="L78" title="All 4 branches missed.">        if (desiredCurrency == null &amp;&amp; BLCRequestUtils.getURLorHeaderParameter(request, CURRENCY_CODE_PARAM) != null) {</span>
+<span class="nc" id="L79">            String currencyCode = BLCRequestUtils.getURLorHeaderParameter(request, CURRENCY_CODE_PARAM);</span>
+<span class="nc" id="L80">            desiredCurrency = broadleafCurrencyService.findCurrencyByCode(currencyCode);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L82">                LOG.trace(&quot;Attempt to find currency by param &quot; + currencyCode + &quot; resulted in &quot; + desiredCurrency);</span>
+            }
+        }
+
+        // 3) Check session for currency
+<span class="nc bnc" id="L87" title="All 4 branches missed.">        if (desiredCurrency == null &amp;&amp; BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L88">            desiredCurrency = (BroadleafCurrency) request.getAttribute(CURRENCY_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+        }
+
+        // 4) Check locale for currency
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (desiredCurrency == null) {</span>
+<span class="nc" id="L93">            Locale locale = (Locale) request.getAttribute(BroadleafLocaleResolverImpl.LOCALE_VAR, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">            if (locale != null) {</span>
+<span class="nc" id="L95">                desiredCurrency = locale.getDefaultCurrency();</span>
+            }
+        }
+
+        // 5) Lookup default currency from DB
+<span class="nc" id="L100">        BroadleafCurrency defaultCurrency = broadleafCurrencyService.findDefaultBroadleafCurrency();</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (desiredCurrency == null) {</span>
+<span class="nc" id="L102">            desiredCurrency = defaultCurrency;</span>
+        }
+
+        // For an out-of-box installation, only one currency is supported, so even though we have a 
+        // desired currency, we may not have any prices that support it. 
+<span class="nc" id="L107">        BroadleafCurrency currencyToUse = defaultCurrency;</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L110">            request.setAttribute(CURRENCY_VAR, currencyToUse, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+        }
+
+<span class="nc" id="L113">        BroadleafRequestedCurrencyDto dto = new BroadleafRequestedCurrencyDto(currencyToUse, desiredCurrency);</span>
+<span class="nc" id="L114">        return dto;</span>
+    }
+
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SiteServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.site.service</a> &gt; <span class="el_source">SiteServiceImpl.java</span></div><h1>SiteServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.site.service;
+
+import org.broadleafcommerce.common.site.dao.SiteDao;
+import org.broadleafcommerce.common.site.domain.Catalog;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.broadleafcommerce.common.util.BLCSystemProperty;
+import org.broadleafcommerce.common.util.StreamCapableTransactionalOperationAdapter;
+import org.broadleafcommerce.common.util.StreamingTransactionCapableUtil;
+import org.broadleafcommerce.common.util.TransactionUtils;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+@Service(&quot;blSiteService&quot;)
+<span class="nc" id="L40">public class SiteServiceImpl implements SiteService {</span>
+
+    @Resource(name=&quot;blStreamingTransactionCapableUtil&quot;)
+    protected StreamingTransactionCapableUtil transUtil;
+
+    @Resource(name = &quot;blSiteDao&quot;)
+    protected SiteDao siteDao;
+
+    @Resource(name = &quot;blSiteServiceExtensionManager&quot;)
+    protected SiteServiceExtensionManager extensionManager;
+    
+    @Override
+    public Site createSite() {
+<span class="nc" id="L53">        return siteDao.create();</span>
+    }
+
+    @Override
+    @Deprecated
+    public Site retrieveSiteById(final Long id) {
+<span class="nc" id="L59">        return retrieveNonPersistentSiteById(id);</span>
+    }
+    
+    @Override
+    public Site retrieveNonPersistentSiteById(final Long id) {
+<span class="nc" id="L64">        return retrieveSiteById(id, false);</span>
+    }
+
+    @Override
+    public Site retrievePersistentSiteById(final Long id) {
+<span class="nc" id="L69">        return retrieveSiteById(id, true);</span>
+    }
+    
+    protected Site retrieveSiteById(final Long id, final boolean persistentResult) {
+      //Since the methods on this class are frequently called during regular page requests and transactions are expensive,
+        //only run the operation under a transaction if there is not already an entity manager in the view
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (id == null) { return null; }</span>
+<span class="nc" id="L76">        final Site[] response = new Site[1];</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        transUtil.runOptionalTransactionalOperation(new StreamCapableTransactionalOperationAdapter() {</span>
+            @Override
+            public void execute() throws Throwable {
+<span class="nc" id="L80">                Site site = siteDao.retrieve(id);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">                if (persistentResult) {</span>
+<span class="nc" id="L82">                    response[0] = site;</span>
+                } else {
+<span class="nc" id="L84">                    response[0] = getNonPersistentSite(site);</span>
+                }
+<span class="nc" id="L86">            }</span>
+        }, RuntimeException.class, !TransactionSynchronizationManager.hasResource(((JpaTransactionManager) transUtil.getTransactionManager()).getEntityManagerFactory()));
+
+<span class="nc" id="L89">        return response[0];</span>
+    }
+
+    @Override
+    @Deprecated
+    public Site retrieveSiteByDomainName(final String domainName) {
+<span class="nc" id="L95">        return retrieveNonPersistentSiteByDomainName(domainName);</span>
+    }
+    
+    @Override
+    public Site retrieveNonPersistentSiteByDomainName(final String domainName) {
+<span class="nc" id="L100">        return retrieveSiteByDomainName(domainName, false);</span>
+    }
+
+    @Override
+    public Site retrievePersistentSiteByDomainName(final String domainName) {
+<span class="nc" id="L105">        return retrieveSiteByDomainName(domainName, true);</span>
+    }
+    
+    public Site retrieveSiteByDomainName(final String domainName, final boolean persistentResult) {
+        //Since the methods on this class are frequently called during regular page requests and transactions are expensive,
+        //only run the operation under a transaction if there is not already an entity manager in the view
+<span class="nc" id="L111">        final Site[] response = new Site[1];</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        transUtil.runOptionalTransactionalOperation(new StreamCapableTransactionalOperationAdapter() {</span>
+            @Override
+            public void execute() throws Throwable {
+<span class="nc" id="L115">                String domainPrefix = null;</span>
+<span class="nc" id="L116">                String domain = domainName;</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">                if (domainName != null) {</span>
+<span class="nc" id="L118">                    int pos = domainName.indexOf('.');</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">                    if (pos &gt;= 0) {</span>
+<span class="nc" id="L120">                        domainPrefix = domainName.substring(0, pos);</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">                        if (stripSubdomain(domainPrefix)) {</span>
+<span class="nc" id="L122">                            domain = domainName.substring(domainPrefix.length() + 1);</span>
+                        }
+                    } else {
+<span class="nc" id="L125">                        domainPrefix = domainName;</span>
+                    }
+                }
+                
+<span class="nc" id="L129">                Site site = siteDao.retrieveSiteByDomainOrDomainPrefix(domain, domainPrefix);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">                if (persistentResult) {</span>
+<span class="nc" id="L131">                    response[0] = site;</span>
+                } else {
+<span class="nc" id="L133">                    response[0] = getNonPersistentSite(site);</span>
+                }
+                
+<span class="nc" id="L136">            }</span>
+        }, RuntimeException.class, !TransactionSynchronizationManager.hasResource(((JpaTransactionManager) transUtil.getTransactionManager()).getEntityManagerFactory()));
+
+<span class="nc" id="L139">        return response[0];</span>
+    }
+
+    /**
+     * Checks whether the provided subdomain is one to be stripped/removed from the full domain name
+     *
+     * @param subDomain
+     * @return boolean if subdomain is a candiate to be removed - true indicates it is eligible to be removed
+     */
+    protected boolean stripSubdomain(String subDomain) {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        if (subDomain != null) {</span>
+<span class="nc" id="L150">            String propStripPrefixes = BLCSystemProperty.resolveSystemProperty(&quot;site.domain.resolver.strip.subdomains&quot;);</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">            if (propStripPrefixes != null) {</span>
+<span class="nc" id="L152">                String[] prefixes = propStripPrefixes.split(&quot;,&quot;);</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">                for(String prefix : prefixes) {</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                    if (subDomain.equals(prefix)) {</span>
+<span class="nc" id="L155">                        return true;</span>
+                    }
+                }
+            }
+        }
+<span class="nc" id="L160">        return false;</span>
+    }
+
+    @Override
+    @Deprecated
+    @Transactional(&quot;blTransactionManager&quot;)
+    public Site save(Site site) {
+<span class="nc" id="L167">        return saveAndReturnNonPersisted(site);</span>
+    }
+    
+    @Override
+    @Transactional(&quot;blTransactionManager&quot;)
+    public Site saveAndReturnNonPersisted(Site site) {
+<span class="nc" id="L173">        return getNonPersistentSite(saveAndReturnPersisted(site));</span>
+    }
+
+    @Override
+    @Transactional(&quot;blTransactionManager&quot;)
+    public Site saveAndReturnPersisted(Site site) {
+<span class="nc" id="L179">        return siteDao.save(site);</span>
+    }
+
+    @Override
+    public Catalog findCatalogById(Long id) {
+<span class="nc" id="L184">        return siteDao.retrieveCatalog(id);</span>
+    }
+
+    @Override
+    @Deprecated
+    public Site retrieveDefaultSite() {
+<span class="nc" id="L190">        return retrieveNonPersistentDefaultSite();</span>
+    }
+    
+    @Override
+    public Site retrieveNonPersistentDefaultSite() {
+<span class="nc" id="L195">        return getNonPersistentSite(retrievePersistentDefaultSite());</span>
+    }
+
+    @Override
+    public Site retrievePersistentDefaultSite() {
+<span class="nc" id="L200">        return retrieveDefaultSite(true);</span>
+    }
+    
+    protected Site retrieveDefaultSite(final boolean persistentResult) {
+        //Since the methods on this class are frequently called during regular page requests and transactions are expensive,
+        //only run the operation under a transaction if there is not already an entity manager in the view
+<span class="nc" id="L206">        final Site[] response = new Site[1];</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        transUtil.runOptionalTransactionalOperation(new StreamCapableTransactionalOperationAdapter() {</span>
+            @Override
+            public void execute() throws Throwable {
+<span class="nc" id="L210">                Site defaultSite = siteDao.retrieveDefaultSite();</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">                if (persistentResult) {</span>
+<span class="nc" id="L212">                    response[0] = defaultSite;</span>
+                } else {
+<span class="nc" id="L214">                    response[0] = getNonPersistentSite(defaultSite);</span>
+                }
+<span class="nc" id="L216">            }</span>
+        }, RuntimeException.class, !TransactionSynchronizationManager.hasResource(((JpaTransactionManager) transUtil.getTransactionManager()).getEntityManagerFactory()));
+
+<span class="nc" id="L219">        return response[0];</span>
+    }
+    
+    @Override
+    @Deprecated
+    public List&lt;Site&gt; findAllActiveSites() {
+<span class="nc" id="L225">        return findAllNonPersistentActiveSites();</span>
+    }
+    
+    @Override
+    public List&lt;Site&gt; findAllNonPersistentActiveSites() {
+<span class="nc" id="L230">        return findAllSites(false);</span>
+    }
+
+    @Override
+    public List&lt;Site&gt; findAllPersistentActiveSites() {
+<span class="nc" id="L235">        return findAllSites(true);</span>
+    }
+    
+    protected List&lt;Site&gt; findAllSites(final boolean persistentResult) {
+        //Since the methods on this class are frequently called during regular page requests and transactions are expensive,
+          //only run the operation under a transaction if there is not already an entity manager in the view
+<span class="nc" id="L241">          final List&lt;Site&gt; response = new ArrayList&lt;Site&gt;();</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">          transUtil.runOptionalTransactionalOperation(new StreamCapableTransactionalOperationAdapter() {</span>
+              @Override
+              public void execute() throws Throwable {
+<span class="nc" id="L245">                  List&lt;Site&gt; sites = siteDao.readAllActiveSites();</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">                  for (Site site : sites) {</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">                      if (persistentResult) {</span>
+<span class="nc" id="L248">                          response.add(site);</span>
+                      } else {
+<span class="nc" id="L250">                          response.add(getNonPersistentSite(site));</span>
+                      }
+<span class="nc" id="L252">                  }</span>
+<span class="nc" id="L253">              }</span>
+          }, RuntimeException.class, !TransactionSynchronizationManager.hasResource(((JpaTransactionManager) transUtil.getTransactionManager()).getEntityManagerFactory()));
+
+<span class="nc" id="L256">          return response;</span>
+      }
+    
+    protected Site getNonPersistentSite(Site persistentSite) {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        if (persistentSite == null) {</span>
+<span class="nc" id="L261">            return null;</span>
+        }
+<span class="nc" id="L263">        Site clone = persistentSite.clone();</span>
+<span class="nc" id="L264">        extensionManager.getProxy().contributeNonPersitentSiteProperties(persistentSite, clone);</span>
+<span class="nc" id="L265">        return clone;</span>
+    }
+    
+    @Override
+    @Transactional(TransactionUtils.DEFAULT_TRANSACTION_MANAGER)
+    public Catalog save(Catalog catalog) {
+<span class="nc" id="L271">        return siteDao.save(catalog);</span>
+    }
+    
+    @Override
+    public List&lt;Catalog&gt; findAllCatalogs() {
+<span class="nc" id="L276">        return siteDao.retrieveAllCatalogs();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

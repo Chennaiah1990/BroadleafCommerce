@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LineItemDTO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment.dto</a> &gt; <span class="el_source">LineItemDTO.java</span></div><h1>LineItemDTO.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.payment.dto;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author Elbert Bautista (elbertbautista)
+ *
+ * Many Hosted solutions, (e.g. PayPal Express/Sagepay Form) allow you to pass in the contents of your
+ * cart to be displayed on their hosted pages.
+ *
+ * The following DTO represent the usual parameters that you may wish to pass:
+ *
+ * name: a Name for this Line Item
+ * description: a Description for this Line Item
+ * category: a Category for this Line Item (PayPal Express uses this to differentiate between Digital vs Physical)
+ * quantity: the Quantity for this Line Item
+ * amount: the unit cost of the item without tax
+ * tax: the tax applied to this unit item
+ * itemTotal: the cost of the unit item with tax
+ * total: the total cost of this line item (Quanity x Cost Including Tax)
+ *
+ */
+public class LineItemDTO {
+
+    protected PaymentRequestDTO parent;
+
+    protected Map&lt;String, Object&gt; additionalFields;
+    protected String name;
+    protected String description;
+    protected String shortDescription;
+    protected String systemId;
+    protected String category;
+    protected String quantity;
+    protected String amount;
+    protected String tax;
+    protected String itemTotal;
+    protected String total;
+
+    public PaymentRequestDTO done(){
+<span class="nc" id="L61">        parent.lineItems.add(this);</span>
+<span class="nc" id="L62">        return parent;</span>
+    }
+
+<span class="nc" id="L65">    public LineItemDTO(PaymentRequestDTO parent) {</span>
+<span class="nc" id="L66">        this.additionalFields = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L67">        this.parent = parent;</span>
+<span class="nc" id="L68">    }</span>
+
+    public LineItemDTO additionalField(String key, Object value) {
+<span class="nc" id="L71">        additionalFields.put(key, value);</span>
+<span class="nc" id="L72">        return this;</span>
+    }
+
+    public LineItemDTO name(String name) {
+<span class="nc" id="L76">        this.name = name;</span>
+<span class="nc" id="L77">        return this;</span>
+    }
+
+    public LineItemDTO description(String description) {
+<span class="nc" id="L81">        this.description = description;</span>
+<span class="nc" id="L82">        return this;</span>
+    }
+
+    public LineItemDTO shortDescription(String shortDescription) {
+<span class="nc" id="L86">        this.shortDescription = shortDescription;</span>
+<span class="nc" id="L87">        return this;</span>
+    }
+
+    public LineItemDTO systemId(String systemId) {
+<span class="nc" id="L91">        this.systemId = systemId;</span>
+<span class="nc" id="L92">        return this;</span>
+    }
+
+    public LineItemDTO category(String category) {
+<span class="nc" id="L96">        this.category = category;</span>
+<span class="nc" id="L97">        return this;</span>
+    }
+
+    public LineItemDTO quantity(String quantity) {
+<span class="nc" id="L101">        this.quantity = quantity;</span>
+<span class="nc" id="L102">        return this;</span>
+    }
+
+    public LineItemDTO amount(String amount) {
+<span class="nc" id="L106">        this.amount = amount;</span>
+<span class="nc" id="L107">        return this;</span>
+    }
+
+    public LineItemDTO tax(String tax) {
+<span class="nc" id="L111">        this.tax = tax;</span>
+<span class="nc" id="L112">        return this;</span>
+    }
+
+    public LineItemDTO itemTotal(String itemTotal) {
+<span class="nc" id="L116">        this.itemTotal = itemTotal;</span>
+<span class="nc" id="L117">        return this;</span>
+    }
+
+    public LineItemDTO total(String total) {
+<span class="nc" id="L121">        this.total = total;</span>
+<span class="nc" id="L122">        return this;</span>
+    }
+
+    public Map&lt;String, Object&gt; getAdditionalFields() {
+<span class="nc" id="L126">        return additionalFields;</span>
+    }
+
+    public String getName() {
+<span class="nc" id="L130">        return name;</span>
+    }
+
+    public String getDescription() {
+<span class="nc" id="L134">        return description;</span>
+    }
+
+    public String getShortDescription() {
+<span class="nc" id="L138">        return shortDescription;</span>
+    }
+
+    public String getSystemId() {
+<span class="nc" id="L142">        return systemId;</span>
+    }
+
+    public String getCategory() {
+<span class="nc" id="L146">        return category;</span>
+    }
+
+    public String getQuantity() {
+<span class="nc" id="L150">        return quantity;</span>
+    }
+
+    public String getAmount() {
+<span class="nc" id="L154">        return amount;</span>
+    }
+
+    public String getTax() {
+<span class="nc" id="L158">        return tax;</span>
+    }
+
+    public String getItemTotal() {
+<span class="nc" id="L162">        return itemTotal;</span>
+    }
+
+    public String getTotal() {
+<span class="nc" id="L166">        return total;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RuntimeEnvironmentPropertiesManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.config</a> &gt; <span class="el_source">RuntimeEnvironmentPropertiesManager.java</span></div><h1>RuntimeEnvironmentPropertiesManager.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.config;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+
+<span class="nc" id="L29">public class RuntimeEnvironmentPropertiesManager implements BeanFactoryAware {</span>
+
+<span class="nc" id="L31">    private static final Log LOG = LogFactory.getLog(RuntimeEnvironmentPropertiesManager.class);</span>
+
+    protected ConfigurableBeanFactory beanFactory;
+
+    protected String prefix;
+
+    public String getPrefix() {
+<span class="nc" id="L38">        return prefix;</span>
+    }
+
+    public String setPrefix(String prefix) {
+<span class="nc" id="L42">        return this.prefix = prefix;</span>
+    }
+
+    public String getProperty(String key, String suffix) {
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        if(key==null) {</span>
+<span class="nc" id="L47">            return null;</span>
+        }
+<span class="nc" id="L49">        String name = prefix + &quot;.&quot; + key + &quot;.&quot; + suffix;</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">        if (prefix == null) {</span>
+<span class="nc" id="L51">            name = key + &quot;.&quot; + suffix;</span>
+        }
+<span class="nc" id="L53">        String rv = beanFactory.resolveEmbeddedValue(&quot;${&quot; + name + &quot;}&quot;);</span>
+       
+<span class="nc bnc" id="L55" title="All 4 branches missed.">        if (rv == null ||rv.equals(&quot;${&quot; + name + &quot;}&quot;)) {</span>
+<span class="nc" id="L56">            LOG.warn(&quot;property ${&quot; + name + &quot;} not found, Reverting to property without suffix&quot;+suffix);</span>
+<span class="nc" id="L57">            rv = getProperty(key);</span>
+        }
+<span class="nc" id="L59">        return rv;</span>
+
+    }
+
+    public String getProperty(String key) {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if(key==null) {</span>
+<span class="nc" id="L65">            return null;</span>
+        }
+<span class="nc" id="L67">        String name = prefix + &quot;.&quot; + key;</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (prefix == null) {</span>
+<span class="nc" id="L69">            name = key;</span>
+        }
+<span class="nc" id="L71">        String rv = beanFactory.resolveEmbeddedValue(&quot;${&quot; + name + &quot;}&quot;);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if(rv.equals(&quot;${&quot; + name + &quot;}&quot;)) {</span>
+<span class="nc" id="L73">            return null;</span>
+        }
+<span class="nc" id="L75">        return rv;</span>
+    }
+
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+<span class="nc" id="L80">        this.beanFactory = (ConfigurableBeanFactory) beanFactory;</span>
+<span class="nc" id="L81">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

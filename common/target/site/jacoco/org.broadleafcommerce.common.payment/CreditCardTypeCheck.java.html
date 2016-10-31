@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CreditCardTypeCheck.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment</a> &gt; <span class="el_source">CreditCardTypeCheck.java</span></div><h1>CreditCardTypeCheck.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.payment;
+
+import java.util.ArrayList;
+
+<span class="nc" id="L24">public class CreditCardTypeCheck {</span>
+
+    public static CreditCardType getCreditCardType(String pan) {
+<span class="nc bnc" id="L27" title="All 2 branches missed.">        if (pan.matches(&quot;(51)?(52)?(53)?(54)?(55)?[0-9]{14}&quot;)) {</span>
+<span class="nc" id="L28">            return CreditCardType.MASTERCARD;</span>
+        }
+<span class="nc bnc" id="L30" title="All 4 branches missed.">        if (pan.matches(&quot;4[0-9]{15}&quot;) || pan.matches(&quot;4[0-9]{12}&quot;)) {</span>
+<span class="nc" id="L31">            return CreditCardType.VISA;</span>
+        }
+<span class="nc bnc" id="L33" title="All 2 branches missed.">        if (pan.matches(&quot;(34)?(37)?[0-9]{13}&quot;)) {</span>
+<span class="nc" id="L34">            return CreditCardType.AMEX;</span>
+        }
+<span class="nc bnc" id="L36" title="All 4 branches missed.">        if (pan.matches(&quot;(300)?(301)?(302)?(303)?(304)?(305)?[0-9]{11}&quot;) || pan.matches(&quot;(36)?(38)?[0-9]{12}&quot;)) {</span>
+<span class="nc" id="L37">            return CreditCardType.DINERSCLUB_CARTEBLANCHE;</span>
+        }
+<span class="nc bnc" id="L39" title="All 2 branches missed.">        if (pan.matches(&quot;6011[0-9]{12}&quot;)) {</span>
+<span class="nc" id="L40">            return CreditCardType.DISCOVER;</span>
+        }
+<span class="nc bnc" id="L42" title="All 2 branches missed.">        if (pan.matches(&quot;(2014)?(2149)?[0-9]{11}&quot;)) {</span>
+<span class="nc" id="L43">            return CreditCardType.ENROUTE;</span>
+        }
+<span class="nc bnc" id="L45" title="All 4 branches missed.">        if (pan.matches(&quot;3[0-9]{15}&quot;) || pan.matches(&quot;(2131)?(1800)?[0-9]{11}&quot;)) {</span>
+<span class="nc" id="L46">            return CreditCardType.JCB;</span>
+        }
+
+<span class="nc" id="L49">        ArrayList&lt;UnmaskRange&gt; ranges = new ArrayList&lt;UnmaskRange&gt;();</span>
+<span class="nc" id="L50">        ranges.add(new UnmaskRange(UnmaskRange.BEGINNINGTYPE, 4));</span>
+<span class="nc" id="L51">        AccountNumberMask mask = new AccountNumberMask(ranges, 'X');</span>
+<span class="nc" id="L52">        throw new RuntimeException(&quot;Unable to determine credit card type for pan :&quot; + mask.mask(pan));</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

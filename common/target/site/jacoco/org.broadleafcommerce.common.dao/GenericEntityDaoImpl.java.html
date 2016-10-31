@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GenericEntityDaoImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.dao</a> &gt; <span class="el_source">GenericEntityDaoImpl.java</span></div><h1>GenericEntityDaoImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Profile Web
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.dao;
+
+import org.broadleafcommerce.common.persistence.EntityConfiguration;
+import org.broadleafcommerce.common.persistence.Status;
+import org.broadleafcommerce.common.util.dao.DynamicDaoHelperImpl;
+import org.broadleafcommerce.common.util.dao.TypedQueryBuilder;
+import org.hibernate.FlushMode;
+import org.hibernate.Session;
+import org.hibernate.ejb.HibernateEntityManager;
+import org.hibernate.type.AbstractSingleColumnStandardBasicType;
+import org.hibernate.type.IntegerType;
+import org.hibernate.type.LongType;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Repository;
+
+import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Path;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+
+
+@Repository(&quot;blGenericEntityDao&quot;)
+<span class="nc" id="L57">public class GenericEntityDaoImpl implements GenericEntityDao, ApplicationContextAware {</span>
+
+    private static ApplicationContext applicationContext;
+    private static GenericEntityDaoImpl dao;
+
+    public static GenericEntityDaoImpl getGenericEntityDao() {
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (applicationContext == null) {</span>
+<span class="nc" id="L64">            return null;</span>
+        }
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (dao == null) {</span>
+<span class="nc" id="L67">            dao = (GenericEntityDaoImpl) applicationContext.getBean(&quot;blGenericEntityDao&quot;);</span>
+        }
+<span class="nc" id="L69">        return dao;</span>
+    }
+
+    @PersistenceContext(unitName = &quot;blPU&quot;)
+    protected EntityManager em;
+
+    @Resource(name = &quot;blEntityConfiguration&quot;)
+    protected EntityConfiguration entityConfiguration;
+    
+<span class="nc" id="L78">    protected DynamicDaoHelperImpl daoHelper = new DynamicDaoHelperImpl();</span>
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+<span class="nc" id="L82">        this.applicationContext = applicationContext;</span>
+<span class="nc" id="L83">    }</span>
+    
+    @Override
+    public &lt;T&gt; T readGenericEntity(Class&lt;T&gt; clazz, Object id) {
+<span class="nc" id="L87">        clazz = (Class&lt;T&gt;) DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L88">        Map&lt;String, Object&gt; md = daoHelper.getIdMetadata(clazz, (HibernateEntityManager) em);</span>
+<span class="nc" id="L89">        AbstractSingleColumnStandardBasicType type = (AbstractSingleColumnStandardBasicType) md.get(&quot;type&quot;);</span>
+        
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (type instanceof LongType) {</span>
+<span class="nc" id="L92">            id = Long.parseLong(String.valueOf(id));</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        } else if (type instanceof IntegerType) {</span>
+<span class="nc" id="L94">            id = Integer.parseInt(String.valueOf(id));</span>
+        }
+
+<span class="nc" id="L97">        return em.find(clazz, id);</span>
+    }
+
+    @Override
+    public &lt;T&gt; Long readCountGenericEntity(Class&lt;T&gt; clazz) {
+<span class="nc" id="L102">        clazz = (Class&lt;T&gt;) DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L103">        TypedQuery&lt;Long&gt; q = new TypedQueryBuilder&lt;T&gt;(clazz, &quot;root&quot;).toCountQuery(em);</span>
+<span class="nc" id="L104">        return q.getSingleResult();</span>
+    }
+
+    @Override
+    public &lt;T&gt; List&lt;T&gt; readAllGenericEntity(Class&lt;T&gt; clazz, int limit, int offset) {
+<span class="nc" id="L109">        clazz = (Class&lt;T&gt;) DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L110">        TypedQuery&lt;T&gt; q = new TypedQueryBuilder&lt;T&gt;(clazz, &quot;root&quot;).toQuery(em);</span>
+<span class="nc" id="L111">        q.setMaxResults(limit);</span>
+<span class="nc" id="L112">        q.setFirstResult(offset);</span>
+<span class="nc" id="L113">        return q.getResultList();</span>
+    }
+
+    @Override
+    public &lt;T&gt; List&lt;T&gt; readAllGenericEntity(Class&lt;T&gt; clazz) {
+<span class="nc" id="L118">        clazz = (Class&lt;T&gt;) DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L119">        TypedQuery&lt;T&gt; q = new TypedQueryBuilder&lt;T&gt;(clazz, &quot;root&quot;).toQuery(em);</span>
+<span class="nc" id="L120">        return q.getResultList();</span>
+    }
+
+    @Override
+    public List&lt;Long&gt; readAllGenericEntityId(Class&lt;?&gt; clazz) {
+<span class="nc" id="L125">        clazz = DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L126">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L127">        CriteriaQuery&lt;Long&gt; criteria = builder.createQuery(Long.class);</span>
+<span class="nc" id="L128">        Root root = criteria.from(clazz);</span>
+<span class="nc" id="L129">        criteria.select(root.get(getIdField(clazz).getName()).as(Long.class));</span>
+<span class="nc" id="L130">        criteria.orderBy(builder.asc(root.get(getIdField(clazz).getName())));</span>
+
+<span class="nc" id="L132">        return em.createQuery(criteria).getResultList();</span>
+    }
+
+    @Override
+    public Class&lt;?&gt; getImplClass(String className) {
+<span class="nc" id="L137">        Class&lt;?&gt; clazz = null;</span>
+        try {
+<span class="nc" id="L139">            clazz = entityConfiguration.lookupEntityClass(className);</span>
+<span class="nc" id="L140">        } catch (NoSuchBeanDefinitionException e) {</span>
+            //do nothing
+<span class="nc" id="L142">        }</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (clazz == null) {</span>
+            try {
+<span class="nc" id="L145">                clazz = Class.forName(className);</span>
+<span class="nc" id="L146">            } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L147">                throw new RuntimeException(e);</span>
+<span class="nc" id="L148">            }</span>
+<span class="nc" id="L149">            clazz = DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(clazz);</span>
+        }
+<span class="nc" id="L151">        return clazz;</span>
+    }
+    
+    @Override
+    public Class&lt;?&gt; getCeilingImplClass(String className) {
+        Class&lt;?&gt; clazz;
+        try {
+<span class="nc" id="L158">            clazz = Class.forName(className);</span>
+<span class="nc" id="L159">        } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L160">            throw new RuntimeException(e);</span>
+<span class="nc" id="L161">        }</span>
+<span class="nc" id="L162">        Class&lt;?&gt;[] entitiesFromCeiling = daoHelper.getAllPolymorphicEntitiesFromCeiling(clazz, em.unwrap(Session.class).getSessionFactory(), true, true);</span>
+<span class="nc bnc" id="L163" title="All 4 branches missed.">        if (entitiesFromCeiling == null || entitiesFromCeiling.length &lt; 1) {</span>
+<span class="nc" id="L164">            clazz = DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L165">            entitiesFromCeiling = daoHelper.getAllPolymorphicEntitiesFromCeiling(clazz, em.unwrap(Session.class).getSessionFactory(), true, true);</span>
+        }
+<span class="nc bnc" id="L167" title="All 4 branches missed.">        if (entitiesFromCeiling == null || entitiesFromCeiling.length &lt; 1) {</span>
+<span class="nc" id="L168">            throw new IllegalArgumentException(String.format(&quot;Unable to find ceiling implementation for the requested class name (%s)&quot;, className));</span>
+        }
+<span class="nc" id="L170">        clazz = entitiesFromCeiling[entitiesFromCeiling.length - 1];</span>
+<span class="nc" id="L171">        return clazz;</span>
+    }
+
+    @Override
+    public Serializable getIdentifier(Object entity) {
+<span class="nc" id="L176">        return daoHelper.getIdentifier(entity, em);</span>
+    }
+
+    protected Field getIdField(Class&lt;?&gt; clazz) {
+<span class="nc" id="L180">        return daoHelper.getIdField(clazz, em);</span>
+    }
+    
+    @Override
+    public &lt;T&gt; T save(T object) {
+<span class="nc" id="L185">        return em.merge(object);</span>
+    }
+
+    @Override
+    public void persist(Object object) {
+<span class="nc" id="L190">        em.persist(object);</span>
+<span class="nc" id="L191">    }</span>
+
+    @Override
+    public void remove(Object object) {
+<span class="nc" id="L195">        em.remove(object);</span>
+<span class="nc" id="L196">    }</span>
+
+    @Override
+    public void flush() {
+<span class="nc" id="L200">        em.flush();</span>
+<span class="nc" id="L201">    }</span>
+
+    @Override
+    public void clearAutoFlushMode() {
+<span class="nc" id="L205">        em.unwrap(Session.class).setFlushMode(FlushMode.MANUAL);</span>
+<span class="nc" id="L206">    }</span>
+
+    @Override
+    public void enableAutoFlushMode() {
+<span class="nc" id="L210">        em.unwrap(Session.class).setFlushMode(FlushMode.AUTO);</span>
+<span class="nc" id="L211">    }</span>
+
+    @Override
+    public void clear() {
+<span class="nc" id="L215">        em.clear();</span>
+<span class="nc" id="L216">    }</span>
+
+    @Override
+    public boolean sessionContains(Object object) {
+<span class="nc" id="L220">        return em.contains(object);</span>
+    }
+
+    @Override
+    public boolean idAssigned(Object object) {
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        return getIdentifier(object) != null;</span>
+    }
+
+    @Override
+    public EntityManager getEntityManager() {
+<span class="nc" id="L230">        return em;</span>
+    }
+
+    @Override
+    public List&lt;Long&gt; readOtherEntitiesWithPropertyValue(Serializable instance, String propertyName, String value) {
+<span class="nc" id="L235">        Class clazz = DynamicDaoHelperImpl.getNonProxyImplementationClassIfNecessary(instance.getClass());</span>
+
+<span class="nc" id="L237">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L238">        CriteriaQuery&lt;Long&gt; criteria = builder.createQuery(Long.class);</span>
+<span class="nc" id="L239">        Root root = criteria.from(clazz);</span>
+<span class="nc" id="L240">        Path idField = root.get(getIdField(clazz).getName());</span>
+<span class="nc" id="L241">        criteria.select(idField.as(Long.class));</span>
+
+<span class="nc" id="L243">        List&lt;Predicate&gt; restrictions = new ArrayList&lt;Predicate&gt;();</span>
+<span class="nc" id="L244">        restrictions.add(builder.equal(root.get(propertyName), value));</span>
+<span class="nc" id="L245">        restrictions.add(builder.notEqual(idField, getIdentifier(instance)));</span>
+
+<span class="nc bnc" id="L247" title="All 2 branches missed.">        if (instance instanceof Status) {</span>
+<span class="nc" id="L248">            restrictions.add(builder.or(</span>
+                    builder.isNull(root.get(&quot;archiveStatus&quot;).get(&quot;archived&quot;)),
+                    builder.equal(root.get(&quot;archiveStatus&quot;).get(&quot;archived&quot;), 'N')));
+        }
+
+<span class="nc" id="L253">        criteria.where(restrictions.toArray(new Predicate[restrictions.size()]));</span>
+
+<span class="nc" id="L255">        return em.createQuery(criteria).getResultList();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

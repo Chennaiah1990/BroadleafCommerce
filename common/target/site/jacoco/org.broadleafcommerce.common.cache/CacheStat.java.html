@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CacheStat.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.cache</a> &gt; <span class="el_source">CacheStat.java</span></div><h1>CacheStat.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.cache;
+
+import java.math.BigDecimal;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.broadleafcommerce.common.time.SystemTime;
+
+/**
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L30">public class CacheStat {</span>
+
+<span class="nc" id="L32">    protected AtomicLong requestCount = new AtomicLong(0L);</span>
+<span class="nc" id="L33">    protected AtomicLong cacheHitCount = new AtomicLong(0L);</span>
+<span class="nc" id="L34">    protected Long lastLogTime = SystemTime.asMillis(true);</span>
+
+    public Long getCacheHitCount() {
+<span class="nc" id="L37">        return cacheHitCount.longValue();</span>
+    }
+
+    public Long getLastLogTime() {
+<span class="nc" id="L41">        return lastLogTime;</span>
+    }
+
+    public synchronized void setLastLogTime(Long lastLogTime) {
+<span class="nc" id="L45">        this.lastLogTime = lastLogTime;</span>
+<span class="nc" id="L46">    }</span>
+
+    public Long getRequestCount() {
+<span class="nc" id="L49">        return requestCount.longValue();</span>
+    }
+
+    public void incrementRequest() {
+<span class="nc" id="L53">        requestCount.incrementAndGet();</span>
+<span class="nc" id="L54">    }</span>
+
+    public void incrementHit() {
+<span class="nc" id="L57">        cacheHitCount.incrementAndGet();</span>
+<span class="nc" id="L58">    }</span>
+
+    public BigDecimal getHitRate() {
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        if (getRequestCount() == 0) {</span>
+<span class="nc" id="L62">            return new BigDecimal(-1);</span>
+        }
+<span class="nc" id="L64">        BigDecimal percentage = new BigDecimal(getCacheHitCount()).divide(new BigDecimal(getRequestCount</span>
+                ()), 2, BigDecimal.ROUND_HALF_UP);
+<span class="nc" id="L66">        percentage = percentage.multiply(new BigDecimal(100)).setScale(2, BigDecimal.ROUND_HALF_UP);</span>
+<span class="nc" id="L67">        return percentage;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

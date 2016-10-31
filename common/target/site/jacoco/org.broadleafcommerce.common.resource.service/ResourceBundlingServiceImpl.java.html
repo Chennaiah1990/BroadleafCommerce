@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ResourceBundlingServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.resource.service</a> &gt; <span class="el_source">ResourceBundlingServiceImpl.java</span></div><h1>ResourceBundlingServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.resource.service;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.cache.StatisticsService;
+import org.broadleafcommerce.common.file.domain.FileWorkArea;
+import org.broadleafcommerce.common.file.service.BroadleafFileService;
+import org.broadleafcommerce.common.resource.GeneratedResource;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.broadleafcommerce.common.web.resource.BroadleafDefaultResourceResolverChain;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StreamUtils;
+import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.resource.ResourceHttpRequestHandler;
+import org.springframework.web.servlet.resource.ResourceResolverChain;
+
+import de.jkeylockmanager.manager.KeyLockManager;
+import de.jkeylockmanager.manager.KeyLockManagers;
+import de.jkeylockmanager.manager.LockCallback;
+
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * @see ResourceBundlingService
+ * @author Andre Azzolini (apazzolini)
+ * @author Brian Polster (bpolster)
+ */
+@Service(&quot;blResourceBundlingService&quot;)
+<span class="nc" id="L69">public class ResourceBundlingServiceImpl implements ResourceBundlingService {</span>
+<span class="nc" id="L70">    protected static final Log LOG = LogFactory.getLog(ResourceBundlingServiceImpl.class);</span>
+
+    // Map of known unversioned bundle names ==&gt; additional files that should be included
+    // Configured via XML
+    // ex: &quot;global.js&quot; ==&gt; [&quot;classpath:/file1.js&quot;, &quot;/js/file2.js&quot;]
+<span class="nc" id="L75">    protected Map&lt;String, List&lt;String&gt;&gt; additionalBundleFiles = new HashMap&lt;String, List&lt;String&gt;&gt;();</span>
+            
+    @javax.annotation.Resource(name = &quot;blFileService&quot;)
+    protected BroadleafFileService fileService;
+
+    @Autowired(required = false)
+    @Qualifier(&quot;blJsResources&quot;)
+    protected ResourceHttpRequestHandler jsResourceHandler;
+
+    @Autowired(required = false)
+    @Qualifier(&quot;blCssResources&quot;)
+    protected ResourceHttpRequestHandler cssResourceHandler;
+
+    @javax.annotation.Resource(name=&quot;blStatisticsService&quot;)
+    protected StatisticsService statisticsService;
+
+<span class="nc" id="L91">    private KeyLockManager keyLockManager = KeyLockManagers.newLock();</span>
+
+<span class="nc" id="L93">    private ConcurrentHashMap&lt;String, Resource&gt; createdBundles = new ConcurrentHashMap&lt;String, Resource&gt;();</span>
+    
+    @Override
+    public String resolveBundleResourceName(String requestedBundleName, String mappingPrefix, List&lt;String&gt; files) {
+     
+<span class="nc" id="L98">        ResourceHttpRequestHandler resourceRequestHandler = findResourceHttpRequestHandler(requestedBundleName);</span>
+<span class="nc bnc" id="L99" title="All 4 branches missed.">        if (resourceRequestHandler != null &amp;&amp; CollectionUtils.isNotEmpty(files)) {</span>
+<span class="nc" id="L100">            ResourceResolverChain resolverChain = new BroadleafDefaultResourceResolverChain(</span>
+                    resourceRequestHandler.getResourceResolvers());
+<span class="nc" id="L102">            List&lt;Resource&gt; locations = resourceRequestHandler.getLocations();</span>
+                    
+<span class="nc" id="L104">            StringBuilder combinedPathString = new StringBuilder();</span>
+<span class="nc" id="L105">            List&lt;String&gt; filePaths = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">            for (String file : files) {</span>
+<span class="nc" id="L107">                String resourcePath = resolverChain.resolveUrlPath(file, locations);</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">                if (resourcePath == null) {</span>
+                    // can't find the exact name specified in the bundle, try it with the mappingPrefix
+<span class="nc" id="L110">                    resourcePath = resolverChain.resolveUrlPath(mappingPrefix + file, locations);</span>
+                }
+                
+<span class="nc bnc" id="L113" title="All 2 branches missed.">                if (resourcePath != null) {</span>
+<span class="nc" id="L114">                    filePaths.add(resourcePath);</span>
+<span class="nc" id="L115">                    combinedPathString.append(resourcePath);</span>
+                } else {
+<span class="nc" id="L117">                    LOG.warn(new StringBuilder().append(&quot;Could not resolve resource path specified in bundle as [&quot;)</span>
+                            .append(file)
+                            .append(&quot;] or as [&quot;)
+                            .append(mappingPrefix + file)
+                            .append(&quot;]. Skipping file.&quot;)
+                            .toString());
+                }
+<span class="nc" id="L124">            }</span>
+
+<span class="nc" id="L126">            int version = Math.abs(combinedPathString.toString().hashCode());</span>
+<span class="nc" id="L127">            String versionedBundleName = mappingPrefix + addVersion(requestedBundleName, &quot;-&quot; + String.valueOf(version));</span>
+        
+<span class="nc" id="L129">            createBundleIfNeeded(versionedBundleName, filePaths, resolverChain, locations);</span>
+
+<span class="nc" id="L131">            return versionedBundleName;</span>
+        } else {
+<span class="nc bnc" id="L133" title="All 2 branches missed.">            if (LOG.isWarnEnabled()) {</span>
+<span class="nc" id="L134">                LOG.warn(&quot;&quot;);</span>
+            }
+<span class="nc" id="L136">            return null;</span>
+        }
+    }
+
+    @Override
+    public Resource resolveBundleResource(String versionedBundleResourceName) {
+<span class="nc" id="L142">        return createdBundles.get(lookupBundlePath(versionedBundleResourceName));</span>
+    }
+
+    @Override
+    public boolean checkForRegisteredBundleFile(String versionedBundleName) {
+<span class="nc" id="L147">        versionedBundleName = lookupBundlePath(versionedBundleName);</span>
+<span class="nc" id="L148">        boolean bundleRegistered = createdBundles.containsKey(versionedBundleName);</span>
+
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L151">            LOG.trace(&quot;Checking for registered bundle file, versionedBundleName=\&quot;&quot; + versionedBundleName + &quot;\&quot; bundleRegistered=\&quot;&quot; + bundleRegistered + &quot;\&quot;&quot;);</span>
+        }
+<span class="nc" id="L153">        return bundleRegistered;</span>
+    }
+
+    protected String lookupBundlePath(String requestPath) {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        if (requestPath.contains(&quot;.css&quot;)) {</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">            if (!requestPath.startsWith(&quot;/css/&quot;)) {</span>
+<span class="nc" id="L159">                requestPath = &quot;/css/&quot; + requestPath;</span>
+            }
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        } else if (requestPath.contains(&quot;.js&quot;)) {</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">            if (!requestPath.startsWith(&quot;/js/&quot;)) {</span>
+<span class="nc" id="L163">                requestPath = &quot;/js/&quot; + requestPath;</span>
+            }
+        }
+<span class="nc" id="L166">        return requestPath;</span>
+    }
+
+    protected void createBundleIfNeeded(final String versionedBundleName, final List&lt;String&gt; filePaths,
+            final ResourceResolverChain resolverChain, final List&lt;Resource&gt; locations) {
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        if (!createdBundles.containsKey(versionedBundleName)) {</span>
+<span class="nc" id="L172">            keyLockManager.executeLocked(versionedBundleName, new LockCallback() {</span>
+
+                @Override
+                public void doInLock() {
+<span class="nc" id="L176">                    Resource bundleResource = createdBundles.get(versionedBundleName);</span>
+<span class="nc bnc" id="L177" title="All 4 branches missed.">                    if (bundleResource == null || !bundleResource.exists()) {</span>
+<span class="nc" id="L178">                        bundleResource = createBundle(versionedBundleName, filePaths, resolverChain, locations);</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">                        if (bundleResource != null) {</span>
+<span class="nc" id="L180">                            saveBundle(bundleResource);</span>
+                        }
+<span class="nc" id="L182">                        Resource savedResource = readBundle(versionedBundleName);</span>
+<span class="nc" id="L183">                        createdBundles.put(versionedBundleName, savedResource);</span>
+                    }
+<span class="nc" id="L185">                }</span>
+            });
+        }
+<span class="nc" id="L188">    }</span>
+    
+    protected Resource createBundle(String versionedBundleName, List&lt;String&gt; filePaths,
+            ResourceResolverChain resolverChain, List&lt;Resource&gt; locations) {
+
+<span class="nc" id="L193">        HttpServletRequest req = BroadleafRequestContext.getBroadleafRequestContext().getRequest();</span>
+
+<span class="nc" id="L195">        ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L196">        byte[] bytes = null;</span>
+        
+        // Join all of the resources for this bundle together into a byte[]
+        try {
+<span class="nc bnc" id="L200" title="All 2 branches missed.">            for (String fileName : filePaths) {</span>
+<span class="nc" id="L201">                Resource r = resolverChain.resolveResource(req, fileName, locations);</span>
+<span class="nc" id="L202">                InputStream is = null;</span>
+                
+<span class="nc bnc" id="L204" title="All 2 branches missed.">                if (r == null) {</span>
+<span class="nc" id="L205">                    LOG.warn(new StringBuilder().append(&quot;Could not resolve resource specified in bundle as [&quot;)</span>
+                            .append(fileName)
+                            .append(&quot;]. Turn on trace logging to determine resolution failure. Skipping file.&quot;)
+                            .toString());
+                } else {
+                    try {
+<span class="nc" id="L211">                        is = r.getInputStream();</span>
+<span class="nc" id="L212">                        StreamUtils.copy(is, baos);</span>
+<span class="nc" id="L213">                    } catch (IOException e) {</span>
+<span class="nc" id="L214">                        throw new RuntimeException(e);</span>
+                    } finally {
+<span class="nc" id="L216">                        IOUtils.closeQuietly(is);</span>
+<span class="nc" id="L217">                    }</span>
+                    
+                    // If we're creating a JavaScript bundle, we'll put a semicolon between each
+                    // file to ensure it won't fail to compile.
+<span class="nc bnc" id="L221" title="All 2 branches missed.">                    if (versionedBundleName.endsWith(&quot;.js&quot;)) {</span>
+<span class="nc" id="L222">                        baos.write(&quot;;&quot;.getBytes());</span>
+                    }
+<span class="nc" id="L224">                    baos.write(System.getProperty(&quot;line.separator&quot;).getBytes());</span>
+                }
+<span class="nc" id="L226">            }</span>
+<span class="nc" id="L227">            bytes = baos.toByteArray();</span>
+<span class="nc" id="L228">        } catch (IOException e) {</span>
+<span class="nc" id="L229">            throw new RuntimeException(e);</span>
+        } finally {
+<span class="nc" id="L231">            IOUtils.closeQuietly(baos);</span>
+<span class="nc" id="L232">        }</span>
+        
+        // Create our GenerateResource that holds our combined bundle
+<span class="nc" id="L235">        GeneratedResource r = new GeneratedResource(bytes, versionedBundleName);</span>
+<span class="nc" id="L236">        return r;</span>
+    }
+    
+    protected void saveBundle(Resource resource) {
+<span class="nc" id="L240">        FileWorkArea tempWorkArea = fileService.initializeWorkArea();</span>
+<span class="nc" id="L241">        String fileToSave = FilenameUtils.separatorsToSystem(getResourcePath(resource.getDescription()));</span>
+<span class="nc" id="L242">        String tempFilename = FilenameUtils.concat(tempWorkArea.getFilePathLocation(), fileToSave);</span>
+<span class="nc" id="L243">        File tempFile = new File(tempFilename);</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        if (!tempFile.getParentFile().exists()) {</span>
+<span class="nc bnc" id="L245" title="All 2 branches missed.">            if (!tempFile.getParentFile().mkdirs()) {</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">                if (!tempFile.getParentFile().exists()) {</span>
+<span class="nc" id="L247">                    throw new RuntimeException(&quot;Unable to create parent directories for file: &quot; + tempFilename);</span>
+                }
+            }
+        }
+        
+<span class="nc" id="L252">        BufferedOutputStream out = null;</span>
+<span class="nc" id="L253">        InputStream ris = null;</span>
+        try {
+<span class="nc" id="L255">            ris = resource.getInputStream();</span>
+<span class="nc" id="L256">            out = new BufferedOutputStream(new FileOutputStream(tempFile));</span>
+<span class="nc" id="L257">            StreamUtils.copy(ris, out);</span>
+            
+<span class="nc" id="L259">            ris.close();</span>
+<span class="nc" id="L260">            out.close();</span>
+            
+<span class="nc" id="L262">            fileService.addOrUpdateResourceForPath(tempWorkArea, tempFile, true);</span>
+<span class="nc" id="L263">        } catch (IOException e) {</span>
+<span class="nc" id="L264">            throw new RuntimeException(e);</span>
+        } finally {
+<span class="nc" id="L266">            IOUtils.closeQuietly(ris);</span>
+<span class="nc" id="L267">            IOUtils.closeQuietly(out);</span>
+<span class="nc" id="L268">            fileService.closeWorkArea(tempWorkArea);</span>
+<span class="nc" id="L269">        }</span>
+<span class="nc" id="L270">    }</span>
+    
+    protected String getCacheKey(String unversionedBundleName, List&lt;String&gt; files) {
+<span class="nc" id="L273">        return unversionedBundleName;</span>
+    }
+    
+    protected String getBundleName(String bundleName, String version) {
+<span class="nc" id="L277">        String bundleWithoutExtension = bundleName.substring(0, bundleName.lastIndexOf('.'));</span>
+<span class="nc" id="L278">        String bundleExtension = bundleName.substring(bundleName.lastIndexOf('.'));</span>
+<span class="nc" id="L279">        String versionedName = bundleWithoutExtension + version + bundleExtension;</span>
+<span class="nc" id="L280">        return versionedName;</span>
+    }
+    
+    protected String getBundleVersion(LinkedHashMap&lt;String, Resource&gt; foundResources) throws IOException {
+<span class="nc" id="L284">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">        for (Entry&lt;String, Resource&gt; entry : foundResources.entrySet()) {</span>
+<span class="nc" id="L286">            sb.append(entry.getKey());</span>
+            
+<span class="nc bnc" id="L288" title="All 2 branches missed.">            if (entry.getValue() instanceof GeneratedResource) {</span>
+<span class="nc" id="L289">                sb.append(((GeneratedResource) entry.getValue()).getHashRepresentation());</span>
+            } else {
+<span class="nc" id="L291">                sb.append(entry.getValue().lastModified());</span>
+            }
+            
+<span class="nc" id="L294">            sb.append(&quot;\r\n&quot;);</span>
+<span class="nc" id="L295">        }</span>
+<span class="nc" id="L296">        String version = String.valueOf(sb.toString().hashCode());</span>
+<span class="nc" id="L297">        return version;</span>
+    }
+    
+    @Override
+    public List&lt;String&gt; getAdditionalBundleFiles(String bundleName) {
+<span class="nc" id="L302">        return additionalBundleFiles.get(bundleName);</span>
+    }
+
+    public void setAdditionalBundleFiles(Map&lt;String, List&lt;String&gt;&gt; additionalBundleFiles) {
+<span class="nc" id="L306">        this.additionalBundleFiles = additionalBundleFiles;</span>
+<span class="nc" id="L307">    }</span>
+
+    /**
+     * Copied from Spring 4.1 AbstractVersionStrategy
+     * @param requestPath
+     * @param version
+     * @return
+     */
+    protected String addVersion(String requestPath, String version) {
+<span class="nc" id="L316">        String baseFilename = StringUtils.stripFilenameExtension(requestPath);</span>
+<span class="nc" id="L317">        String extension = StringUtils.getFilenameExtension(requestPath);</span>
+<span class="nc" id="L318">        return baseFilename + version + &quot;.&quot; + extension;</span>
+    }
+    
+    protected Resource readBundle(String versionedBundleName) {
+<span class="nc" id="L322">        File bundleFile = fileService.getResource(&quot;/&quot; + getResourcePath(versionedBundleName));</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">        return bundleFile == null ? null : new FileSystemResource(bundleFile);</span>
+    }
+    
+
+    protected ResourceHttpRequestHandler findResourceHttpRequestHandler(String resourceName) {
+<span class="nc" id="L328">        resourceName = resourceName.toLowerCase();</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">        if (isJavaScriptResource(resourceName)) {</span>
+<span class="nc" id="L330">            return jsResourceHandler;</span>
+<span class="nc bnc" id="L331" title="All 2 branches missed.">        } else if (isCSSResource(resourceName)) {</span>
+<span class="nc" id="L332">            return cssResourceHandler;</span>
+        } else {
+<span class="nc" id="L334">            return null;</span>
+        }
+    }
+    
+    protected boolean isJavaScriptResource(String resourceName) {
+<span class="nc bnc" id="L339" title="All 4 branches missed.">        return (resourceName != null &amp;&amp; resourceName.contains(&quot;.js&quot;));</span>
+    }
+    
+    protected boolean isCSSResource(String resourceName) {
+<span class="nc bnc" id="L343" title="All 4 branches missed.">        return (resourceName != null &amp;&amp; resourceName.contains(&quot;.css&quot;));</span>
+    }
+
+    /**
+     * Returns the resource path for the given &lt;b&gt;name&lt;/b&gt; in URL-format (meaning, / separators)
+     * @param name
+     * @return
+     */
+    protected String getResourcePath(String name) {
+<span class="nc bnc" id="L352" title="All 2 branches missed.">        if (name.startsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L353">            return &quot;bundles&quot; + name;</span>
+        } else {
+<span class="nc" id="L355">            return &quot;bundles/&quot; + name;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

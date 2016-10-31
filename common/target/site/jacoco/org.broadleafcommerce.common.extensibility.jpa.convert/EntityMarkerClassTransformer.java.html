@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityMarkerClassTransformer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa.convert</a> &gt; <span class="el_source">EntityMarkerClassTransformer.java</span></div><h1>EntityMarkerClassTransformer.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa.convert;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extensibility.jpa.MergePersistenceUnitManager;
+import org.broadleafcommerce.common.extensibility.jpa.copy.AbstractClassTransformer;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyIgnorePattern;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
+
+import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.ClassFile;
+import javassist.bytecode.annotation.Annotation;
+
+import javax.annotation.Resource;
+import javax.persistence.Embeddable;
+import javax.persistence.Entity;
+import javax.persistence.MappedSuperclass;
+
+/**
+ * &lt;p&gt;
+ * This class transformer will check to see if there is class that should have been loaded by the {@link MergePersistenceUnitManager}
+ * (meaning, it has an @Entity, @MappedSuperclass or @Embeddable annotation on it and will be inside of a persistence.xml).
+ * If it it should have, it will add the fully qualified classname of that class to the transformedClassNames list.
+ * 
+ * &lt;p&gt;
+ * This is a validation check to ensure that the class transformers are actually working properly
+ * 
+ * @author Andre Azzolini (apazzolini)
+ */
+<span class="nc" id="L58">public class EntityMarkerClassTransformer extends AbstractClassTransformer implements BroadleafClassTransformer {</span>
+<span class="nc" id="L59">    protected static final Log LOG = LogFactory.getLog(EntityMarkerClassTransformer.class);</span>
+    
+<span class="nc" id="L61">    protected HashSet&lt;String&gt; transformedEntityClassNames = new HashSet&lt;String&gt;();</span>
+    
+<span class="nc" id="L63">    protected HashSet&lt;String&gt; transformedNonEntityClassNames = new HashSet&lt;String&gt;();</span>
+    
+<span class="nc" id="L65">    @Resource(name = &quot;blDirectCopyIgnorePatterns&quot;)</span>
+    protected List&lt;DirectCopyIgnorePattern&gt; ignorePatterns = new ArrayList&lt;DirectCopyIgnorePattern&gt;();
+
+    @Override
+    public byte[] transform(ClassLoader loader, String className, Class&lt;?&gt; classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+        // Lambdas and anonymous methods in Java 8 do not have a class name defined and so no transformation should be done
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (className == null) {</span>
+<span class="nc" id="L72">            return null;</span>
+        }
+
+<span class="nc" id="L75">        String convertedClassName = className.replace('/', '.');</span>
+        
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (isIgnored(convertedClassName)) {</span>
+<span class="nc" id="L78">            return null;</span>
+        }
+
+        try {
+<span class="nc" id="L82">            ClassFile classFile = new ClassFile(new DataInputStream(new ByteArrayInputStream(classfileBuffer)));</span>
+<span class="nc" id="L83">            List&lt;?&gt; attributes = classFile.getAttributes();</span>
+<span class="nc" id="L84">            Iterator&lt;?&gt; itr = attributes.iterator();</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">            while (itr.hasNext()) {</span>
+<span class="nc" id="L86">                Object object = itr.next();</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">                if (AnnotationsAttribute.class.isAssignableFrom(object.getClass())) {</span>
+<span class="nc" id="L88">                    boolean containsTypeLevelAnnotation = containsTypeLevelPersistenceAnnotation(((AnnotationsAttribute) object).getAnnotations());</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">                    if (containsTypeLevelAnnotation) {</span>
+<span class="nc" id="L90">                        LOG.debug(&quot;Marking &quot; + convertedClassName + &quot; as transformed&quot;);</span>
+<span class="nc" id="L91">                        transformedEntityClassNames.add(convertedClassName);</span>
+                    } else {
+<span class="nc" id="L93">                        LOG.debug(&quot;Marking &quot; + convertedClassName + &quot; as picked up by the transformer but not detected as an entity&quot;);</span>
+<span class="nc" id="L94">                        transformedNonEntityClassNames.add(convertedClassName);</span>
+                    }
+                }
+<span class="nc" id="L97">            }</span>
+<span class="nc" id="L98">        } catch (Exception e) {</span>
+<span class="nc" id="L99">            LOG.error(e);</span>
+<span class="nc" id="L100">            throw new IllegalClassFormatException(&quot;Unable to mark &quot; + convertedClassName + &quot; as transformed.&quot;);</span>
+<span class="nc" id="L101">        }</span>
+        
+        // We don't need to transform anything, so we'll return null
+<span class="nc" id="L104">        return null;</span>
+    }
+    
+    /**
+     * Determines if a given annotation set contains annotations that correspond to ones that someone would expect to appear
+     * in a persistence.xml
+     * 
+     * @param annotations
+     * @return
+     */
+    protected boolean containsTypeLevelPersistenceAnnotation(Annotation[] annotations) {
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        for (Annotation annotation : annotations) {</span>
+<span class="nc bnc" id="L116" title="All 6 branches missed.">            if (annotation.getTypeName().equals(Entity.class.getName())</span>
+                    || annotation.getTypeName().equals(Embeddable.class.getName())
+                    || annotation.getTypeName().equals(MappedSuperclass.class.getName())) {
+<span class="nc" id="L119">                return true;</span>
+            }
+        }
+<span class="nc" id="L122">        return false;</span>
+    }
+    
+    protected boolean isIgnored(String convertedClassName) {
+<span class="nc" id="L126">        boolean isValidPattern = true;</span>
+<span class="nc" id="L127">        List&lt;DirectCopyIgnorePattern&gt; matchedPatterns = new ArrayList&lt;DirectCopyIgnorePattern&gt;();</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        for (DirectCopyIgnorePattern pattern : ignorePatterns) {</span>
+<span class="nc" id="L129">            boolean isPatternMatch = false;</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">            for (String patternString : pattern.getPatterns()) {</span>
+<span class="nc" id="L131">                isPatternMatch = convertedClassName.matches(patternString);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">                if (isPatternMatch) {</span>
+<span class="nc" id="L133">                    break;</span>
+                }
+            }
+<span class="nc bnc" id="L136" title="All 2 branches missed.">            if (isPatternMatch) {</span>
+<span class="nc" id="L137">                matchedPatterns.add(pattern);</span>
+            }
+<span class="nc bnc" id="L139" title="All 4 branches missed.">            isValidPattern = !(isPatternMatch &amp;&amp; pattern.getTemplateTokenPatterns() == null);</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">            if (!isValidPattern) {</span>
+<span class="nc" id="L141">                break;</span>
+            }
+<span class="nc" id="L143">        }</span>
+        
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        return !isValidPattern;</span>
+    }
+
+    @Override
+    public void compileJPAProperties(Properties props, Object key) throws Exception {
+        // When performing the check that this class transformer does, JPA properties do not need modificiation
+<span class="nc" id="L151">    }</span>
+    
+    /**
+     * @return a list of fully qualified classnames of class that have an @Entity, @MappedSuperclass or @Embeddable
+     * annotation and were picked
+     * up by this class transformer (meaning that other class transformers also would have had a chance to
+     * perform their necessary work on those classes)
+     */
+    public HashSet&lt;String&gt; getTransformedEntityClassNames() {
+<span class="nc" id="L160">        return transformedEntityClassNames;</span>
+    }
+    
+    /**
+     * @return a list of fully qualified classnames of classes that &lt;b&gt;do not&lt;/b&gt; have an @Entity, @MappedSuperclass or @Embeddable
+     * annotation but were picked up by this class transformer. This usually results in a benign misconfiguration as there are
+     * unnecessary classes within the {@link MergePersistenceUnitManager}
+     */
+    public HashSet&lt;String&gt; getTransformedNonEntityClassNames() {
+<span class="nc" id="L169">        return transformedNonEntityClassNames;</span>
+    }
+
+    public List&lt;DirectCopyIgnorePattern&gt; getIgnorePatterns() {
+<span class="nc" id="L173">        return ignorePatterns;</span>
+    }
+
+    public void setIgnorePatterns(List&lt;DirectCopyIgnorePattern&gt; ignorePatterns) {
+<span class="nc" id="L177">        this.ignorePatterns = ignorePatterns;</span>
+<span class="nc" id="L178">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

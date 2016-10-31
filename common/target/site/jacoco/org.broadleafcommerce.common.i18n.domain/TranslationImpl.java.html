@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TranslationImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.i18n.domain</a> &gt; <span class="el_source">TranslationImpl.java</span></div><h1>TranslationImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.i18n.domain;
+
+import org.broadleafcommerce.common.copy.CreateResponse;
+import org.broadleafcommerce.common.copy.MultiTenantCopyContext;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.broadleafcommerce.common.presentation.PopulateToOneFieldsEnum;
+import org.broadleafcommerce.common.presentation.RequiredOverride;
+import org.broadleafcommerce.common.presentation.client.VisibilityEnum;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Index;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Table;
+import org.hibernate.annotations.Type;
+
+import java.io.Serializable;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.Lob;
+
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@javax.persistence.Table(name = &quot;BLC_TRANSLATION&quot;)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = &quot;blTranslationElements&quot;)
+@AdminPresentationClass(populateToOneFields = PopulateToOneFieldsEnum.TRUE, friendlyName = &quot;TranslationImpl_baseTranslation&quot;)
+//multi-column indexes don't appear to get exported correctly when declared at the field level, so declaring here as a workaround
+@Table(appliesTo = &quot;BLC_TRANSLATION&quot;, indexes = {
+        @Index(name = &quot;TRANSLATION_INDEX&quot;, columnNames = { &quot;ENTITY_TYPE&quot;, &quot;ENTITY_ID&quot;, &quot;FIELD_NAME&quot;, &quot;LOCALE_CODE&quot; })
+})
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.SANDBOX, skipOverlaps = true),
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_CATALOG),
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_SITE)
+})
+<span class="nc" id="L65">public class TranslationImpl implements Serializable, Translation {</span>
+
+    private static final long serialVersionUID = -122818474469147685L;
+
+    @Id
+    @GeneratedValue(generator = &quot;TranslationId&quot;)
+    @GenericGenerator(
+            name = &quot;TranslationId&quot;,
+            strategy = &quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+            parameters = {
+                    @Parameter(name = &quot;segment_value&quot;, value = &quot;TranslationImpl&quot;),
+                    @Parameter(name = &quot;entity_name&quot;, value = &quot;org.broadleafcommerce.common.i18n.domain.TranslationImpl&quot;)
+            })
+    @Column(name = &quot;TRANSLATION_ID&quot;)
+    protected Long id;
+
+    @Column(name = &quot;ENTITY_TYPE&quot;)
+    @AdminPresentation(friendlyName = &quot;TranslationImpl_EntityType&quot;, prominent = true)
+    protected String entityType;
+
+    @Column(name = &quot;ENTITY_ID&quot;)
+    @AdminPresentation(visibility = VisibilityEnum.HIDDEN_ALL)
+    protected String entityId;
+
+    @Column(name = &quot;FIELD_NAME&quot;)
+    @AdminPresentation(friendlyName = &quot;TranslationImpl_FieldName&quot;, prominent = true)
+    protected String fieldName;
+
+    @Column(name = &quot;LOCALE_CODE&quot;)
+    @AdminPresentation(friendlyName = &quot;TranslationImpl_LocaleCode&quot;, prominent = true)
+    protected String localeCode;
+
+    @Column(name = &quot;TRANSLATED_VALUE&quot;, length = Integer.MAX_VALUE - 1)
+    @Lob
+    @Type(type = &quot;org.hibernate.type.StringClobType&quot;)
+    @AdminPresentation(friendlyName = &quot;TranslationImpl_TranslatedValue&quot;, prominent = true, requiredOverride = RequiredOverride.REQUIRED)
+    protected String translatedValue;
+
+    /* ************************ */
+    /* CUSTOM GETTERS / SETTERS */
+    /* ************************ */
+
+    @Override
+    public TranslatedEntity getEntityType() {
+<span class="nc" id="L109">        return TranslatedEntity.getInstanceFromFriendlyType(entityType);</span>
+    }
+
+    @Override
+    public void setEntityType(TranslatedEntity entityType) {
+<span class="nc" id="L114">        this.entityType = entityType.getFriendlyType();</span>
+<span class="nc" id="L115">    }</span>
+
+    /* ************************** */
+    /* STANDARD GETTERS / SETTERS */
+    /* ************************** */
+
+    @Override
+    public Long getId() {
+<span class="nc" id="L123">        return id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L128">        this.id = id;</span>
+<span class="nc" id="L129">    }</span>
+
+    @Override
+    public String getEntityId() {
+<span class="nc" id="L133">        return entityId;</span>
+    }
+
+    @Override
+    public void setEntityId(String entityId) {
+<span class="nc" id="L138">        this.entityId = entityId;</span>
+<span class="nc" id="L139">    }</span>
+
+    @Override
+    public String getFieldName() {
+<span class="nc" id="L143">        return fieldName;</span>
+    }
+
+    @Override
+    public void setFieldName(String fieldName) {
+<span class="nc" id="L148">        this.fieldName = fieldName;</span>
+<span class="nc" id="L149">    }</span>
+
+    @Override
+    public String getLocaleCode() {
+<span class="nc" id="L153">        return localeCode;</span>
+    }
+
+    @Override
+    public void setLocaleCode(String localeCode) {
+<span class="nc" id="L158">        this.localeCode = localeCode;</span>
+<span class="nc" id="L159">    }</span>
+
+    @Override
+    public String getTranslatedValue() {
+<span class="nc" id="L163">        return translatedValue;</span>
+    }
+
+    @Override
+    public void setTranslatedValue(String translatedValue) {
+<span class="nc" id="L168">        this.translatedValue = translatedValue;</span>
+<span class="nc" id="L169">    }</span>
+
+    @Override
+    public &lt;G extends Translation&gt; CreateResponse&lt;G&gt; createOrRetrieveCopyInstance(MultiTenantCopyContext context) throws CloneNotSupportedException {
+<span class="nc" id="L173">        CreateResponse&lt;G&gt; createResponse = context.createOrRetrieveCopyInstance(this);</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (createResponse.isAlreadyPopulated()) {</span>
+<span class="nc" id="L175">            return createResponse;</span>
+        }
+<span class="nc" id="L177">        Translation cloned = createResponse.getClone();</span>
+<span class="nc" id="L178">        cloned.setEntityId(entityId);</span>
+<span class="nc" id="L179">        cloned.setFieldName(fieldName);</span>
+<span class="nc" id="L180">        cloned.setLocaleCode(localeCode);</span>
+<span class="nc" id="L181">        cloned.setTranslatedValue(translatedValue);</span>
+<span class="nc" id="L182">        cloned.setEntityType(getEntityType());</span>
+<span class="nc" id="L183">        return createResponse;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

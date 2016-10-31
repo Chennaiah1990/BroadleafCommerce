@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SiteMapServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.sitemap.service</a> &gt; <span class="el_source">SiteMapServiceImpl.java</span></div><h1>SiteMapServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.sitemap.service;
+
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.config.domain.ModuleConfiguration;
+import org.broadleafcommerce.common.config.service.ModuleConfigurationService;
+import org.broadleafcommerce.common.config.service.type.ModuleConfigurationType;
+import org.broadleafcommerce.common.file.domain.FileWorkArea;
+import org.broadleafcommerce.common.file.service.BroadleafFileService;
+import org.broadleafcommerce.common.sitemap.domain.SiteMapConfiguration;
+import org.broadleafcommerce.common.sitemap.domain.SiteMapGeneratorConfiguration;
+import org.broadleafcommerce.common.sitemap.exception.SiteMapException;
+import org.broadleafcommerce.common.util.BLCSystemProperty;
+import org.broadleafcommerce.common.web.BaseUrlResolver;
+import org.springframework.stereotype.Service;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.zip.GZIPOutputStream;
+
+import javax.annotation.Resource;
+
+/**
+ * Component responsible for generating a sitemap.   Relies on SiteMapGenerators to 
+ * produce the actual url entries within the sitemap.
+ * 
+ * Create a sitemap index file and at least one sitemap file with the URL elements.
+ * 
+ * @author bpolster
+ *
+ */
+@Service(&quot;blSiteMapService&quot;)
+<span class="fc" id="L58">public class SiteMapServiceImpl implements SiteMapService {</span>
+
+<span class="fc" id="L60">    protected static final Log LOG = LogFactory.getLog(SiteMapServiceImpl.class);</span>
+    
+    protected static final String ENCODING_EXTENSION = &quot;.gz&quot;;
+
+    protected Boolean gzipSiteMapFiles;
+
+    @Resource(name = &quot;blModuleConfigurationService&quot;)
+    protected ModuleConfigurationService moduleConfigurationService;
+
+<span class="fc" id="L69">    @Resource(name = &quot;blSiteMapGenerators&quot;)</span>
+    protected List&lt;SiteMapGenerator&gt; siteMapGenerators = new ArrayList&lt;SiteMapGenerator&gt;();
+
+    @Resource(name = &quot;blFileService&quot;)
+    protected BroadleafFileService broadleafFileService;
+
+    @Resource(name = &quot;blBaseUrlResolver&quot;)
+    protected BaseUrlResolver baseUrlResolver;
+
+    @Override
+    public SiteMapGenerationResponse generateSiteMap() throws SiteMapException, IOException {
+<span class="fc" id="L80">        SiteMapGenerationResponse smgr = new SiteMapGenerationResponse();</span>
+<span class="fc" id="L81">        SiteMapConfiguration smc = findActiveSiteMapConfiguration();</span>
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        if (smc == null) {</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">            if (LOG.isWarnEnabled()) {</span>
+<span class="nc" id="L84">                LOG.warn(&quot;No SiteMap generated since no active configuration was found.&quot;);</span>
+            }
+<span class="nc" id="L86">            smgr.setHasError(true);</span>
+<span class="nc" id="L87">            smgr.setErrorCode(&quot;No SiteMap Configuration Found&quot;);</span>
+<span class="nc" id="L88">            return smgr;</span>
+        }
+
+<span class="fc" id="L91">        FileWorkArea fileWorkArea = broadleafFileService.initializeWorkArea();</span>
+<span class="fc" id="L92">        SiteMapBuilder siteMapBuilder = new SiteMapBuilder(smc, fileWorkArea, baseUrlResolver.getSiteBaseUrl(), getGzipSiteMapFiles());</span>
+
+<span class="pc bpc" id="L94" title="1 of 2 branches missed.">        if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L95">            LOG.trace(&quot;File work area initalized with path &quot; + fileWorkArea.getFilePathLocation());</span>
+        }
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        for (SiteMapGeneratorConfiguration currentConfiguration : smc.getSiteMapGeneratorConfigurations()) {</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">            if (currentConfiguration.isDisabled()) {</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L100">                    LOG.trace(&quot;Skipping disabled sitemap generator configuration&quot; + currentConfiguration.getId());</span>
+                }
+                continue;
+            }
+<span class="fc" id="L104">            SiteMapGenerator generator = selectSiteMapGenerator(currentConfiguration);</span>
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">            if (generator != null) {</span>
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L107">                    LOG.trace(&quot;SiteMapGenerator found, adding entries&quot; + generator.getClass());</span>
+                }
+<span class="fc" id="L109">                generator.addSiteMapEntries(currentConfiguration, siteMapBuilder);</span>
+            } else {
+<span class="nc" id="L111">                LOG.warn(&quot;No site map generator found to process generator configuration for &quot; + currentConfiguration.getSiteMapGeneratorType());</span>
+            }
+<span class="fc" id="L113">        }</span>
+
+<span class="fc" id="L115">        siteMapBuilder.persistSiteMap();</span>
+
+
+        // Check for GZip
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">        if (getGzipSiteMapFiles()) {</span>
+<span class="nc" id="L120">            gzipAndDeleteFiles(fileWorkArea, siteMapBuilder.getIndexedFileNames(), false);</span>
+<span class="nc" id="L121">            List&lt;String&gt; indexFileNames = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            for (String fileName: siteMapBuilder.getIndexedFileNames()) {</span>
+<span class="nc" id="L123">                indexFileNames.add(fileName + ENCODING_EXTENSION);</span>
+<span class="nc" id="L124">            }</span>
+<span class="nc" id="L125">            smgr.setSiteMapFilePaths(indexFileNames);</span>
+<span class="nc" id="L126">        } else {</span>
+<span class="fc" id="L127">            smgr.setSiteMapFilePaths(siteMapBuilder.getIndexedFileNames());</span>
+        }
+
+
+        // Move the generated files to their permanent location
+<span class="fc" id="L132">        broadleafFileService.addOrUpdateResources(fileWorkArea, true);</span>
+<span class="fc" id="L133">        broadleafFileService.closeWorkArea(fileWorkArea);</span>
+
+<span class="fc" id="L135">        return smgr;</span>
+    }
+
+    @Override
+    public File getSiteMapFile(String fileName) throws SiteMapException, IOException {
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L141">            LOG.trace(&quot;Method getSiteMapFile() invoked for &quot; + fileName);</span>
+        }
+<span class="nc" id="L143">        File siteMapFile = broadleafFileService.getResource(fileName, getSiteMapTimeoutInMillis());</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">        if (siteMapFile.exists()) {</span>
+
+<span class="nc bnc" id="L146" title="All 2 branches missed.">            if (getAutoGenerateSiteMapAfterTimeout()) {</span>
+<span class="nc" id="L147">                long lastModified = siteMapFile.lastModified();</span>
+<span class="nc" id="L148">                long now = System.currentTimeMillis();</span>
+                // Create new SiteMap if timeout expired.
+<span class="nc bnc" id="L150" title="All 2 branches missed.">                if ((now - lastModified) &gt; getSiteMapTimeoutInMillis().longValue()) {</span>
+<span class="nc" id="L151">                    generateSiteMap();</span>
+<span class="nc" id="L152">                    siteMapFile = broadleafFileService.getResource(fileName, getSiteMapTimeoutInMillis());</span>
+                }
+            }
+<span class="nc bnc" id="L155" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L156">                LOG.trace(&quot;Returning existing SiteMap&quot;);</span>
+            }
+<span class="nc" id="L158">            return siteMapFile;</span>
+
+        } else {
+<span class="nc bnc" id="L161" title="All 2 branches missed.">            if (getCreateSiteMapIfNotFound()) {</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L163">                    LOG.trace(&quot;Generating SiteMap&quot;);</span>
+                }
+<span class="nc" id="L165">                generateSiteMap();</span>
+<span class="nc" id="L166">                siteMapFile = broadleafFileService.getResource(fileName, getSiteMapTimeoutInMillis());</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">                if (siteMapFile.exists()) {</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">                    if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L169">                        LOG.trace(&quot;Returning SiteMap file &quot; + fileName);</span>
+                    }
+                } else {
+<span class="nc bnc" id="L172" title="All 2 branches missed.">                    if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L173">                        LOG.trace(&quot;Sitemap file &quot; + fileName + &quot; not found after call to generate siteMap.xml&quot;);</span>
+                    }
+                }
+<span class="nc" id="L176">                return siteMapFile;</span>
+            } else {
+<span class="nc" id="L178">                return null;</span>
+            }
+        }        
+    }
+
+    protected SiteMapConfiguration findActiveSiteMapConfiguration() {
+<span class="fc" id="L184">        List&lt;ModuleConfiguration&gt; configurations = moduleConfigurationService.findActiveConfigurationsByType(ModuleConfigurationType.SITE_MAP);</span>
+
+<span class="fc" id="L186">        SiteMapConfiguration smc = null;</span>
+<span class="pc bpc" id="L187" title="2 of 4 branches missed.">        if (configurations != null &amp;&amp; !configurations.isEmpty()) {</span>
+            //Try to find a default configuration           
+<span class="fc bfc" id="L189" title="All 2 branches covered.">            for (ModuleConfiguration configuration : configurations) {</span>
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">                if (configuration.getIsDefault()) {</span>
+<span class="nc" id="L191">                    smc = (SiteMapConfiguration) configuration;</span>
+<span class="nc" id="L192">                    break;</span>
+                }
+<span class="fc" id="L194">            }</span>
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">            if (smc == null) {</span>
+                //if there wasn't a default one, use the first active one...
+<span class="fc" id="L197">                smc = (SiteMapConfiguration) configurations.get(0);</span>
+            }
+        }
+
+<span class="fc" id="L201">        return smc;</span>
+    }
+
+    /**
+     * Returns the siteMapGenerator most qualified to handle the given configuration.     
+     * 
+     * @param smgc
+     * @return
+     */
+    protected SiteMapGenerator selectSiteMapGenerator(SiteMapGeneratorConfiguration smgc) {
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">        for (SiteMapGenerator siteMapGenerator : siteMapGenerators) {</span>
+<span class="pc bpc" id="L212" title="1 of 2 branches missed.">            if (siteMapGenerator.canHandleSiteMapConfiguration(smgc)) {</span>
+<span class="fc" id="L213">                return siteMapGenerator;</span>
+            }
+<span class="nc" id="L215">        }</span>
+<span class="nc" id="L216">        return null;</span>
+    }
+
+    /**
+     *
+     * @param fileWorkArea
+     * @param fileNames
+     */
+    protected void gzipAndDeleteFiles(FileWorkArea fileWorkArea, List&lt;String&gt; fileNames,boolean shouldDeleteOriginal){
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        for (String fileName : fileNames) {</span>
+            try {
+<span class="nc" id="L227">                String fileNameWithPath = FilenameUtils.normalize(fileWorkArea.getFilePathLocation() + File.separator + fileName);</span>
+
+<span class="nc" id="L229">                FileInputStream fis = new FileInputStream(fileNameWithPath);</span>
+<span class="nc" id="L230">                FileOutputStream fos = new FileOutputStream(fileNameWithPath + ENCODING_EXTENSION);</span>
+<span class="nc" id="L231">                GZIPOutputStream gzipOS = new GZIPOutputStream(fos);</span>
+<span class="nc" id="L232">                byte[] buffer = new byte[1024];</span>
+                int len;
+<span class="nc bnc" id="L234" title="All 2 branches missed.">                while ((len = fis.read(buffer)) != -1) {</span>
+<span class="nc" id="L235">                    gzipOS.write(buffer, 0, len);</span>
+                }
+                //close resources
+<span class="nc" id="L238">                gzipOS.close();</span>
+<span class="nc" id="L239">                fos.close();</span>
+<span class="nc" id="L240">                fis.close();</span>
+
+<span class="nc bnc" id="L242" title="All 2 branches missed.">                if(shouldDeleteOriginal){</span>
+<span class="nc" id="L243">                    File originalFile = new File(fileNameWithPath);</span>
+<span class="nc" id="L244">                    originalFile.delete();</span>
+                }
+
+
+<span class="nc" id="L248">            } catch (IOException e) {</span>
+<span class="nc" id="L249">                e.printStackTrace();</span>
+<span class="nc" id="L250">            }</span>
+<span class="nc" id="L251">        }</span>
+<span class="nc" id="L252">    }</span>
+
+    /**
+     * GZip a file, Then delete it
+     * @param fileWorkArea
+     * @param fileNames
+     */
+    protected void gzipAndDeleteFiles(FileWorkArea fileWorkArea, List&lt;String&gt; fileNames) {
+<span class="nc" id="L260">        gzipAndDeleteFiles(fileWorkArea,fileNames,true);</span>
+<span class="nc" id="L261">    }</span>
+
+
+    public List&lt;SiteMapGenerator&gt; getSiteMapGenerators() {
+<span class="nc" id="L265">        return siteMapGenerators;</span>
+    }
+
+    public void setSiteMapGenerators(List&lt;SiteMapGenerator&gt; siteMapGenerators) {
+<span class="fc" id="L269">        this.siteMapGenerators = siteMapGenerators;</span>
+<span class="fc" id="L270">    }</span>
+
+    public ModuleConfigurationService getModuleConfigurationService() {
+<span class="nc" id="L273">        return moduleConfigurationService;</span>
+    }
+
+    public void setModuleConfigurationService(ModuleConfigurationService moduleConfigurationService) {
+<span class="fc" id="L277">        this.moduleConfigurationService = moduleConfigurationService;</span>
+<span class="fc" id="L278">    }</span>
+
+    protected boolean getGzipSiteMapFilesDefault() {
+<span class="nc" id="L281">        return BLCSystemProperty.resolveBooleanSystemProperty(&quot;sitemap.gzip.files&quot;);</span>
+    }
+
+    public boolean getCreateSiteMapIfNotFound() {
+<span class="nc" id="L285">        return BLCSystemProperty.resolveBooleanSystemProperty(&quot;sitemap.createIfNotFound&quot;);</span>
+    }
+
+    public boolean getAutoGenerateSiteMapAfterTimeout() {
+<span class="nc" id="L289">        return BLCSystemProperty.resolveBooleanSystemProperty(&quot;sitemap.createIfTimeoutExpired&quot;,false);</span>
+    }
+
+    public Long getSiteMapTimeoutInMillis() {
+<span class="nc" id="L293">        Long cacheSeconds = BLCSystemProperty.resolveLongSystemProperty(&quot;sitemap.cache.seconds&quot;);</span>
+<span class="nc" id="L294">        return cacheSeconds * 1000;</span>
+    }
+
+
+    public void setGzipSiteMapFiles(Boolean gzipSiteMapFiles) {
+<span class="fc" id="L299">        this.gzipSiteMapFiles = gzipSiteMapFiles;</span>
+<span class="fc" id="L300">    }</span>
+
+    public boolean getGzipSiteMapFiles() {
+<span class="pc bpc" id="L303" title="1 of 2 branches missed.">        if (this.gzipSiteMapFiles != null) {</span>
+<span class="fc" id="L304">            return this.gzipSiteMapFiles.booleanValue();</span>
+        } else {
+<span class="nc" id="L306">            return getGzipSiteMapFilesDefault();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

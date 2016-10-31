@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SandBoxServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.sandbox.service</a> &gt; <span class="el_source">SandBoxServiceImpl.java</span></div><h1>SandBoxServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Open Admin Platform
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.sandbox.service;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.sandbox.dao.SandBoxDao;
+import org.broadleafcommerce.common.sandbox.domain.SandBox;
+import org.broadleafcommerce.common.sandbox.domain.SandBoxType;
+import org.broadleafcommerce.common.util.TransactionUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.annotation.Resource;
+
+@Service(value = &quot;blSandBoxService&quot;)
+<span class="nc" id="L39">public class SandBoxServiceImpl implements SandBoxService {</span>
+    
+<span class="nc" id="L41">    private static final Log LOG = LogFactory.getLog(SandBoxServiceImpl.class);</span>
+
+    @Resource(name = &quot;blSandBoxDao&quot;)
+    protected SandBoxDao sandBoxDao;
+
+    @Override
+    public SandBox retrieveSandBoxById(Long sandboxId) {
+<span class="nc" id="L48">        return sandBoxDao.retrieve(sandboxId);</span>
+    }
+    
+    @Override
+    public List&lt;SandBox&gt; retrieveAllSandBoxes() {
+<span class="nc" id="L53">        return sandBoxDao.retrieveAllSandBoxes();</span>
+    }
+    
+    @Override
+    public List&lt;SandBox&gt; retrieveSandBoxesByType(SandBoxType type) {
+<span class="nc" id="L58">        return sandBoxDao.retrieveSandBoxesByType(type);</span>
+    }
+    
+    @Override
+    public SandBox retrieveUserSandBoxForParent(Long authorId, Long parentSandBoxId) {
+<span class="nc" id="L63">        return sandBoxDao.retrieveUserSandBoxForParent(authorId, parentSandBoxId);</span>
+    }
+    
+    @Override
+    public SandBox retrieveSandBoxManagementById(Long sandBoxId) {
+<span class="nc" id="L68">        return sandBoxDao.retrieveSandBoxManagementById(sandBoxId);</span>
+    }
+
+    @Override
+    public List&lt;SandBox&gt; retrievePreviewSandBoxes(Long authorId) {
+<span class="nc" id="L73">        List&lt;SandBox&gt; returnList = new ArrayList&lt;SandBox&gt;();</span>
+<span class="nc" id="L74">        List&lt;SandBox&gt; authorBoxes = sandBoxDao.retrieveSandBoxesForAuthor(authorId, SandBoxType.USER);</span>
+<span class="nc" id="L75">        List&lt;SandBox&gt; approvalBoxes = sandBoxDao.retrieveSandBoxesByType(SandBoxType.APPROVAL);</span>
+<span class="nc" id="L76">        List&lt;SandBox&gt; defaultBoxes = sandBoxDao.retrieveSandBoxesByType(SandBoxType.DEFAULT);</span>
+
+<span class="nc" id="L78">        List&lt;SandBox&gt; candidateBoxes = new ArrayList&lt;SandBox&gt;();</span>
+<span class="nc" id="L79">        candidateBoxes.addAll(approvalBoxes);</span>
+<span class="nc" id="L80">        candidateBoxes.addAll(defaultBoxes);</span>
+        
+<span class="nc" id="L82">        returnList.addAll(authorBoxes);</span>
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        for (SandBox cb : candidateBoxes) {</span>
+<span class="nc" id="L85">            boolean match = false;</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">            for (SandBox authorBox : authorBoxes) {</span>
+<span class="nc bnc" id="L87" title="All 6 branches missed.">                if (authorBox.getId().equals(cb.getId()) || </span>
+                        (authorBox.getParentSandBox() != null &amp;&amp; authorBox.getParentSandBox().getId().equals(cb.getId()))) {
+<span class="nc" id="L89">                    match = true;</span>
+                }
+<span class="nc" id="L91">            }</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">            if (!match) {</span>
+<span class="nc" id="L93">                returnList.add(cb);</span>
+            }
+<span class="nc" id="L95">        }</span>
+        
+<span class="nc" id="L97">        return returnList;</span>
+    }
+
+    @Override
+    public SandBox retrieveUserSandBox(Long authorId, Long overrideSandBoxId, String sandBoxName) {
+        SandBox userSandbox;
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (overrideSandBoxId != null) {</span>
+<span class="nc" id="L104">            userSandbox = retrieveSandBoxById(overrideSandBoxId);</span>
+        } else {
+<span class="nc" id="L106">            userSandbox = retrieveSandBox(sandBoxName, SandBoxType.USER);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            if (userSandbox == null) {</span>
+<span class="nc" id="L108">                userSandbox = createSandBox(sandBoxName, SandBoxType.USER);</span>
+            }
+        }
+
+<span class="nc" id="L112">        return userSandbox;</span>
+    }
+    
+    @Override
+    public Map&lt;Long, String&gt; retrieveAuthorNamesForSandBoxes(Set&lt;Long&gt; sandBoxIds) {
+<span class="nc" id="L117">        return sandBoxDao.retrieveAuthorNamesForSandBoxes(sandBoxIds);</span>
+    }
+
+    @Override
+    public synchronized SandBox createSandBox(String sandBoxName, SandBoxType sandBoxType) {
+<span class="nc" id="L122">        return sandBoxDao.createSandBox(sandBoxName, sandBoxType);</span>
+    }
+    
+    @Override
+    public synchronized SandBox createUserSandBox(Long authorId, SandBox approvalSandBox) {
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (checkForExistingSandbox(SandBoxType.USER, approvalSandBox.getName(), authorId)) {</span>
+<span class="nc" id="L128">            return sandBoxDao.createUserSandBox(authorId, approvalSandBox);</span>
+        }
+
+<span class="nc" id="L131">        return sandBoxDao.retrieveNamedSandBox(SandBoxType.USER, approvalSandBox.getName(), authorId);</span>
+    }
+
+    @Override
+    public synchronized SandBox createDefaultSandBox() {
+<span class="nc" id="L136">        return sandBoxDao.createDefaultSandBox();</span>
+    }
+
+    @Override
+    public SandBox retrieveSandBox(String sandBoxName, SandBoxType sandBoxType) {
+<span class="nc" id="L141">        return sandBoxDao.retrieveNamedSandBox(sandBoxType, sandBoxName);</span>
+    }
+
+    @Override
+    @Deprecated
+    public List&lt;SandBox&gt; retrieveAllUserSandBoxes(Long authorId) {
+<span class="nc" id="L147">        return sandBoxDao.retrieveAllUserSandBoxes(authorId);</span>
+    }
+
+    @Override
+    @Transactional(TransactionUtils.DEFAULT_TRANSACTION_MANAGER)
+    public void archiveChildSandboxes(Long parentSandBoxId) {
+<span class="nc" id="L153">        List&lt;SandBox&gt; childSandBoxes = retrieveChildSandBoxesByParentId(parentSandBoxId);</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        for (SandBox sandbox : childSandBoxes) {</span>
+<span class="nc" id="L155">            sandbox.setArchived('Y');</span>
+<span class="nc" id="L156">            sandBoxDao.merge(sandbox);</span>
+<span class="nc" id="L157">        }</span>
+<span class="nc" id="L158">    }</span>
+
+    public List&lt;SandBox&gt; retrieveChildSandBoxesByParentId(Long parentSandBoxId) {
+<span class="nc" id="L161">        return sandBoxDao.retrieveChildSandBoxesByParentId(parentSandBoxId);</span>
+    }
+
+    @Override
+    public boolean checkForExistingApprovalSandboxWithName(String sandboxName) {
+<span class="nc" id="L166">        return checkForExistingSandbox(SandBoxType.APPROVAL, sandboxName, null);</span>
+    }
+
+    @Override
+    public boolean checkForExistingSandbox(SandBoxType sandBoxType, String sandboxName, Long authorId) {
+<span class="nc" id="L171">        SandBox sb = sandBoxDao.retrieveNamedSandBox(sandBoxType, sandboxName, authorId);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        return sb == null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MergePersistenceUnitManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa</a> &gt; <span class="el_source">MergePersistenceUnitManager.java</span></div><h1>MergePersistenceUnitManager.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.config.RuntimeEnvironmentPropertiesConfigurer;
+import org.broadleafcommerce.common.exception.ExceptionHelper;
+import org.broadleafcommerce.common.extensibility.jpa.convert.BroadleafClassTransformer;
+import org.broadleafcommerce.common.extensibility.jpa.convert.EntityMarkerClassTransformer;
+import org.broadleafcommerce.common.extensibility.jpa.copy.NullClassTransformer;
+import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.instrument.classloading.LoadTimeWeaver;
+import org.springframework.jmx.export.MBeanExporter;
+import org.springframework.orm.jpa.persistenceunit.DefaultPersistenceUnitManager;
+import org.springframework.orm.jpa.persistenceunit.MutablePersistenceUnitInfo;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+import javax.management.ObjectName;
+import javax.persistence.spi.PersistenceUnitInfo;
+import javax.sql.DataSource;
+
+/**
+ * Merges jars, class names and mapping file names from several persistence.xml files. The
+ * MergePersistenceUnitManager will continue to keep track of individual persistence unit
+ * names (including individual data sources). When a specific PersistenceUnitInfo is requested
+ * by unit name, the appropriate PersistenceUnitInfo is returned with modified jar files
+ * urls, class names and mapping file names that include the comprehensive collection of these
+ * values from all persistence.xml files.
+ *
+ *
+ * @author jfischer, jjacobs
+ */
+<span class="nc" id="L65">public class MergePersistenceUnitManager extends DefaultPersistenceUnitManager {</span>
+
+<span class="nc" id="L67">    private static final Log LOG = LogFactory.getLog(MergePersistenceUnitManager.class);</span>
+
+<span class="nc" id="L69">    protected HashMap&lt;String, PersistenceUnitInfo&gt; mergedPus = new HashMap&lt;String, PersistenceUnitInfo&gt;();</span>
+<span class="nc" id="L70">    protected List&lt;BroadleafClassTransformer&gt; classTransformers = new ArrayList&lt;BroadleafClassTransformer&gt;();</span>
+
+    @Resource(name=&quot;blMergedPersistenceXmlLocations&quot;)
+    protected Set&lt;String&gt; mergedPersistenceXmlLocations;
+
+    @Resource(name=&quot;blMergedDataSources&quot;)
+    protected Map&lt;String, DataSource&gt; mergedDataSources;
+    
+    @Resource(name=&quot;blMergedClassTransformers&quot;)
+    protected Set&lt;BroadleafClassTransformer&gt; mergedClassTransformers;
+
+    @Resource(name=&quot;blEntityMarkerClassTransformer&quot;)
+    protected EntityMarkerClassTransformer entityMarkerClassTransformer;
+
+    @Resource(name=&quot;blAutoDDLStatusExporter&quot;)
+    protected MBeanExporter mBeanExporter;
+
+    @Resource(name=&quot;blConfiguration&quot;)
+    RuntimeEnvironmentPropertiesConfigurer configurer;
+    
+    /**
+     * This should only be used in a test context to deal with the Spring ApplicationContext refreshing between different
+     * test classes but not needing to do a new transformation of classes every time. This bean will get
+     * re-initialized but all the classes have already been transformed
+     */
+<span class="nc" id="L95">    protected static boolean transformed = false;</span>
+
+    @Override
+    protected boolean isPersistenceUnitOverrideAllowed() {
+<span class="nc" id="L99">        return true;</span>
+    }
+    
+    @PostConstruct
+    public void configureMergedItems() {
+        String[] tempLocations;
+        try {
+<span class="nc" id="L106">            Field persistenceXmlLocations = DefaultPersistenceUnitManager.class.getDeclaredField(&quot;persistenceXmlLocations&quot;);</span>
+<span class="nc" id="L107">            persistenceXmlLocations.setAccessible(true);</span>
+<span class="nc" id="L108">            tempLocations = (String[]) persistenceXmlLocations.get(this);</span>
+<span class="nc" id="L109">        } catch (Exception e) {</span>
+<span class="nc" id="L110">            throw new RuntimeException(e);</span>
+<span class="nc" id="L111">        }</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        for (String legacyLocation : tempLocations) {</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">            if (!legacyLocation.endsWith(&quot;/persistence.xml&quot;)) {</span>
+                //do not add the default JPA persistence location by default
+<span class="nc" id="L115">                mergedPersistenceXmlLocations.add(legacyLocation);</span>
+            }
+        }
+<span class="nc" id="L118">        setPersistenceXmlLocations(mergedPersistenceXmlLocations.toArray(new String[mergedPersistenceXmlLocations.size()]));</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (!mergedDataSources.isEmpty()) {</span>
+<span class="nc" id="L121">            setDataSources(mergedDataSources);</span>
+        }
+<span class="nc" id="L123">    }</span>
+
+    @PostConstruct
+    public void configureClassTransformers() throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+<span class="nc" id="L127">        classTransformers.addAll(mergedClassTransformers);</span>
+<span class="nc" id="L128">    }</span>
+
+    protected MutablePersistenceUnitInfo getMergedUnit(String persistenceUnitName, MutablePersistenceUnitInfo newPU) {
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (!mergedPus.containsKey(persistenceUnitName)) {</span>
+<span class="nc" id="L132">            mergedPus.put(persistenceUnitName, newPU);</span>
+        }
+<span class="nc" id="L134">        return (MutablePersistenceUnitInfo) mergedPus.get(persistenceUnitName);</span>
+    }
+
+    @Override
+    @SuppressWarnings({ &quot;unchecked&quot;, &quot;ToArrayCallWithZeroLengthArrayArgument&quot; })
+    public void preparePersistenceUnitInfos() {
+        //Need to use reflection to try and execute the logic in the DefaultPersistenceUnitManager
+        //SpringSource added a block of code in version 3.1 to &quot;protect&quot; the user from having more than one PU with
+        //the same name.  Of course, in our case, this happens before a merge occurs.  They have added
+        //a block of code to throw an exception if more than one PU has the same name.  We want to
+        //use the logic of the DefaultPersistenceUnitManager without the exception in the case of
+        //a duplicate name. This will require reflection in order to do what we need.
+        try {
+<span class="nc" id="L147">            Set&lt;String&gt; persistenceUnitInfoNames = null;</span>
+<span class="nc" id="L148">            Map&lt;String, PersistenceUnitInfo&gt; persistenceUnitInfos = null;</span>
+<span class="nc" id="L149">            ResourcePatternResolver resourcePatternResolver = null;</span>
+<span class="nc" id="L150">            Field[] fields = getClass().getSuperclass().getDeclaredFields();</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">            for (Field field : fields) {</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                if (&quot;persistenceUnitInfoNames&quot;.equals(field.getName())) {</span>
+<span class="nc" id="L153">                    field.setAccessible(true);</span>
+<span class="nc" id="L154">                    persistenceUnitInfoNames = (Set&lt;String&gt;) field.get(this);</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">                } else if (&quot;persistenceUnitInfos&quot;.equals(field.getName())) {</span>
+<span class="nc" id="L156">                    field.setAccessible(true);</span>
+<span class="nc" id="L157">                    persistenceUnitInfos = (Map&lt;String, PersistenceUnitInfo&gt;) field.get(this);</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">                } else if (&quot;resourcePatternResolver&quot;.equals(field.getName())) {</span>
+<span class="nc" id="L159">                    field.setAccessible(true);</span>
+<span class="nc" id="L160">                    resourcePatternResolver = (ResourcePatternResolver) field.get(this);</span>
+                }
+            }
+
+<span class="nc" id="L164">            persistenceUnitInfoNames.clear();</span>
+<span class="nc" id="L165">            persistenceUnitInfos.clear();</span>
+
+<span class="nc" id="L167">            Method readPersistenceUnitInfos =</span>
+                    getClass().
+                            getSuperclass().
+                            getDeclaredMethod(&quot;readPersistenceUnitInfos&quot;);
+<span class="nc" id="L171">            readPersistenceUnitInfos.setAccessible(true);</span>
+
+            //In Spring 3.0 this returns an array
+            //In Spring 3.1 this returns a List
+<span class="nc" id="L175">            Object pInfosObject = readPersistenceUnitInfos.invoke(this);</span>
+            Object[] puis;
+<span class="nc bnc" id="L177" title="All 2 branches missed.">            if (pInfosObject.getClass().isArray()) {</span>
+<span class="nc" id="L178">                puis = (Object[]) pInfosObject;</span>
+            } else {
+<span class="nc" id="L180">                puis = ((Collection) pInfosObject).toArray();</span>
+            }
+
+<span class="nc bnc" id="L183" title="All 2 branches missed.">            for (Object pui : puis) {</span>
+<span class="nc" id="L184">                MutablePersistenceUnitInfo mPui = (MutablePersistenceUnitInfo) pui;</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">                if (mPui.getPersistenceUnitRootUrl() == null) {</span>
+<span class="nc" id="L186">                    Method determineDefaultPersistenceUnitRootUrl =</span>
+                            getClass().
+                                    getSuperclass().
+                                    getDeclaredMethod(&quot;determineDefaultPersistenceUnitRootUrl&quot;);
+<span class="nc" id="L190">                    determineDefaultPersistenceUnitRootUrl.setAccessible(true);</span>
+<span class="nc" id="L191">                    mPui.setPersistenceUnitRootUrl((URL) determineDefaultPersistenceUnitRootUrl.invoke(this));</span>
+                }
+<span class="nc" id="L193">                ConfigurationOnlyState state = ConfigurationOnlyState.getState();</span>
+<span class="nc bnc" id="L194" title="All 6 branches missed.">                if ((state == null || !state.isConfigurationOnly()) &amp;&amp; mPui.getNonJtaDataSource() == null) {</span>
+<span class="nc" id="L195">                    mPui.setNonJtaDataSource(getDefaultDataSource());</span>
+                }
+<span class="nc bnc" id="L197" title="All 2 branches missed.">                if (super.getLoadTimeWeaver() != null) {</span>
+<span class="nc" id="L198">                    Method puiInitMethod = mPui.getClass().getDeclaredMethod(&quot;init&quot;, LoadTimeWeaver.class);</span>
+<span class="nc" id="L199">                    puiInitMethod.setAccessible(true);</span>
+<span class="nc" id="L200">                    puiInitMethod.invoke(pui, getLoadTimeWeaver());</span>
+<span class="nc" id="L201">                }</span>
+                else {
+<span class="nc" id="L203">                    Method puiInitMethod = mPui.getClass().getDeclaredMethod(&quot;init&quot;, ClassLoader.class);</span>
+<span class="nc" id="L204">                    puiInitMethod.setAccessible(true);</span>
+<span class="nc" id="L205">                    puiInitMethod.invoke(pui, resourcePatternResolver.getClassLoader());</span>
+                }
+<span class="nc" id="L207">                postProcessPersistenceUnitInfo((MutablePersistenceUnitInfo) pui);</span>
+<span class="nc" id="L208">                String name = mPui.getPersistenceUnitName();</span>
+<span class="nc" id="L209">                persistenceUnitInfoNames.add(name);</span>
+
+<span class="nc" id="L211">                persistenceUnitInfos.put(name, mPui);</span>
+            }
+<span class="nc" id="L213">        } catch (Exception e) {</span>
+<span class="nc" id="L214">            throw new RuntimeException(&quot;An error occured reflectively invoking methods on &quot; +</span>
+                    &quot;class: &quot; + getClass().getSuperclass().getName(), e);
+<span class="nc" id="L216">        }</span>
+
+        try {
+<span class="nc" id="L219">            List&lt;String&gt; managedClassNames = new ArrayList&lt;String&gt;();</span>
+            
+<span class="nc" id="L221">            boolean weaverRegistered = true;</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">            for (PersistenceUnitInfo pui : mergedPus.values()) {</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">                for (BroadleafClassTransformer transformer : classTransformers) {</span>
+                    try {
+<span class="nc bnc" id="L225" title="All 4 branches missed.">                        if (!(transformer instanceof NullClassTransformer) &amp;&amp; pui.getPersistenceUnitName().equals(&quot;blPU&quot;)) {</span>
+<span class="nc" id="L226">                            pui.addTransformer(transformer);</span>
+                        }
+<span class="nc" id="L228">                    } catch (Exception e) {</span>
+<span class="nc" id="L229">                        Exception refined = ExceptionHelper.refineException(IllegalStateException.class, RuntimeException.class, e);</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">                        if (refined instanceof IllegalStateException) {</span>
+<span class="nc" id="L231">                            LOG.warn(&quot;A BroadleafClassTransformer is configured for this persistence unit, but Spring &quot; +</span>
+                                    &quot;reported a problem (likely that a LoadTimeWeaver is not registered). As a result, &quot; +
+                                    &quot;the Broadleaf Commerce ClassTransformer (&quot;+transformer.getClass().getName()+&quot;) is &quot; +
+                                    &quot;not being registered with the persistence unit.&quot;);
+<span class="nc" id="L235">                            weaverRegistered = false;</span>
+                        } else {
+<span class="nc" id="L237">                            throw refined;</span>
+                        }
+<span class="nc" id="L239">                    }</span>
+<span class="nc" id="L240">                }</span>
+<span class="nc" id="L241">            }</span>
+            
+            // Only validate transformation results if there was a LoadTimeWeaver registered in the first place
+<span class="nc bnc" id="L244" title="All 4 branches missed.">            if (weaverRegistered &amp;&amp; !transformed) {</span>
+<span class="nc bnc" id="L245" title="All 2 branches missed.">                for (PersistenceUnitInfo pui : mergedPus.values()) {</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">                    for (String managedClassName : pui.getManagedClassNames()) {</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">                        if (!managedClassNames.contains(managedClassName)) {</span>
+                            // Force-load this class so that we are able to ensure our instrumentation happens globally.
+                            // If transformation is happening, it should be tracked in EntityMarkerClassTransformer
+<span class="nc" id="L250">                            Class.forName(managedClassName, true, getClass().getClassLoader());</span>
+<span class="nc" id="L251">                            managedClassNames.add(managedClassName);</span>
+                        }
+<span class="nc" id="L253">                    }</span>
+<span class="nc" id="L254">                }</span>
+                
+                // If a class happened to be loaded by the ClassLoader before we had a chance to set up our instrumentation,
+                // it may not be in a consistent state. This verifies with the EntityMarkerClassTransformer that it
+                // actually saw the classes loaded by the above process
+<span class="nc" id="L259">                List&lt;String&gt; nonTransformedClasses = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">                for (PersistenceUnitInfo pui : mergedPus.values()) {</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">                    for (String managedClassName : pui.getManagedClassNames()) {</span>
+                        // We came across a class that is not a real persistence class (doesn't have the right annotations)
+                        // but is still being transformed/loaded by
+                        // the persistence unit. This might have unexpected results downstream, but it could also be benign
+                        // so just output a warning
+<span class="nc bnc" id="L266" title="All 2 branches missed.">                        if (entityMarkerClassTransformer.getTransformedNonEntityClassNames().contains(managedClassName)) {</span>
+<span class="nc" id="L267">                            LOG.warn(&quot;The class &quot; + managedClassName + &quot; is marked as a managed class within the MergePersistenceUnitManager&quot;</span>
+                                    + &quot; but is not annotated with @Entity, @MappedSuperclass or @Embeddable.&quot;
+                                    + &quot; This class is still referenced in a persistence.xml and is being transformed by&quot;
+                                    + &quot; PersistenceUnit ClassTransformers which may result in problems downstream&quot;
+                                    + &quot; and represents a potential misconfiguration. This class should be removed from&quot;
+                                    + &quot; your persistence.xml&quot;);
+<span class="nc bnc" id="L273" title="All 2 branches missed.">                        } else if (!entityMarkerClassTransformer.getTransformedEntityClassNames().contains(managedClassName)) {</span>
+                            // This means the class not in the 'warning' list, but it is also not in the list that we would
+                            // expect it to be in of valid entity classes that were transformed. This means that we
+                            // never got the chance to transform the class AT ALL even though it is a valid entity class
+<span class="nc" id="L277">                            nonTransformedClasses.add(managedClassName);</span>
+                        }
+<span class="nc" id="L279">                    }</span>
+<span class="nc" id="L280">                }</span>
+                
+<span class="nc bnc" id="L282" title="All 2 branches missed.">                if (CollectionUtils.isNotEmpty(nonTransformedClasses)) {</span>
+<span class="nc" id="L283">                    String message = &quot;The classes\n&quot; + Arrays.toString(nonTransformedClasses.toArray()) + &quot;\nare managed classes within the MergePersistenceUnitManager&quot;</span>
+                            + &quot;\nbut were not detected as being transformed by the EntityMarkerClassTransformer. These&quot;
+                            + &quot;\nclasses are likely loaded earlier in the application startup lifecyle by the servlet&quot;
+                            + &quot;\ncontainer. Verify that an empty &lt;absolute-ordering /&gt; element is contained in your&quot;
+                            + &quot;\nweb.xml to disable scanning for ServletContainerInitializer classes by your servlet&quot;
+                            + &quot;\ncontainer which can trigger early class loading. If the problem persists, ensure that&quot;
+                            + &quot;\nthere are no bean references to your entity class anywhere else in your Spring applicationContext&quot;
+                            + &quot;\nand consult the documentation for your servlet container to determine if classes are loaded&quot;
+                            + &quot;\nprior to the Spring context initialization. Also, it is a necessity that &quot;
+                            + &quot;\n'-javaagent:/path/to/spring-instrument-4.1.5.jar' be added to the JVM args of the server.&quot;
+                            + &quot;\nFinally, ensure that Session Persistence is also disabled by your Servlet Container.&quot; 
+                            + &quot;\nTo do this in Tomcat, add &lt;Manager pathname=\&quot;\&quot; /&gt; inside of the &lt;Context&gt; element&quot;
+                            + &quot;\nin context.xml in your app's META-INF folder or your server's conf folder.&quot;;
+<span class="nc" id="L296">                    LOG.error(message);</span>
+<span class="nc" id="L297">                    throw new IllegalStateException(message);</span>
+                }
+                
+<span class="nc" id="L300">                transformed = true;</span>
+            }
+<span class="nc bnc" id="L302" title="All 2 branches missed.">            if (transformed) {</span>
+<span class="nc" id="L303">                LOG.info(&quot;Did not recycle through class transformation since this has already occurred&quot;);</span>
+            }
+<span class="nc" id="L305">        } catch (Exception e) {</span>
+<span class="nc" id="L306">            throw new RuntimeException(e);</span>
+<span class="nc" id="L307">        }</span>
+<span class="nc" id="L308">    }</span>
+    
+    @Override
+    protected void postProcessPersistenceUnitInfo(MutablePersistenceUnitInfo newPU) {
+<span class="nc" id="L312">        super.postProcessPersistenceUnitInfo(newPU);</span>
+<span class="nc" id="L313">        ConfigurationOnlyState state = ConfigurationOnlyState.getState();</span>
+<span class="nc" id="L314">        String persistenceUnitName = newPU.getPersistenceUnitName();</span>
+<span class="nc" id="L315">        MutablePersistenceUnitInfo pui = getMergedUnit(persistenceUnitName, newPU);</span>
+
+<span class="nc" id="L317">        List&lt;String&gt; managedClassNames = newPU.getManagedClassNames();</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">        for (String managedClassName : managedClassNames){</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">            if (!pui.getManagedClassNames().contains(managedClassName)) {</span>
+<span class="nc" id="L320">                pui.addManagedClassName(managedClassName);</span>
+            }
+<span class="nc" id="L322">        }</span>
+<span class="nc" id="L323">        List&lt;String&gt; mappingFileNames = newPU.getMappingFileNames();</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">        for (String mappingFileName : mappingFileNames) {</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">            if (!pui.getMappingFileNames().contains(mappingFileName)) {</span>
+<span class="nc" id="L326">                pui.addMappingFileName(mappingFileName);</span>
+            }
+<span class="nc" id="L328">        }</span>
+<span class="nc" id="L329">        pui.setExcludeUnlistedClasses(newPU.excludeUnlistedClasses());</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">        for (URL url : newPU.getJarFileUrls()) {</span>
+            // Avoid duplicate class scanning by Ejb3Configuration. Do not re-add the URL to the list of jars for this
+            // persistence unit or duplicate the persistence unit root URL location (both types of locations are scanned)
+<span class="nc bnc" id="L333" title="All 4 branches missed.">            if (!pui.getJarFileUrls().contains(url) &amp;&amp; !pui.getPersistenceUnitRootUrl().equals(url)) {</span>
+<span class="nc" id="L334">                pui.addJarFileUrl(url);</span>
+            }
+<span class="nc" id="L336">        }</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">        if (pui.getProperties() == null) {</span>
+<span class="nc" id="L338">            pui.setProperties(newPU.getProperties());</span>
+        } else {
+<span class="nc" id="L340">            Properties props = newPU.getProperties();</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">            if (props != null) {</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">                for (Object key : props.keySet()) {</span>
+<span class="nc" id="L343">                    pui.getProperties().put(key, props.get(key));</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">                    for (BroadleafClassTransformer transformer : classTransformers) {</span>
+                        try {
+<span class="nc" id="L346">                            transformer.compileJPAProperties(props, key);</span>
+<span class="nc" id="L347">                        } catch (Exception e) {</span>
+<span class="nc" id="L348">                            throw new RuntimeException(e);</span>
+<span class="nc" id="L349">                        }</span>
+<span class="nc" id="L350">                    }</span>
+<span class="nc" id="L351">                }</span>
+            }
+        }
+<span class="nc" id="L354">        disableSchemaCreateIfApplicable(persistenceUnitName, pui);</span>
+<span class="nc bnc" id="L355" title="All 4 branches missed.">        if (state == null || !state.isConfigurationOnly()) {</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">            if (newPU.getJtaDataSource() != null) {</span>
+<span class="nc" id="L357">                pui.setJtaDataSource(newPU.getJtaDataSource());</span>
+            }
+<span class="nc bnc" id="L359" title="All 2 branches missed.">            if (newPU.getNonJtaDataSource() != null) {</span>
+<span class="nc" id="L360">                pui.setNonJtaDataSource(newPU.getNonJtaDataSource());</span>
+            }
+        } else {
+<span class="nc" id="L363">            pui.getProperties().setProperty(&quot;hibernate.hbm2ddl.auto&quot;, &quot;none&quot;);</span>
+<span class="nc" id="L364">            pui.getProperties().setProperty(&quot;hibernate.temp.use_jdbc_metadata_defaults&quot;, &quot;false&quot;);</span>
+        }
+<span class="nc" id="L366">        pui.setTransactionType(newPU.getTransactionType());</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">        if (newPU.getPersistenceProviderClassName() != null) {</span>
+<span class="nc" id="L368">            pui.setPersistenceProviderClassName(newPU.getPersistenceProviderClassName());</span>
+        }
+<span class="nc bnc" id="L370" title="All 2 branches missed.">        if (newPU.getPersistenceProviderPackageName() != null) {</span>
+<span class="nc" id="L371">            pui.setPersistenceProviderPackageName(newPU.getPersistenceProviderPackageName());</span>
+        }
+<span class="nc" id="L373">    }</span>
+
+    /* (non-Javadoc)
+     * @see org.springframework.orm.jpa.persistenceunit.DefaultPersistenceUnitManager#obtainPersistenceUnitInfo(java.lang.String)
+     */
+    @Override
+    public PersistenceUnitInfo obtainPersistenceUnitInfo(String persistenceUnitName) {
+<span class="nc" id="L380">        return mergedPus.get(persistenceUnitName);</span>
+    }
+
+    /* (non-Javadoc)
+     * @see org.springframework.orm.jpa.persistenceunit.DefaultPersistenceUnitManager#obtainDefaultPersistenceUnitInfo()
+     */
+    @Override
+    public PersistenceUnitInfo obtainDefaultPersistenceUnitInfo() {
+<span class="nc" id="L388">        throw new IllegalStateException(&quot;Default Persistence Unit is not supported. The persistence unit name must be specified at the entity manager factory.&quot;);</span>
+    }
+
+    public List&lt;BroadleafClassTransformer&gt; getClassTransformers() {
+<span class="nc" id="L392">        return classTransformers;</span>
+    }
+
+    public void setClassTransformers(List&lt;BroadleafClassTransformer&gt; classTransformers) {
+<span class="nc" id="L396">        this.classTransformers = classTransformers;</span>
+<span class="nc" id="L397">    }</span>
+
+    protected void disableSchemaCreateIfApplicable(String persistenceUnitName, MutablePersistenceUnitInfo pui) {
+<span class="nc" id="L400">        String autoDDLStatus = pui.getProperties().getProperty(&quot;hibernate.hbm2ddl.auto&quot;);</span>
+<span class="nc bnc" id="L401" title="All 6 branches missed.">        boolean isCreate = autoDDLStatus != null &amp;&amp; (autoDDLStatus.equals(&quot;create&quot;) || autoDDLStatus.equals(&quot;create-drop&quot;));</span>
+<span class="nc" id="L402">        boolean detectedCreate = false;</span>
+<span class="nc bnc" id="L403" title="All 4 branches missed.">        if (isCreate &amp;&amp; configurer.determineEnvironment().equals(configurer.getDefaultEnvironment())) {</span>
+            try {
+<span class="nc bnc" id="L405" title="All 2 branches missed.">                if (mBeanExporter.getServer().isRegistered(ObjectName.getInstance(&quot;bean:name=autoDDLCreateStatusTestBean&quot;))) {</span>
+<span class="nc" id="L406">                    Boolean response = (Boolean) mBeanExporter.getServer().invoke(ObjectName.getInstance(&quot;bean:name=autoDDLCreateStatusTestBean&quot;), &quot;getStartedWithCreate&quot;,</span>
+                            new Object[]{persistenceUnitName}, new String[]{String.class.getName()});
+<span class="nc bnc" id="L408" title="All 2 branches missed.">                    if (response == null) {</span>
+<span class="nc" id="L409">                        mBeanExporter.getServer().invoke(ObjectName.getInstance(&quot;bean:name=autoDDLCreateStatusTestBean&quot;), &quot;setStartedWithCreate&quot;,</span>
+                            new Object[]{persistenceUnitName, true}, new String[]{String.class.getName(), Boolean.class.getName()});
+                    } else {
+<span class="nc" id="L412">                        detectedCreate = true;</span>
+                    }
+                }
+<span class="nc" id="L415">            } catch (Exception e) {</span>
+<span class="nc" id="L416">                LOG.warn(&quot;Unable to query the mbean server for previous auto.ddl status&quot;, e);</span>
+<span class="nc" id="L417">            }</span>
+        }
+<span class="nc bnc" id="L419" title="All 2 branches missed.">        if (detectedCreate) {</span>
+<span class="nc" id="L420">            pui.getProperties().setProperty(&quot;hibernate.hbm2ddl.auto&quot;, &quot;none&quot;);</span>
+        }
+<span class="nc" id="L422">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

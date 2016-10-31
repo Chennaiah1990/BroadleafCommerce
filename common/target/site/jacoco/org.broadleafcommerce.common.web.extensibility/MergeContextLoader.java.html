@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MergeContextLoader.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.extensibility</a> &gt; <span class="el_source">MergeContextLoader.java</span></div><h1>MergeContextLoader.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.extensibility;
+
+import org.broadleafcommerce.common.classloader.release.ThreadLocalManager;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.ConfigurableWebApplicationContext;
+import org.springframework.web.context.ContextLoader;
+import org.springframework.web.context.ContextLoaderListener;
+import org.springframework.web.context.WebApplicationContext;
+
+import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
+
+/**
+ * Performs the actual initialization work for the rootId application context.
+ * Called by {@link MergeContextLoaderListener}.
+ *
+ * &lt;p&gt;Processes a {@link #CONFIG_LOCATION_PARAM &quot;contextConfigLocation&quot;}
+ * context-param and passes its value to the context instance, parsing it into
+ * potentially multiple file paths which can be separated by any number of
+ * commas and spaces, e.g. &quot;WEB-INF/applicationContext1.xml,
+ * WEB-INF/applicationContext2.xml&quot;. Ant-style path patterns are supported as well,
+ * e.g. &quot;WEB-INF/*Context.xml,WEB-INF/spring*.xml&quot; or &quot;WEB-INF/&amp;#42;&amp;#42;/*Context.xml&quot;.
+ * If not explicitly specified, the context implementation is supposed to use a
+ * default location (with XmlWebApplicationContext: &quot;/WEB-INF/applicationContext.xml&quot;).
+ *
+ * &lt;p&gt;Note: In case of multiple config locations, later bean definitions will
+ * override ones defined in previously loaded files, at least when using one of
+ * Spring's default ApplicationContext implementations. This can be leveraged
+ * to deliberately override certain bean definitions via an extra XML file.
+ *
+ * &lt;p&gt;Above and beyond loading the rootId application context, this class
+ * can optionally load or obtain and hook up a shared parent context to
+ * the rootId application context. See the
+ * {@link #loadParentContext(ServletContext)} method for more information.
+ *
+ * &lt;p&gt;Additionally, Processes a {@link #PATCH_LOCATION_PARAM &quot;patchConfigLocation&quot;}
+ * context-param and passes its value to the context instance, parsing it into
+ * potentially multiple file paths which can be separated by any number of
+ * commas and spaces, e.g. &quot;WEB-INF/patch1.xml,
+ * WEB-INF/patch2.xml&quot;. Ant-style path patterns are supported as well,
+ * e.g. &quot;WEB-INF/*Patch.xml,WEB-INF/spring*.xml&quot; or &quot;WEB-INF/&amp;#42;&amp;#42;/*Patch.xml&quot;.
+ * The patch configuration files are merged into the above config
+ * {@link org.broadleafcommerce.common.extensibility.context.merge.MergeXmlConfigResource}.
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L67">public class MergeContextLoader extends ContextLoaderListener {</span>
+
+    /**
+     * Name of servlet context parameter (i.e., &quot;&lt;code&gt;patchConfigLocation&lt;/code&gt;&quot;)
+     * that can specify the config location for the rootId context.
+     */
+    public static final String PATCH_LOCATION_PARAM = &quot;patchConfigLocation&quot;;
+    
+    /**
+     * Name of a bean to hook before Spring shutdown for this
+     * context commences.
+     */
+    public static final String SHUTDOWN_HOOK_BEAN = &quot;shutdownHookBean&quot;;
+    
+    /**
+     * Name of method to call on the shutdown hook bean before
+     * Spring shutdown for this context commences
+     */
+    public static final String SHUTDOWN_HOOK_METHOD = &quot;shutdownHookMethod&quot;;
+
+    /**
+     * Instantiate the rootId WebApplicationContext for this loader, either the
+     * default context class or a custom context class if specified.
+     * &lt;p&gt;This implementation expects custom contexts to implement the
+     * {@link ConfigurableWebApplicationContext} interface.
+     * Can be overridden in subclasses.
+     * &lt;p&gt;In addition, {@link #customizeContext} gets called prior to refreshing the
+     * context, allowing subclasses to perform custom modifications to the context.
+     * @param servletContext current servlet context
+     * @param parent the parent ApplicationContext to use, or &lt;code&gt;null&lt;/code&gt; if none
+     * @return the rootId WebApplicationContext
+     * @throws BeansException if the context couldn't be initialized
+     * @see ConfigurableWebApplicationContext
+     */
+    @Override
+    @Deprecated
+    protected WebApplicationContext createWebApplicationContext(ServletContext servletContext, ApplicationContext parent) throws BeansException {
+<span class="nc" id="L104">        MergeXmlWebApplicationContext wac = new MergeXmlWebApplicationContext();</span>
+<span class="nc" id="L105">        wac.setParent(parent);</span>
+<span class="nc" id="L106">        wac.setServletContext(servletContext);</span>
+<span class="nc" id="L107">        wac.setConfigLocation(servletContext.getInitParameter(ContextLoader.CONFIG_LOCATION_PARAM));</span>
+<span class="nc" id="L108">        wac.setPatchLocation(servletContext.getInitParameter(PATCH_LOCATION_PARAM));</span>
+<span class="nc" id="L109">        wac.setShutdownBean(servletContext.getInitParameter(SHUTDOWN_HOOK_BEAN));</span>
+<span class="nc" id="L110">        wac.setShutdownMethod(servletContext.getInitParameter(SHUTDOWN_HOOK_METHOD));</span>
+<span class="nc" id="L111">        customizeContext(servletContext, wac);</span>
+<span class="nc" id="L112">        wac.refresh();</span>
+
+<span class="nc" id="L114">        return wac;</span>
+    }
+
+    /**
+     * Instantiate the rootId WebApplicationContext for this loader, either the
+     * default context class or a custom context class if specified.
+     * &lt;p&gt;This implementation expects custom contexts to implement the
+     * {@link ConfigurableWebApplicationContext} interface.
+     * Can be overridden in subclasses.
+     * &lt;p&gt;In addition, {@link #customizeContext} gets called prior to refreshing the
+     * context, allowing subclasses to perform custom modifications to the context.
+     * @param servletContext current servlet context
+     * @return the rootId WebApplicationContext
+     * @throws BeansException if the context couldn't be initialized
+     * @see ConfigurableWebApplicationContext
+     */
+    @Override
+    protected WebApplicationContext createWebApplicationContext(ServletContext servletContext) throws BeansException {
+<span class="nc" id="L132">        MergeXmlWebApplicationContext wac = new MergeXmlWebApplicationContext();</span>
+<span class="nc" id="L133">        wac.setServletContext(servletContext);</span>
+<span class="nc" id="L134">        wac.setConfigLocation(servletContext.getInitParameter(ContextLoader.CONFIG_LOCATION_PARAM));</span>
+<span class="nc" id="L135">        wac.setPatchLocation(servletContext.getInitParameter(PATCH_LOCATION_PARAM));</span>
+<span class="nc" id="L136">        wac.setShutdownBean(servletContext.getInitParameter(SHUTDOWN_HOOK_BEAN));</span>
+<span class="nc" id="L137">        wac.setShutdownMethod(servletContext.getInitParameter(SHUTDOWN_HOOK_METHOD));</span>
+<span class="nc" id="L138">        customizeContext(servletContext, wac);</span>
+        //NOTE: in Spring 3.1, refresh gets called automatically. All that is required is to return the context back to Spring
+        //wac.refresh();
+
+<span class="nc" id="L142">        return wac;</span>
+    }
+    
+
+    @Override
+    public void contextInitialized(ServletContextEvent event) {
+<span class="nc" id="L148">        super.contextInitialized(event);</span>
+<span class="nc" id="L149">        ThreadLocalManager.remove();</span>
+<span class="nc" id="L150">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

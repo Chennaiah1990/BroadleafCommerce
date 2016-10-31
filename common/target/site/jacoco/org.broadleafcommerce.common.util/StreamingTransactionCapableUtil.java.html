@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StreamingTransactionCapableUtil.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">StreamingTransactionCapableUtil.java</span></div><h1>StreamingTransactionCapableUtil.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Workflow
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.exception.ExceptionHelper;
+import org.hibernate.exception.LockAcquisitionException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+
+import java.util.Collection;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+import javax.persistence.EntityManager;
+
+/**
+ * @author Jeff Fischer
+ */
+@Component(&quot;blStreamingTransactionCapableUtil&quot;)
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+<span class="nc" id="L46">public class StreamingTransactionCapableUtil implements StreamingTransactionCapable {</span>
+
+<span class="nc" id="L48">    private static final Log LOG = LogFactory.getLog(StreamingTransactionCapableUtil.class);</span>
+
+    @Resource(name = &quot;blTransactionManager&quot;)
+    protected PlatformTransactionManager transactionManager;
+
+    protected EntityManager em;
+
+<span class="nc" id="L55">    @Value(&quot;${streaming.transaction.lock.retry.max}&quot;)</span>
+    protected int retryMax = 10;
+
+    @Value(&quot;${streaming.transaction.item.page.size}&quot;)
+    protected int pageSize;
+
+    @PostConstruct
+    public void init() {
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (transactionManager instanceof JpaTransactionManager) {</span>
+<span class="nc" id="L64">            em = ((JpaTransactionManager) transactionManager).getEntityManagerFactory().createEntityManager();</span>
+        }
+<span class="nc" id="L66">    }</span>
+
+    @Override
+    public &lt;G extends Throwable&gt; void runStreamingTransactionalOperation(final StreamCapableTransactionalOperation
+                                        streamOperation, Class&lt;G&gt; exceptionType) throws G {
+<span class="nc" id="L71">        runStreamingTransactionalOperation(streamOperation, exceptionType, TransactionDefinition.PROPAGATION_REQUIRED, TransactionDefinition.ISOLATION_DEFAULT);</span>
+<span class="nc" id="L72">    }</span>
+
+    @Override
+    public &lt;G extends Throwable&gt; void runStreamingTransactionalOperation(final StreamCapableTransactionalOperation
+                                        streamOperation, Class&lt;G&gt; exceptionType, int transactionBehavior, int isolationLevel) throws G {
+        //this should be a read operation, so doesn't need to be in a transaction
+<span class="nc" id="L78">        final Long totalCount = streamOperation.retrieveTotalCount();</span>
+<span class="nc" id="L79">        final Holder holder = new Holder();</span>
+<span class="nc" id="L80">        holder.setVal(0);</span>
+<span class="nc" id="L81">        StreamCapableTransactionalOperation operation = new StreamCapableTransactionalOperationAdapter() {</span>
+            @Override
+            public void execute() throws Throwable {
+<span class="nc" id="L84">                pagedItems = streamOperation.retrievePage(holder.getVal(), pageSize);</span>
+<span class="nc" id="L85">                streamOperation.pagedExecute(pagedItems);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">                if (((Collection) pagedItems[0]).size() == 0) {</span>
+<span class="nc" id="L87">                    holder.setVal(totalCount.intValue());</span>
+                } else {
+<span class="nc" id="L89">                    holder.setVal(holder.getVal() + ((Collection) pagedItems[0]).size());</span>
+                }
+<span class="nc" id="L91">            }</span>
+        };
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        while (holder.getVal() &lt; totalCount) {</span>
+<span class="nc" id="L94">            runTransactionalOperation(operation, exceptionType, transactionBehavior, isolationLevel);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if (em != null) {</span>
+                //The idea behind using this class is that it will likely process a lot of records. As such, it is necessary
+                //to clear the level 1 cache after each iteration so that we don't run out of heap
+<span class="nc" id="L98">                em.clear();</span>
+            }
+<span class="nc" id="L100">            streamOperation.executeAfterCommit(((StreamCapableTransactionalOperationAdapter) operation).getPagedItems());</span>
+        }
+<span class="nc" id="L102">    }</span>
+
+    @Override
+    public &lt;G extends Throwable&gt; void runTransactionalOperation(StreamCapableTransactionalOperation operation,
+                                        Class&lt;G&gt; exceptionType) throws G {
+<span class="nc" id="L107">        runTransactionalOperation(operation, exceptionType, TransactionDefinition.PROPAGATION_REQUIRED, TransactionDefinition.ISOLATION_DEFAULT);</span>
+<span class="nc" id="L108">    }</span>
+
+    @Override
+    public &lt;G extends Throwable&gt; void runTransactionalOperation(StreamCapableTransactionalOperation operation,
+                                        Class&lt;G&gt; exceptionType, int transactionBehavior, int isolationLevel) throws G {
+<span class="nc" id="L113">        runOptionalTransactionalOperation(operation, exceptionType, true, transactionBehavior, isolationLevel);</span>
+<span class="nc" id="L114">    }</span>
+
+    @Override
+    public &lt;G extends Throwable&gt; void runOptionalTransactionalOperation(StreamCapableTransactionalOperation operation,
+                                        Class&lt;G&gt; exceptionType, boolean useTransaction) throws G {
+<span class="nc" id="L119">        runOptionalTransactionalOperation(operation, exceptionType, useTransaction, TransactionDefinition.PROPAGATION_REQUIRED, TransactionDefinition.ISOLATION_DEFAULT);</span>
+<span class="nc" id="L120">    }</span>
+
+    @Override
+    public &lt;G extends Throwable&gt; void runOptionalTransactionalOperation(StreamCapableTransactionalOperation operation,
+                                        Class&lt;G&gt; exceptionType, boolean useTransaction, int transactionBehavior, int isolationLevel) throws G {
+<span class="nc" id="L125">        int maxCount = operation.retryMaxCountOverrideForLockAcquisitionFailure();</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (maxCount == -1) {</span>
+<span class="nc" id="L127">            maxCount = retryMax;</span>
+        }
+<span class="nc" id="L129">        int tryCount = 0;</span>
+<span class="nc" id="L130">        boolean retry = false;</span>
+        do {
+<span class="nc" id="L132">            tryCount++;</span>
+            try {
+<span class="nc" id="L134">                TransactionStatus status = null;</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">                if (useTransaction) {</span>
+<span class="nc" id="L136">                    status = startTransaction(transactionBehavior, isolationLevel);</span>
+                }
+<span class="nc" id="L138">                boolean isError = false;</span>
+                try {
+<span class="nc" id="L140">                    operation.execute();</span>
+<span class="nc" id="L141">                    retry = false;</span>
+<span class="nc" id="L142">                } catch (Throwable e) {</span>
+<span class="nc" id="L143">                    isError = true;</span>
+<span class="nc" id="L144">                    ExceptionHelper.processException(exceptionType, RuntimeException.class, e);</span>
+                } finally {
+<span class="nc bnc" id="L146" title="All 6 branches missed.">                    if (useTransaction) {</span>
+<span class="nc" id="L147">                        endTransaction(status, isError, exceptionType);</span>
+                    }
+                }
+<span class="nc" id="L150">            } catch (RuntimeException e) {</span>
+                checkException: {
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                    if (operation.shouldRetryOnTransactionLockAcquisitionFailure()) {</span>
+<span class="nc" id="L153">                        Exception result = ExceptionHelper.refineException(LockAcquisitionException.class, RuntimeException.class, e);</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                        if (result.getClass().equals(LockAcquisitionException.class)) {</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">                            if (tryCount &lt; maxCount) {</span>
+                                try {
+<span class="nc" id="L157">                                    Thread.sleep(300);</span>
+<span class="nc" id="L158">                                } catch (InterruptedException ie) {</span>
+                                    //do nothing
+<span class="nc" id="L160">                                }</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                                if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L162">                                    LOG.debug(&quot;Unable to acquire a transaction lock. Retrying - count(&quot; + tryCount + &quot;).&quot;);</span>
+                                }
+<span class="nc" id="L164">                                retry = true;</span>
+<span class="nc" id="L165">                                break checkException;</span>
+                            }
+<span class="nc" id="L167">                            LOG.warn(&quot;Unable to acquire a transaction lock after &quot; + maxCount + &quot; tries.&quot;);</span>
+                        }
+                    }
+<span class="nc" id="L170">                    throw e;</span>
+                }
+<span class="nc" id="L172">            }</span>
+<span class="nc bnc" id="L173" title="All 6 branches missed.">        } while (tryCount &lt; maxCount &amp;&amp; retry &amp;&amp; operation.shouldRetryOnTransactionLockAcquisitionFailure());</span>
+<span class="nc" id="L174">    }</span>
+
+    @Override
+    public int getPageSize() {
+<span class="nc" id="L178">        return pageSize;</span>
+    }
+
+    @Override
+    public void setPageSize(int pageSize) {
+<span class="nc" id="L183">        this.pageSize = pageSize;</span>
+<span class="nc" id="L184">    }</span>
+
+    @Override
+    public PlatformTransactionManager getTransactionManager() {
+<span class="nc" id="L188">        return transactionManager;</span>
+    }
+
+    @Override
+    public void setTransactionManager(PlatformTransactionManager transactionManager) {
+<span class="nc" id="L193">        this.transactionManager = transactionManager;</span>
+<span class="nc" id="L194">        init();</span>
+<span class="nc" id="L195">    }</span>
+
+    @Override
+    public int getRetryMax() {
+<span class="nc" id="L199">        return retryMax;</span>
+    }
+
+    @Override
+    public void setRetryMax(int retryMax) {
+<span class="nc" id="L204">        this.retryMax = retryMax;</span>
+<span class="nc" id="L205">    }</span>
+
+    protected &lt;G extends Throwable&gt; void endTransaction(TransactionStatus status, boolean error, Class&lt;G&gt; exceptionType) throws G {
+        try {
+<span class="nc" id="L209">            TransactionUtils.finalizeTransaction(status, transactionManager, error);</span>
+<span class="nc" id="L210">        } catch (Throwable e) {</span>
+<span class="nc" id="L211">            ExceptionHelper.processException(exceptionType, RuntimeException.class, e);</span>
+<span class="nc" id="L212">        }</span>
+<span class="nc" id="L213">    }</span>
+
+    protected TransactionStatus startTransaction(int propagationBehavior, int isolationLevel) {
+        TransactionStatus status;
+        try {
+<span class="nc" id="L218">            status = TransactionUtils.createTransaction(propagationBehavior, isolationLevel,</span>
+                    transactionManager, false);
+<span class="nc" id="L220">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L221">            LOG.error(&quot;Could not start transaction&quot;, e);</span>
+<span class="nc" id="L222">            throw e;</span>
+<span class="nc" id="L223">        }</span>
+<span class="nc" id="L224">        return status;</span>
+    }
+
+<span class="nc" id="L227">    private class Holder {</span>
+
+        private int val;
+
+        public int getVal() {
+<span class="nc" id="L232">            return val;</span>
+        }
+
+        public void setVal(int val) {
+<span class="nc" id="L236">            this.val = val;</span>
+<span class="nc" id="L237">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

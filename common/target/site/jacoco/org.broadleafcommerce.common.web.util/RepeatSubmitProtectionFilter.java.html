@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RepeatSubmitProtectionFilter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.util</a> &gt; <span class="el_source">RepeatSubmitProtectionFilter.java</span></div><h1>RepeatSubmitProtectionFilter.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.util;
+
+import org.broadleafcommerce.common.util.BLCRequestUtils;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.springframework.web.context.request.ServletWebRequest;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+<span class="nc" id="L41">public class RepeatSubmitProtectionFilter implements Filter {</span>
+
+<span class="nc" id="L43">    private final Map&lt;String, List&lt;String&gt;&gt; requests = new HashMap&lt;String, List&lt;String&gt;&gt;(100);</span>
+
+    @Override
+    public void destroy() {
+        //do nothing
+<span class="nc" id="L48">    }</span>
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+<span class="nc" id="L52">        boolean useSession = true;</span>
+<span class="nc bnc" id="L53" title="All 4 branches missed.">        if (BroadleafRequestContext.getBroadleafRequestContext() != null</span>
+                &amp;&amp; BroadleafRequestContext.getBroadleafRequestContext().getWebRequest() != null) {
+<span class="nc bnc" id="L55" title="All 2 branches missed.">            if (!BLCRequestUtils.isOKtoUseSession(BroadleafRequestContext.getBroadleafRequestContext().getWebRequest())) {</span>
+<span class="nc" id="L56">                useSession = false;</span>
+            }
+<span class="nc bnc" id="L58" title="All 2 branches missed.">        } else if (!BLCRequestUtils.isOKtoUseSession(new ServletWebRequest((HttpServletRequest) request))) {</span>
+<span class="nc" id="L59">            useSession = false;</span>
+        }
+
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (useSession) {</span>
+            String sessionId;
+            String requestURI;
+<span class="nc" id="L65">            synchronized(requests) {</span>
+<span class="nc" id="L66">                sessionId = ((HttpServletRequest) request).getSession().getId();</span>
+<span class="nc" id="L67">                requestURI = ((HttpServletRequest) request).getRequestURI();</span>
+<span class="nc bnc" id="L68" title="All 4 branches missed.">                if (requests.containsKey(sessionId) &amp;&amp; requests.get(sessionId).contains(requestURI)) {</span>
+                    //we are currently already processing this request
+<span class="nc" id="L70">                    ((HttpServletResponse) response).setStatus(HttpServletResponse.SC_NO_CONTENT);</span>
+<span class="nc" id="L71">                    return;</span>
+                }
+<span class="nc" id="L73">                List&lt;String&gt; myRequests = requests.get(sessionId);</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">                if (myRequests == null) {</span>
+<span class="nc" id="L75">                    myRequests = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L76">                    requests.put(sessionId, myRequests);</span>
+                }
+<span class="nc" id="L78">                myRequests.add(requestURI);</span>
+<span class="nc" id="L79">            }</span>
+            try {
+<span class="nc" id="L81">                chain.doFilter(request, response);</span>
+            } finally {
+<span class="nc" id="L83">                synchronized (requests) {</span>
+<span class="nc" id="L84">                    List&lt;String&gt; myRequests = requests.get(sessionId);</span>
+<span class="nc" id="L85">                    myRequests.remove(requestURI);</span>
+<span class="nc bnc" id="L86" title="All 4 branches missed.">                    if (myRequests.isEmpty()) {</span>
+<span class="nc" id="L87">                        requests.remove(sessionId);</span>
+                    }
+<span class="nc" id="L89">                }</span>
+<span class="nc" id="L90">            }</span>
+<span class="nc" id="L91">        } else {</span>
+<span class="nc" id="L92">            chain.doFilter(request, response);</span>
+        }
+<span class="nc" id="L94">    }</span>
+
+    @Override
+    public void init(FilterConfig arg0) throws ServletException {
+        //do nothing
+<span class="nc" id="L99">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

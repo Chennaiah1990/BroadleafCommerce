@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MergeXmlConfigResource.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.context.merge</a> &gt; <span class="el_source">MergeXmlConfigResource.java</span></div><h1>MergeXmlConfigResource.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.context.merge;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extensibility.context.ResourceInputStream;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeException;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeManagerSetupException;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.FatalBeanException;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+/**
+ *
+ * @author jfischer
+ *
+ */
+<span class="nc" id="L42">public class MergeXmlConfigResource {</span>
+
+<span class="nc" id="L44">    private static final Log LOG = LogFactory.getLog(MergeXmlConfigResource.class);</span>
+
+    public Resource getMergedConfigResource(ResourceInputStream[] sources) throws BeansException {
+<span class="nc" id="L47">        Resource configResource = null;</span>
+<span class="nc" id="L48">        ResourceInputStream merged = null;</span>
+        try {
+<span class="nc" id="L50">            merged = merge(sources);</span>
+
+            //read the final stream into a byte array
+<span class="nc" id="L53">            ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L54">            boolean eof = false;</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">            while (!eof) {</span>
+<span class="nc" id="L56">                int temp = merged.read();</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">                if (temp == -1) {</span>
+<span class="nc" id="L58">                    eof = true;</span>
+                } else {
+<span class="nc" id="L60">                    baos.write(temp);</span>
+                }
+<span class="nc" id="L62">            }</span>
+<span class="nc" id="L63">            configResource = new ByteArrayResource(baos.toByteArray());</span>
+
+<span class="nc bnc" id="L65" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L66">                LOG.debug(&quot;Merged config: \n&quot; + serialize(configResource));</span>
+            }
+<span class="nc" id="L68">        } catch (MergeException e) {</span>
+<span class="nc" id="L69">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L70">        } catch (MergeManagerSetupException e) {</span>
+<span class="nc" id="L71">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L72">        } catch (IOException e) {</span>
+<span class="nc" id="L73">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L75" title="All 4 branches missed.">            if (merged != null) {</span>
+<span class="nc" id="L76">                try{ merged.close(); } catch (Throwable e) {</span>
+<span class="nc" id="L77">                    LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L78">                }</span>
+            }
+        }
+
+<span class="nc" id="L82">        return configResource;</span>
+    }
+
+    protected ResourceInputStream merge(ResourceInputStream[] sources) throws MergeException, MergeManagerSetupException {
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (sources.length == 1) return sources[0];</span>
+
+<span class="nc" id="L88">        ResourceInputStream response = null;</span>
+<span class="nc" id="L89">        ResourceInputStream[] pair = new ResourceInputStream[2];</span>
+<span class="nc" id="L90">        pair[0] = sources[0];</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        for (int j=1;j&lt;sources.length;j++){</span>
+<span class="nc" id="L92">            pair[1] = sources[j];</span>
+<span class="nc" id="L93">            response = mergeItems(pair[0], pair[1]);</span>
+            try{
+<span class="nc" id="L95">                pair[0].close();</span>
+<span class="nc" id="L96">            } catch (Throwable e) {</span>
+<span class="nc" id="L97">                LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L98">            }</span>
+            try{
+<span class="nc" id="L100">                pair[1].close();</span>
+<span class="nc" id="L101">            } catch (Throwable e) {</span>
+<span class="nc" id="L102">                LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L103">            }</span>
+<span class="nc" id="L104">            pair[0] = response;</span>
+        }
+
+<span class="nc" id="L107">        return response;</span>
+    }
+
+    protected ResourceInputStream mergeItems(ResourceInputStream sourceLocationFirst, ResourceInputStream sourceLocationSecond) throws MergeException, MergeManagerSetupException {
+<span class="nc" id="L111">        ResourceInputStream response = new MergeManager().merge(sourceLocationFirst, sourceLocationSecond);</span>
+
+<span class="nc" id="L113">        return response;</span>
+    }
+
+    public String serialize(Resource resource) {
+<span class="nc" id="L117">        String response = &quot;&quot;;</span>
+        try {
+<span class="nc" id="L119">            response = serialize(resource.getInputStream());</span>
+<span class="nc" id="L120">        } catch (IOException e) {</span>
+<span class="nc" id="L121">            LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L122">        }</span>
+
+<span class="nc" id="L124">        return response;</span>
+    }
+
+    public String serialize(InputStream in) {
+<span class="nc" id="L128">        InputStreamReader reader = null;</span>
+        int temp;
+<span class="nc" id="L130">        StringBuilder item = new StringBuilder();</span>
+<span class="nc" id="L131">        boolean eof = false;</span>
+        try {
+<span class="nc" id="L133">            reader = new InputStreamReader(in);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">            while (!eof) {</span>
+<span class="nc" id="L135">                temp = reader.read();</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">                if (temp == -1) {</span>
+<span class="nc" id="L137">                    eof = true;</span>
+                } else {
+<span class="nc" id="L139">                    item.append((char) temp);</span>
+                }
+            }
+<span class="nc" id="L142">        } catch (IOException e) {</span>
+<span class="nc" id="L143">            LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L145" title="All 6 branches missed.">            if (reader != null) {</span>
+<span class="nc" id="L146">                try{ reader.close(); } catch (Throwable e) {</span>
+<span class="nc" id="L147">                    LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L148">                }</span>
+            }
+        }
+
+<span class="nc" id="L152">        return item.toString();</span>
+    }
+
+    protected byte[] buildArrayFromStream(InputStream source) throws IOException {
+<span class="nc" id="L156">        ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L157">        boolean eof = false;</span>
+        try{
+<span class="nc bnc" id="L159" title="All 2 branches missed.">            while (!eof) {</span>
+<span class="nc" id="L160">                int temp = source.read();</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                if (temp == -1) {</span>
+<span class="nc" id="L162">                    eof = true;</span>
+                } else {
+<span class="nc" id="L164">                    baos.write(temp);</span>
+                }
+<span class="nc" id="L166">            }</span>
+        } finally {
+<span class="nc" id="L168">            try{ source.close(); } catch (Throwable e) {</span>
+<span class="nc" id="L169">                LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L170">            }</span>
+<span class="nc" id="L171">        }</span>
+
+<span class="nc" id="L173">        return baos.toByteArray();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

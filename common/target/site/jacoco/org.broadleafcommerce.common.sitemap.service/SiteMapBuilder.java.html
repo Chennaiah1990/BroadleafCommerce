@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SiteMapBuilder.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.sitemap.service</a> &gt; <span class="el_source">SiteMapBuilder.java</span></div><h1>SiteMapBuilder.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.sitemap.service;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.file.domain.FileWorkArea;
+import org.broadleafcommerce.common.file.service.BroadleafFileUtils;
+import org.broadleafcommerce.common.sitemap.domain.SiteMapConfiguration;
+import org.broadleafcommerce.common.sitemap.wrapper.SiteMapIndexWrapper;
+import org.broadleafcommerce.common.sitemap.wrapper.SiteMapURLSetWrapper;
+import org.broadleafcommerce.common.sitemap.wrapper.SiteMapURLWrapper;
+import org.broadleafcommerce.common.sitemap.wrapper.SiteMapWrapper;
+import org.broadleafcommerce.common.util.FormatUtil;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+
+/**
+ * Handles creating the various sitemap files. 
+ * 
+ * @author bpolster
+ */
+public class SiteMapBuilder {
+
+<span class="fc" id="L54">    protected static final Log LOG = LogFactory.getLog(SiteMapBuilder.class);</span>
+    protected FileWorkArea fileWorkArea;
+
+    protected SiteMapConfiguration siteMapConfig;
+    protected SiteMapURLSetWrapper currentURLSetWrapper;
+<span class="fc" id="L59">    protected List&lt;String&gt; indexedFileNames = new ArrayList&lt;String&gt;();</span>
+    protected String baseUrl;
+<span class="fc" id="L61">    protected boolean gzipSiteMapFiles = true;</span>
+
+<span class="fc" id="L63">    public SiteMapBuilder(SiteMapConfiguration siteMapConfig, FileWorkArea fileWorkArea, String baseUrl, boolean gzipSiteMapFiles) {</span>
+<span class="fc" id="L64">        this.fileWorkArea = fileWorkArea;</span>
+<span class="fc" id="L65">        this.siteMapConfig = siteMapConfig;</span>
+<span class="fc" id="L66">        this.currentURLSetWrapper = new SiteMapURLSetWrapper();</span>
+<span class="fc" id="L67">        this.baseUrl = baseUrl;</span>
+<span class="fc" id="L68">        this.gzipSiteMapFiles = gzipSiteMapFiles;</span>
+<span class="fc" id="L69">    }</span>
+
+    /**
+     * Returns the SiteMapURLSetWrapper that a Generator should use to add its next URL element.
+     * 
+     */
+    public void addUrl(SiteMapURLWrapper urlWrapper) {
+<span class="fc bfc" id="L76" title="All 2 branches covered.">        if (currentURLSetWrapper.getSiteMapUrlWrappers().size() &gt;= siteMapConfig.getMaximumUrlEntriesPerFile()) {</span>
+<span class="fc" id="L77">            persistIndexedURLSetWrapper(currentURLSetWrapper);</span>
+<span class="fc" id="L78">            currentURLSetWrapper = new SiteMapURLSetWrapper();</span>
+        }
+<span class="fc" id="L80">        currentURLSetWrapper.getSiteMapUrlWrappers().add(urlWrapper);</span>
+<span class="fc" id="L81">    }</span>
+
+    /**
+     * Method takes in a valid JAXB object (e.g. has a RootElement) and persists it to 
+     * the temporary directory associated with this builder. 
+     * 
+     * @param fileName
+     */
+    protected void persistXMLDocument(String fileName, Object xmlObject) {
+
+        try {
+<span class="fc" id="L92">            JAXBContext context = JAXBContext.newInstance(xmlObject.getClass());</span>
+<span class="fc" id="L93">            Marshaller m = context.createMarshaller();</span>
+<span class="fc" id="L94">            m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);</span>
+<span class="fc" id="L95">            m.setProperty(Marshaller.JAXB_FRAGMENT, true);</span>
+
+<span class="fc" id="L97">            File file = new File(fileWorkArea.getFilePathLocation() + fileName);</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L99">                LOG.trace(&quot;Persisting SiteMap document &quot; + file.getAbsolutePath());</span>
+            }
+
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">            if (!file.exists()) {</span>
+<span class="fc" id="L103">                file.createNewFile();</span>
+            }
+<span class="fc" id="L105">            Writer writer = new BufferedWriter(new FileWriter(file.getAbsoluteFile()));</span>
+<span class="fc" id="L106">            writer.write(&quot;&lt;?xml version=\&quot;1.0\&quot; encoding=\&quot;UTF-8\&quot;?&gt;\n&quot;);</span>
+<span class="fc" id="L107">            m.marshal(xmlObject, writer);</span>
+<span class="fc" id="L108">            writer.close();</span>
+<span class="nc" id="L109">        } catch (IOException ioe) {</span>
+<span class="nc" id="L110">            LOG.error(&quot;IOException occurred persisting XML Document&quot;, ioe);</span>
+<span class="nc" id="L111">            throw new RuntimeException(&quot;Error persisting XML document when trying to build Sitemap&quot;, ioe);</span>
+<span class="nc" id="L112">        } catch (JAXBException je) {</span>
+<span class="nc" id="L113">            LOG.error(&quot;JAXBException occurred persisting XML Document&quot;, je);</span>
+<span class="nc" id="L114">            throw new RuntimeException(&quot;Error persisting XML document when trying to build Sitemap&quot;, je);</span>
+<span class="fc" id="L115">        }</span>
+<span class="fc" id="L116">    }</span>
+
+    /**
+     * Save the passed in URL set to a new indexed file. 
+     * 
+     * @return
+     */
+    protected void persistIndexedURLSetWrapper(SiteMapURLSetWrapper urlSetWrapper) {
+<span class="fc" id="L124">        String indexedFileName = createNextIndexedFileName();</span>
+<span class="fc" id="L125">        indexedFileNames.add(indexedFileName);</span>
+<span class="fc" id="L126">        persistXMLDocument(indexedFileName, urlSetWrapper);</span>
+<span class="fc" id="L127">    }</span>
+
+    /**
+     * Save the passed in URL set to a non-indexed file. 
+     * 
+     * @return
+     */
+    protected void persistNonIndexedSiteMap() {
+<span class="nc" id="L135">        indexedFileNames.add(siteMapConfig.getSiteMapFileName());</span>
+<span class="nc" id="L136">        persistXMLDocument(siteMapConfig.getSiteMapFileName(), currentURLSetWrapper);</span>
+<span class="nc" id="L137">    }</span>
+
+    /**
+     * Save the site map index file. 
+     * 
+     * @return
+     */
+    protected void persistIndexedSiteMap() {
+<span class="fc" id="L145">        String now = FormatUtil.formatDateUsingW3C(new Date());</span>
+        
+        // Save the leftover URL set
+<span class="fc" id="L148">        persistIndexedURLSetWrapper(currentURLSetWrapper);</span>
+
+        // Build the siteMapIndex
+<span class="fc" id="L151">        SiteMapIndexWrapper siteMapIndexWrapper = new SiteMapIndexWrapper();</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">        for (String fileName : indexedFileNames) {</span>
+<span class="fc" id="L153">            SiteMapWrapper siteMapWrapper = new SiteMapWrapper();</span>
+<span class="fc" id="L154">            String fileLoc = null;</span>
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">            if (gzipSiteMapFiles) {</span>
+<span class="nc" id="L156">                fileLoc = BroadleafFileUtils.appendUnixPaths(baseUrl, fileName + &quot;.gz&quot;);</span>
+            } else {
+<span class="fc" id="L158">                fileLoc = BroadleafFileUtils.appendUnixPaths(baseUrl, fileName);</span>
+            }
+<span class="fc" id="L160">            siteMapWrapper.setLoc(fileLoc)   ;         </span>
+<span class="fc" id="L161">            siteMapWrapper.setLastmod(now);</span>
+<span class="fc" id="L162">            siteMapIndexWrapper.getSiteMapWrappers().add(siteMapWrapper);</span>
+<span class="fc" id="L163">        }</span>
+
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">        if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L166">            LOG.trace(&quot;Persisting sitemap.xml file for indexed site map &quot;);</span>
+        }
+<span class="fc" id="L168">        indexedFileNames.add(siteMapConfig.getIndexedSiteMapFileName());</span>
+<span class="fc" id="L169">        persistXMLDocument(siteMapConfig.getIndexedSiteMapFileName(),</span>
+                siteMapIndexWrapper);
+<span class="fc" id="L171">    }</span>
+
+    /**
+     * Create the name of the indexed files.
+     * For example, sitemap1.xml, sitemap2.xml, etc.
+     * 
+     * @return
+     */
+    protected String createNextIndexedFileName() {
+<span class="fc" id="L180">        String pattern = siteMapConfig.getSiteMapIndexFilePattern();</span>
+<span class="fc" id="L181">        int indexFileNumber = indexedFileNames.size() + 1;</span>
+<span class="fc" id="L182">        String fileName = pattern.replaceFirst(&quot;###&quot;, String.valueOf(indexFileNumber));</span>
+<span class="fc" id="L183">        return fileName;</span>
+    }
+
+    protected void persistSiteMap() {
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">        if (indexedFileNames.size() &gt; 0) {</span>
+<span class="fc" id="L188">            persistIndexedSiteMap();</span>
+        } else {
+<span class="nc" id="L190">            persistNonIndexedSiteMap();</span>
+        }
+<span class="fc" id="L192">    }</span>
+
+    public List&lt;String&gt; getIndexedFileNames() {
+<span class="fc" id="L195">        return indexedFileNames;</span>
+    }
+
+    public String getBaseUrl() {
+<span class="fc" id="L199">        return baseUrl;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

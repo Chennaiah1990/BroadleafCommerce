@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DataDrivenEnumerationValueImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.enumeration.domain</a> &gt; <span class="el_source">DataDrivenEnumerationValueImpl.java</span></div><h1>DataDrivenEnumerationValueImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.enumeration.domain;
+
+import org.broadleafcommerce.common.copy.CreateResponse;
+import org.broadleafcommerce.common.copy.MultiTenantCopyContext;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Index;
+import org.hibernate.annotations.Parameter;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+
+/**
+ * @author Jeff Fischer
+ */
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name=&quot;BLC_DATA_DRVN_ENUM_VAL&quot;)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region=&quot;blStandardElements&quot;)
+@AdminPresentationClass(friendlyName = &quot;DataDrivenEnumerationValueImpl_friendyName&quot;)
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.SANDBOX, skipOverlaps=true),
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_SITE)
+})
+<span class="nc" id="L58">public class DataDrivenEnumerationValueImpl implements DataDrivenEnumerationValue {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator = &quot;DataDrivenEnumerationValueId&quot;)
+    @GenericGenerator(
+        name=&quot;DataDrivenEnumerationValueId&quot;,
+        strategy=&quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+        parameters = {
+            @Parameter(name=&quot;segment_value&quot;, value=&quot;DataDrivenEnumerationValueImpl&quot;),
+            @Parameter(name=&quot;entity_name&quot;, value=&quot;org.broadleafcommerce.common.enumeration.domain.DataDrivenEnumerationValueImpl&quot;)
+        }
+    )
+    @Column(name = &quot;ENUM_VAL_ID&quot;)
+    protected Long id;
+
+    @ManyToOne(targetEntity = DataDrivenEnumerationImpl.class, cascade = CascadeType.REFRESH)
+    @JoinColumn(name = &quot;ENUM_TYPE&quot;)
+    protected DataDrivenEnumeration type;
+
+    @Column(name = &quot;ENUM_KEY&quot;)
+    @Index(name = &quot;ENUM_VAL_KEY_INDEX&quot;, columnNames = {&quot;ENUM_KEY&quot;})
+    @AdminPresentation(friendlyName = &quot;DataDrivenEnumerationValueImpl_Key&quot;, order = 1, gridOrder = 1, prominent = true)
+    protected String key;
+
+    @Column(name = &quot;DISPLAY&quot;)
+    @AdminPresentation(friendlyName = &quot;DataDrivenEnumerationValueImpl_Display&quot;, order = 2, gridOrder = 2, prominent = true)
+    protected String display;
+
+<span class="nc" id="L88">    @Column(name = &quot;HIDDEN&quot;)</span>
+    @Index(name = &quot;HIDDEN_INDEX&quot;, columnNames = {&quot;HIDDEN&quot;})
+    @AdminPresentation(friendlyName = &quot;DataDrivenEnumerationValueImpl_Hidden&quot;, order = 3, gridOrder = 3, prominent = true)
+    protected Boolean hidden = false;
+
+    @Override
+    public String getDisplay() {
+<span class="nc" id="L95">        return display;</span>
+    }
+
+    @Override
+    public void setDisplay(String display) {
+<span class="nc" id="L100">        this.display = display;</span>
+<span class="nc" id="L101">    }</span>
+
+    @Override
+    public Boolean getHidden() {
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (hidden == null) {</span>
+<span class="nc" id="L106">            return Boolean.FALSE;</span>
+        } else {
+<span class="nc" id="L108">            return hidden;</span>
+        }
+    }
+
+    @Override
+    public void setHidden(Boolean hidden) {
+<span class="nc" id="L114">        this.hidden = hidden;</span>
+<span class="nc" id="L115">    }</span>
+
+    @Override
+    public Long getId() {
+<span class="nc" id="L119">        return id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L124">        this.id = id;</span>
+<span class="nc" id="L125">    }</span>
+
+    @Override
+    public String getKey() {
+<span class="nc" id="L129">        return key;</span>
+    }
+
+    @Override
+    public void setKey(String key) {
+<span class="nc" id="L134">        this.key = key;</span>
+<span class="nc" id="L135">    }</span>
+
+    @Override
+    public DataDrivenEnumeration getType() {
+<span class="nc" id="L139">        return type;</span>
+    }
+
+    @Override
+    public void setType(DataDrivenEnumeration type) {
+<span class="nc" id="L144">        this.type = type;</span>
+<span class="nc" id="L145">    }</span>
+
+    @Override
+    public &lt;G extends DataDrivenEnumerationValue&gt; CreateResponse&lt;G&gt; createOrRetrieveCopyInstance(MultiTenantCopyContext context) throws CloneNotSupportedException {
+<span class="nc" id="L149">        CreateResponse&lt;G&gt; createResponse = context.createOrRetrieveCopyInstance(this);</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (createResponse.isAlreadyPopulated()) {</span>
+<span class="nc" id="L151">            return createResponse;</span>
+        }
+<span class="nc" id="L153">        DataDrivenEnumerationValue cloned = createResponse.getClone();</span>
+<span class="nc" id="L154">        cloned.setKey(key);</span>
+<span class="nc" id="L155">        cloned.setDisplay(display);</span>
+<span class="nc" id="L156">        cloned.setHidden(hidden);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        if (type != null) {</span>
+<span class="nc" id="L158">            cloned.setType(type.createOrRetrieveCopyInstance(context).getClone());</span>
+        }
+<span class="nc" id="L160">        return createResponse;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

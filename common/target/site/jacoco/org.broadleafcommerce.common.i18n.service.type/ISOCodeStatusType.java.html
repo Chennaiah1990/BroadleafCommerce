@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ISOCodeStatusType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.i18n.service.type</a> &gt; <span class="el_source">ISOCodeStatusType.java</span></div><h1>ISOCodeStatusType.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.i18n.service.type;
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * An extensible enumeration of ISO Code Status Types.
+ * See {@link http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2}
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+public class ISOCodeStatusType implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L37">    private static final Map&lt;String, ISOCodeStatusType&gt; TYPES = new LinkedHashMap&lt;String, ISOCodeStatusType&gt;();</span>
+
+<span class="nc" id="L39">    public static final ISOCodeStatusType OFFICIALLY_ASSIGNED = new ISOCodeStatusType(&quot;OFFICIALLY_ASSIGNED&quot;, &quot;Officially assigned: assigned to a country, territory, or area of geographical interest.&quot;);</span>
+<span class="nc" id="L40">    public static final ISOCodeStatusType USER_ASSIGNED = new ISOCodeStatusType(&quot;USER_ASSIGNED&quot;, &quot;User-assigned: free for assignment at the disposal of users.&quot;);</span>
+<span class="nc" id="L41">    public static final ISOCodeStatusType EXCEPTIONALLY_RESERVED = new ISOCodeStatusType(&quot;EXCEPTIONALLY_RESERVED&quot;, &quot;Exceptionally reserved: reserved on request for restricted use.&quot;);</span>
+<span class="nc" id="L42">    public static final ISOCodeStatusType TRANSITIONALLY_RESERVED = new ISOCodeStatusType(&quot;TRANSITIONALLY_RESERVED&quot;, &quot;Transitionally reserved: deleted from ISO 3166-1 but reserved transitionally.&quot;);</span>
+<span class="nc" id="L43">    public static final ISOCodeStatusType INDETERMINATELY_RESERVED = new ISOCodeStatusType(&quot;INDETERMINATELY_RESERVED&quot;, &quot;Indeterminately reserved: used in coding systems associated with ISO 3166-1.&quot;);</span>
+<span class="nc" id="L44">    public static final ISOCodeStatusType NOT_USED = new ISOCodeStatusType(&quot;NOT_USED&quot;, &quot;Not used: not used in ISO 3166-1 in deference to intergovernmental intellectual property organisation names.&quot;);</span>
+<span class="nc" id="L45">    public static final ISOCodeStatusType UNASSIGNED = new ISOCodeStatusType(&quot;UNASSIGNED&quot;, &quot;Unassigned: free for assignment by the ISO 3166/MA only.&quot;);</span>
+
+    public static ISOCodeStatusType getInstance(final String type) {
+<span class="nc" id="L48">        return TYPES.get(type);</span>
+    }
+
+    private String type;
+    private String friendlyType;
+
+<span class="nc" id="L54">    public ISOCodeStatusType() {</span>
+        //do nothing
+<span class="nc" id="L56">    }</span>
+
+<span class="nc" id="L58">    public ISOCodeStatusType(final String type, final String friendlyType) {</span>
+<span class="nc" id="L59">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L60">        setType(type);</span>
+<span class="nc" id="L61">    }</span>
+
+    public String getType() {
+<span class="nc" id="L64">        return type;</span>
+    }
+
+    public String getFriendlyType() {
+<span class="nc" id="L68">        return friendlyType;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L72">        this.type = type;</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (!TYPES.containsKey(type)) {</span>
+<span class="nc" id="L74">            TYPES.put(type, this);</span>
+        }
+<span class="nc" id="L76">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L80">        final int prime = 31;</span>
+<span class="nc" id="L81">        int result = 1;</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L83">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L89">            return true;</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L91">            return false;</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L93">            return false;</span>
+<span class="nc" id="L94">        ISOCodeStatusType other = (ISOCodeStatusType) obj;</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L97">                return false;</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L99">            return false;</span>
+<span class="nc" id="L100">        return true;</span>
+    }
+
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StructuredContentDTOWrapper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.structure.dto</a> &gt; <span class="el_source">StructuredContentDTOWrapper.java</span></div><h1>StructuredContentDTOWrapper.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.structure.dto;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Provides a wrapper class that can be used to alter the priority of a structuredcontentdto.
+ * @author bpolster
+ *
+ */
+public class StructuredContentDTOWrapper extends StructuredContentDTO {
+
+    private static final long serialVersionUID = 1L;
+    private StructuredContentDTO structuredContentDTO;
+    private Integer priority;
+
+<span class="nc" id="L36">    public StructuredContentDTOWrapper(StructuredContentDTO structuredContentDTO) {</span>
+<span class="nc" id="L37">        this.structuredContentDTO = structuredContentDTO;</span>
+<span class="nc" id="L38">    }</span>
+
+    public boolean equals(Object arg0) {
+<span class="nc" id="L41">        return structuredContentDTO.equals(arg0);</span>
+    }
+
+    public Object getPropertyValue(String propertyName) {
+<span class="nc" id="L45">        return structuredContentDTO.getPropertyValue(propertyName);</span>
+    }
+
+    public Long getId() {
+<span class="nc" id="L49">        return structuredContentDTO.getId();</span>
+    }
+
+    public String getContentName() {
+<span class="nc" id="L53">        return structuredContentDTO.getContentName();</span>
+    }
+
+    public String getContentType() {
+<span class="nc" id="L57">        return structuredContentDTO.getContentType();</span>
+    }
+
+    public String getLocaleCode() {
+<span class="nc" id="L61">        return structuredContentDTO.getLocaleCode();</span>
+    }
+
+    public Integer getPriority() {
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (priority != null) {</span>
+<span class="nc" id="L66">            return priority;</span>
+        } else {
+<span class="nc" id="L68">            return structuredContentDTO.getPriority();</span>
+        }
+    }
+
+    public Map getValues() {
+<span class="nc" id="L73">        return structuredContentDTO.getValues();</span>
+    }
+
+    public String getRuleExpression() {
+<span class="nc" id="L77">        return structuredContentDTO.getRuleExpression();</span>
+    }
+
+    public List&lt;ItemCriteriaDTO&gt; getItemCriteriaDTOList() {
+<span class="nc" id="L81">        return structuredContentDTO.getItemCriteriaDTOList();</span>
+    }
+
+    public int hashCode() {
+<span class="nc" id="L85">        return structuredContentDTO.hashCode();</span>
+    }
+
+    public void setId(Long id) {
+<span class="nc" id="L89">        structuredContentDTO.setId(id);</span>
+<span class="nc" id="L90">    }</span>
+
+    public void setContentName(String contentName) {
+<span class="nc" id="L93">        structuredContentDTO.setContentName(contentName);</span>
+<span class="nc" id="L94">    }</span>
+
+    public void setContentType(String contentType) {
+<span class="nc" id="L97">        structuredContentDTO.setContentType(contentType);</span>
+<span class="nc" id="L98">    }</span>
+
+    public void setLocaleCode(String localeCode) {
+<span class="nc" id="L101">        structuredContentDTO.setLocaleCode(localeCode);</span>
+<span class="nc" id="L102">    }</span>
+
+    public void setPriority(Integer priority) {
+<span class="nc" id="L105">        structuredContentDTO.setPriority(priority);</span>
+<span class="nc" id="L106">    }</span>
+
+    public void setValues(Map values) {
+<span class="nc" id="L109">        structuredContentDTO.setValues(values);</span>
+<span class="nc" id="L110">    }</span>
+
+    public void setRuleExpression(String ruleExpression) {
+<span class="nc" id="L113">        structuredContentDTO.setRuleExpression(ruleExpression);</span>
+<span class="nc" id="L114">    }</span>
+
+    public void setItemCriteriaDTOList(List&lt;ItemCriteriaDTO&gt; itemCriteriaDTOList) {
+<span class="nc" id="L117">        structuredContentDTO.setItemCriteriaDTOList(itemCriteriaDTOList);</span>
+<span class="nc" id="L118">    }</span>
+
+    public String toString() {
+<span class="nc" id="L121">        return structuredContentDTO.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

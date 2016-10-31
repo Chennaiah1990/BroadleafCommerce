@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PomEvaluator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">PomEvaluator.java</span></div><h1>PomEvaluator.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+
+<span class="nc" id="L34">public class PomEvaluator {</span>
+
+<span class="nc" id="L36">    private static String SEPARATOR = &quot;============================================================&quot;;</span>
+    
+<span class="nc" id="L38">    private static Map&lt;String, Category&gt; knownLibraries = new HashMap&lt;String,Category&gt;();</span>
+<span class="nc" id="L39">    private static Map&lt;LicenseType, List&lt;Dependency&gt;&gt; licenseDependencyMap = new HashMap&lt;LicenseType, List&lt;Dependency&gt;&gt;();</span>
+    
+<span class="nc" id="L41">    private static Category SPRING = new Category(&quot;Spring Framework&quot;, LicenseType.APACHE2, FrameworkType.GENERAL);</span>
+<span class="nc" id="L42">    private static Category HIBERNATE = new Category(&quot;Hibernate Framework&quot;, LicenseType.LGPL, FrameworkType.PERSISTENCE);</span>
+<span class="nc" id="L43">    private static Category GOOGLE = new Category(&quot;Google&quot;, LicenseType.APACHE2, FrameworkType.GENERAL);</span>
+<span class="nc" id="L44">    private static Category BROADLEAF_OPEN_SOURCE = new Category(&quot;Broadleaf Framework Open Source&quot;, LicenseType.APACHE2, FrameworkType.ECOMMERCE);</span>
+<span class="nc" id="L45">    private static Category BROADLEAF_COMMERCIAL = new Category(&quot;Broadleaf Framework Commercial&quot;, LicenseType.APACHE2, FrameworkType.ECOMMERCE);</span>
+<span class="nc" id="L46">    private static Category APACHE_FOUNDATION = new Category(&quot;Apache 2.0&quot;, LicenseType.APACHE2, FrameworkType.GENERAL);</span>
+<span class="nc" id="L47">    private static Category JAVAX = new Category(&quot;javax&quot;, LicenseType.JAVA_EXTENSION, FrameworkType.OTHER);</span>
+<span class="nc" id="L48">    private static Category THYMELEAF = new Category(&quot;thymeleaf&quot;, LicenseType.APACHE2, FrameworkType.UI);</span>
+<span class="nc" id="L49">    private static Category SLF4J = new Category(&quot;slfj&quot;, LicenseType.MIT, FrameworkType.LOGGING);</span>
+<span class="nc" id="L50">    private static Category LOG4J = new Category(&quot;log4j&quot;, LicenseType.APACHE2, FrameworkType.LOGGING);</span>
+<span class="nc" id="L51">    private static Category OTHER = new Category(&quot;Other&quot;, LicenseType.OTHER, FrameworkType.OTHER);</span>
+<span class="nc" id="L52">    private static Category YAHOO = new Category(&quot;Yahoo&quot;, LicenseType.YAHOO_YUI, FrameworkType.UI);</span>
+    
+    // CODEHAUS is used by Apache and Spring Framework
+<span class="nc" id="L55">    private static Category JACKSON = new Category(&quot;Codehaus Jackson Library&quot;, LicenseType.APACHE2, FrameworkType.XML, SPRING, APACHE_FOUNDATION);</span>
+<span class="nc" id="L56">    private static Category PLEXUS = new Category(&quot;Codehaus Plexus Library&quot;, LicenseType.APACHE2, FrameworkType.XML, SPRING, APACHE_FOUNDATION);</span>
+<span class="nc" id="L57">    private static Category ASM = new Category(&quot;OW2 ASM libraries&quot;, LicenseType.OW2, FrameworkType.GENERAL, APACHE_FOUNDATION, GOOGLE);</span>
+<span class="nc" id="L58">    private static Category CGLIB = new Category(&quot;CGLIB libraries&quot;, LicenseType.APACHE2, FrameworkType.GENERAL, SPRING, HIBERNATE);</span>
+<span class="nc" id="L59">    private static Category JERSEY = new Category(&quot;Jersey Libraries&quot;, LicenseType.LGPL, FrameworkType.XML);</span>
+<span class="nc" id="L60">    private static Category XSTREAM = new Category(&quot;Codehaus XML parsing library&quot;, LicenseType.XSTREAM_BSD, FrameworkType.XML);</span>
+<span class="nc" id="L61">    private static Category JODA_TIME = new Category(&quot;Date and time utilities&quot;, LicenseType.APACHE2, FrameworkType.UTILITY, APACHE_FOUNDATION);</span>
+<span class="nc" id="L62">    private static Category TRANSMORPH = new Category(&quot;Entropy Transmorph - SalesForce.com&quot;, LicenseType.APACHE2, FrameworkType.UTILITY);    </span>
+<span class="nc" id="L63">    private static Category QUARTZ = new Category(&quot;Teracotta Quartz&quot;, LicenseType.APACHE2, FrameworkType.SCHEDULER);</span>
+<span class="nc" id="L64">    private static Category EHCACHE = new Category(&quot;Teracotta ehCache&quot;, LicenseType.APACHE2, FrameworkType.CACHE);</span>
+<span class="nc" id="L65">    private static Category ANTLR = new Category(&quot;Antlr Runtime&quot;, LicenseType.ANTLR_BSD, FrameworkType.UTILITY, APACHE_FOUNDATION);</span>
+<span class="nc" id="L66">    private static Category ASPECTJ = new Category(&quot;Aspect J&quot;, LicenseType.ECLIPSE_PUBLIC, FrameworkType.GENERAL, SPRING);</span>
+<span class="nc" id="L67">    private static Category MVEL = new Category(&quot;MVEL rules evaluation&quot;, LicenseType.APACHE2, FrameworkType.RULES);</span>
+<span class="nc" id="L68">    private static Category ORO = new Category(&quot;ORO regular expressions&quot;, LicenseType.APACHE2, FrameworkType.RULES);</span>
+<span class="nc" id="L69">    private static Category JAVA_ASSIST = new Category(&quot;Java Assist&quot;, LicenseType.APACHE2, FrameworkType.GENERAL);</span>
+<span class="nc" id="L70">    private static Category ANTISAMMY = new Category(&quot;Anti-Sammy&quot;, LicenseType.ANTISAMMY_BSD, FrameworkType.GENERAL);</span>
+    
+    
+
+
+    private static void initializeKnownLibraries() {
+        // Spring
+<span class="nc" id="L77">        knownLibraries.put(&quot;org.springframework&quot;, SPRING);</span>
+<span class="nc" id="L78">        knownLibraries.put(&quot;org.springframework.security&quot;, SPRING);</span>
+<span class="nc" id="L79">        knownLibraries.put(&quot;org.springframework.social&quot;, SPRING);</span>
+
+        // Hibernate
+<span class="nc" id="L82">        knownLibraries.put(&quot;org.hibernate&quot;, HIBERNATE);</span>
+<span class="nc" id="L83">        knownLibraries.put(&quot;org.hibernate.javax.persistence&quot;, HIBERNATE);</span>
+
+        // Broadleaf
+<span class="nc" id="L86">        knownLibraries.put(&quot;org.broadleafcommerce&quot;, BROADLEAF_OPEN_SOURCE);</span>
+<span class="nc" id="L87">        knownLibraries.put(&quot;com.broadleafcommerce&quot;, BROADLEAF_COMMERCIAL);</span>
+
+        // Thymeleaf
+<span class="nc" id="L90">        knownLibraries.put(&quot;org.thymeleaf&quot;, THYMELEAF);</span>
+
+        // JavaX
+<span class="nc" id="L93">        knownLibraries.put(&quot;javax.xml.bind&quot;, JAVAX);</span>
+<span class="nc" id="L94">        knownLibraries.put(&quot;javax.mail&quot;, JAVAX);</span>
+<span class="nc" id="L95">        knownLibraries.put(&quot;javax.servlet&quot;, JAVAX);</span>
+<span class="nc" id="L96">        knownLibraries.put(&quot;javax.servlet.jsp&quot;, JAVAX);</span>
+<span class="nc" id="L97">        knownLibraries.put(&quot;javax.validation&quot;, JAVAX);</span>
+<span class="nc" id="L98">        knownLibraries.put(&quot;jstl&quot;, JAVAX);</span>
+
+        // Logging
+<span class="nc" id="L101">        knownLibraries.put(&quot;org.slf4j&quot;, SLF4J);</span>
+<span class="nc" id="L102">        knownLibraries.put(&quot;log4j&quot;, LOG4J);</span>
+
+        // Apache
+<span class="nc" id="L105">        knownLibraries.put(&quot;commons-validator&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L106">        knownLibraries.put(&quot;commons-collections&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L107">        knownLibraries.put(&quot;commons-beanutils&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L108">        knownLibraries.put(&quot;commons-cli&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L109">        knownLibraries.put(&quot;commons-fileupload&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L110">        knownLibraries.put(&quot;commons-dbcp&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L111">        knownLibraries.put(&quot;commons-codec&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L112">        knownLibraries.put(&quot;org.apache.commons&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L113">        knownLibraries.put(&quot;commons-lang&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L114">        knownLibraries.put(&quot;commons-digester&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L115">        knownLibraries.put(&quot;commons-logging&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L116">        knownLibraries.put(&quot;commons-pool&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L117">        knownLibraries.put(&quot;org.apache.geronimo.specs&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L118">        knownLibraries.put(&quot;org.apache.solr&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L119">        knownLibraries.put(&quot;org.apache.velocity&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L120">        knownLibraries.put(&quot;org.apache.xmlbeans&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L121">        knownLibraries.put(&quot;taglibs&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L122">        knownLibraries.put(&quot;jakarta-regexp&quot;, APACHE_FOUNDATION);</span>
+<span class="nc" id="L123">        knownLibraries.put(&quot;ant.ant&quot;, APACHE_FOUNDATION);</span>
+
+        // Google - Will retire
+<span class="nc" id="L126">        knownLibraries.put(&quot;com.google.gwt&quot;, GOOGLE);</span>
+<span class="nc" id="L127">        knownLibraries.put(&quot;com.google.code.gwt-math&quot;, GOOGLE);</span>
+<span class="nc" id="L128">        knownLibraries.put(&quot;com.google.code.findbugs&quot;, GOOGLE);</span>
+<span class="nc" id="L129">        knownLibraries.put(&quot;net.sf.gwt-widget&quot;, GOOGLE);</span>
+<span class="nc" id="L130">        knownLibraries.put(&quot;com.google.guava&quot;, GOOGLE);</span>
+
+        // CodeHaus - JSON / XML processing
+<span class="nc" id="L133">        knownLibraries.put(&quot;org.codehaus.jackson&quot;, JACKSON);</span>
+<span class="nc" id="L134">        knownLibraries.put(&quot;org.codehaus.plexus&quot;, PLEXUS);</span>
+        
+        // ASM
+<span class="nc" id="L137">        knownLibraries.put(&quot;asm&quot;, ASM);</span>
+
+        // CGLIB
+<span class="nc" id="L140">        knownLibraries.put(&quot;cglib&quot;, CGLIB);</span>
+
+        // Jersey - used for REST services
+<span class="nc" id="L143">        knownLibraries.put(&quot;com.sun.jersey&quot;, JERSEY);</span>
+<span class="nc" id="L144">        knownLibraries.put(&quot;com.sun.jersey.contribs&quot;, JERSEY);</span>
+
+        // XStream - used for REST services
+<span class="nc" id="L147">        knownLibraries.put(&quot;com.thoughtworks.xstream&quot;, JERSEY);</span>
+
+        // Joda-Time
+<span class="nc" id="L150">        knownLibraries.put(&quot;joda-time&quot;, JODA_TIME);</span>
+
+        // Cache
+<span class="nc" id="L153">        knownLibraries.put(&quot;net.sf.jsr107cache&quot;, JAVAX);</span>
+
+        // Transmorph - Will retire with 3.0
+<span class="nc" id="L156">        knownLibraries.put(&quot;net.sf.transmorph&quot;, TRANSMORPH);</span>
+
+        // Teracotta software
+<span class="nc" id="L159">        knownLibraries.put(&quot;net.sf.ehcache&quot;, EHCACHE);</span>
+<span class="nc" id="L160">        knownLibraries.put(&quot;org.opensymphony.quartz&quot;, QUARTZ);</span>
+
+        // Antlr
+<span class="nc" id="L163">        knownLibraries.put(&quot;org.antlr&quot;, ANTLR);</span>
+
+        // Aspect J
+<span class="nc" id="L166">        knownLibraries.put(&quot;org.aspectj&quot;, ASPECTJ);</span>
+
+        // MVEL
+<span class="nc" id="L169">        knownLibraries.put(&quot;org.mvel&quot;, MVEL);</span>
+
+        // ORO
+<span class="nc" id="L172">        knownLibraries.put(&quot;oro&quot;, ORO);</span>
+
+        // Java Assist
+<span class="nc" id="L175">        knownLibraries.put(&quot;org.javassist&quot;, JAVA_ASSIST);</span>
+
+        // OWASP
+<span class="nc" id="L178">        knownLibraries.put(&quot;org.owasp.antisamy&quot;, ANTISAMMY);</span>
+
+        // OWASP
+<span class="nc" id="L181">        knownLibraries.put(&quot;com.yahoo.platform.yui&quot;, YAHOO);</span>
+
+<span class="nc" id="L183">    }</span>
+
+
+    /**
+     * @param args
+     */
+    public static void main(String[] args) {
+<span class="nc" id="L190">        initializeKnownLibraries();</span>
+<span class="nc" id="L191">        BufferedReader br = null;</span>
+        
+        try {
+<span class="nc" id="L194">            String fileName = &quot;/Users/brianpolster/blc-workspace/BroadleafCommerce/pom.xml&quot;;</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">            if (args.length &gt; 0) {</span>
+<span class="nc" id="L196">                fileName = args[0];</span>
+            }
+
+<span class="nc" id="L199">            br = new BufferedReader(new FileReader(fileName));</span>
+
+<span class="nc" id="L201">            forwardToTag(&quot;&lt;dependencies&gt;&quot;, br);</span>
+
+<span class="nc" id="L203">            List&lt;Dependency&gt; dependencies = populateDependencies(br);</span>
+
+<span class="nc bnc" id="L205" title="All 2 branches missed.">            for (Dependency dependency : dependencies) {</span>
+<span class="nc" id="L206">                Category category = knownLibraries.get(dependency.groupId);</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">                if (category != null) {</span>
+<span class="nc" id="L208">                    category.dependencyList.add(dependency);</span>
+<span class="nc" id="L209">                    List&lt;Dependency&gt; licenseDependencyList = licenseDependencyMap.get(category.licenseType);</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">                    if (licenseDependencyList == null) {</span>
+<span class="nc" id="L211">                        licenseDependencyList = new ArrayList&lt;Dependency&gt;();</span>
+<span class="nc" id="L212">                        licenseDependencyList.add(dependency);</span>
+<span class="nc" id="L213">                        licenseDependencyMap.put(category.licenseType, licenseDependencyList);</span>
+                    }
+
+<span class="nc" id="L216">                } else {</span>
+
+<span class="nc bnc" id="L218" title="All 6 branches missed.">                    if (dependency.scope != null &amp;&amp; (dependency.scope.equals(&quot;test&quot;) ||</span>
+                            dependency.scope.equals(&quot;provided&quot;))) {
+<span class="nc" id="L220">                        continue;</span>
+                    }
+<span class="nc" id="L222">                    OTHER.dependencyList.add(dependency);</span>
+                }
+<span class="nc" id="L224">            }</span>
+
+<span class="nc" id="L226">            Set&lt;Category&gt; categoryList = new HashSet&lt;Category&gt;(knownLibraries.values());</span>
+
+<span class="nc" id="L228">            System.out.println(&quot;Related Software Report\r&quot;);</span>
+
+<span class="nc bnc" id="L230" title="All 2 branches missed.">            for (Category category : categoryList) {</span>
+<span class="nc" id="L231">                printOutDependencies(category, category.dependencyList);</span>
+<span class="nc" id="L232">            }</span>
+
+<span class="nc bnc" id="L234" title="All 2 branches missed.">            if (OTHER.dependencyList.size() &gt; 0) {</span>
+<span class="nc" id="L235">                printOutDependencies(OTHER, OTHER.dependencyList);</span>
+            }
+<span class="nc" id="L237">        } catch (IOException e) {</span>
+<span class="nc" id="L238">            e.printStackTrace();</span>
+        } finally {
+<span class="nc" id="L240">            try {</span>
+<span class="nc bnc" id="L241" title="All 6 branches missed.">                if (br != null) br.close();</span>
+<span class="nc" id="L242">            } catch (IOException ex) {</span>
+<span class="nc" id="L243">                ex.printStackTrace();</span>
+<span class="nc" id="L244">            }</span>
+<span class="nc" id="L245">        }</span>
+<span class="nc" id="L246">    }</span>
+
+    public static void printOutDependencies(Category category, List&lt;Dependency&gt; dependencies) {
+<span class="nc" id="L249">        List&lt;String&gt; dependencyNames = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        for (Dependency d : dependencies) {</span>
+<span class="nc" id="L251">            dependencyNames.add(d.toString());</span>
+<span class="nc" id="L252">        }</span>
+        
+<span class="nc" id="L254">        Collections.sort(dependencyNames);</span>
+
+<span class="nc" id="L256">        System.out.println(category);</span>
+<span class="nc" id="L257">        System.out.println(SEPARATOR);</span>
+        
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        for (String name : dependencyNames) {</span>
+<span class="nc" id="L260">            System.out.println(name);</span>
+<span class="nc" id="L261">        }</span>
+<span class="nc" id="L262">        System.out.println(&quot;Total count for category &quot; + category.categoryName + &quot;: &quot; + dependencyNames.size() + &quot;\r\r&quot;);</span>
+        
+<span class="nc" id="L264">    }</span>
+
+    public static List&lt;Dependency&gt; populateDependencies(BufferedReader br) throws IOException {
+        String currentLine;
+<span class="nc" id="L268">        List&lt;Dependency&gt; dependencyList = new ArrayList&lt;Dependency&gt;();</span>
+
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        while (forwardToTag(&quot;&lt;dependency&quot;, br)) {</span>
+<span class="nc" id="L271">            Dependency current = new Dependency();</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">            while ((currentLine = br.readLine()) != null) {</span>
+<span class="nc bnc" id="L273" title="All 2 branches missed.">                if (currentLine.contains(&quot;&lt;/dependency&gt;&quot;)) {</span>
+<span class="nc" id="L274">                    break;</span>
+                }
+<span class="nc" id="L276">                current.scope = getTagValue(&quot;&lt;scope&gt;&quot;, currentLine, current.scope);</span>
+<span class="nc" id="L277">                current.groupId = getTagValue(&quot;&lt;groupId&gt;&quot;, currentLine, current.groupId);</span>
+<span class="nc" id="L278">                current.artifactId = getTagValue(&quot;&lt;artifactId&gt;&quot;, currentLine, current.artifactId);</span>
+<span class="nc" id="L279">                current.version = getTagValue(&quot;&lt;version&gt;&quot;, currentLine, current.version);</span>
+            }
+
+<span class="nc" id="L282">            dependencyList.add(current);</span>
+<span class="nc" id="L283">        }</span>
+<span class="nc" id="L284">        return dependencyList;</span>
+    }
+
+    public static String getTagValue(String tagName, String line, String currentValue) {
+<span class="nc" id="L288">        int startPos = line.indexOf(tagName);</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        if (startPos &gt;= 0) {</span>
+<span class="nc" id="L290">            int endPos = line.indexOf(&quot;&lt;/&quot;, startPos + 1);</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">            if (endPos &gt;= 0) {</span>
+<span class="nc" id="L292">                return line.substring(startPos + tagName.length(), endPos);</span>
+            }
+        }
+<span class="nc" id="L295">        return currentValue;</span>
+    }
+
+    public static boolean forwardToTag(String tagName, BufferedReader br) throws IOException {
+        String sCurrentLine;
+<span class="nc bnc" id="L300" title="All 2 branches missed.">        while ((sCurrentLine = br.readLine()) != null) {</span>
+<span class="nc" id="L301">            String lowerCaseLine = sCurrentLine.toLowerCase();</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">            if (lowerCaseLine.indexOf(tagName) &gt;= 0) {</span>
+<span class="nc" id="L303">                return true;</span>
+            }
+<span class="nc" id="L305">        }</span>
+<span class="nc" id="L306">        return false;</span>
+    }
+
+<span class="nc" id="L309">    static class Dependency {</span>
+
+        String groupId;
+        String artifactId;
+        String version;
+        String scope;
+<span class="nc" id="L315">        List&lt;Category&gt; categoriesThatDependOnThis = new ArrayList&lt;Category&gt;();</span>
+
+        public String toString() {
+<span class="nc" id="L318">            return groupId + &quot;.&quot; + artifactId + &quot;.&quot; + version + &quot;  [&quot; + scope + &quot;]&quot;;</span>
+        }
+    }
+
+    static class LicenseType {
+
+        private String name;
+        private String url;
+
+<span class="nc" id="L327">        public static LicenseType APACHE2 = new LicenseType(&quot;APACHE2&quot;, &quot;http://www.apache.org/licenses/LICENSE-2.0.html&quot;);</span>
+<span class="nc" id="L328">        public static LicenseType LGPL = new LicenseType(&quot;LGPL&quot;, &quot;http://www.gnu.org/licenses/lgpl-3.0.html, http://www.gnu.org/licenses/lgpl-2.1.html,&quot;);</span>
+<span class="nc" id="L329">        public static LicenseType MIT = new LicenseType(&quot;MIT&quot;, &quot;http://opensource.org/licenses/MIT&quot;);</span>
+<span class="nc" id="L330">        public static LicenseType JAVA_EXTENSION = new LicenseType(&quot;JAVA_EXTENSION&quot;, &quot;n/a&quot;);</span>
+<span class="nc" id="L331">        public static LicenseType OW2 = new LicenseType(&quot;OW2&quot;, &quot;http://asm.ow2.org/license.html&quot;);</span>
+<span class="nc" id="L332">        public static LicenseType XSTREAM_BSD = new LicenseType(&quot;XSTREAM_BSD&quot;, &quot;http://xstream.codehaus.org/license.html&quot;);</span>
+<span class="nc" id="L333">        public static LicenseType ANTLR_BSD = new LicenseType(&quot;ANTLR_BSD&quot;, &quot;http://www.antlr.org/license.html&quot;);</span>
+<span class="nc" id="L334">        public static LicenseType ANTISAMMY_BSD = new LicenseType(&quot;ANTISAMMY_BSD&quot;, &quot;http://opensource.org/licenses/bsd-license.php&quot;);</span>
+<span class="nc" id="L335">        public static LicenseType OTHER = new LicenseType(&quot;OTHER&quot;, &quot;Unknown&quot;);</span>
+<span class="nc" id="L336">        public static LicenseType ECLIPSE_PUBLIC = new LicenseType(&quot;ECLIPSE PUBLIC&quot;, &quot;http://www.eclipse.org/legal/epl-v10.html&quot;);</span>
+<span class="nc" id="L337">        public static LicenseType YAHOO_YUI = new LicenseType(&quot;YAHOO YUI&quot;, &quot;http://yuilibrary.com/license/&quot;);</span>
+
+<span class="nc" id="L339">        public LicenseType(String name, String url) {</span>
+<span class="nc" id="L340">            this.name = name;</span>
+<span class="nc" id="L341">            this.url = url;</span>
+<span class="nc" id="L342">        }</span>
+
+        public String toString() {
+<span class="nc" id="L345">            return name.toString() + &quot;:&quot; + url;</span>
+        }
+    }
+
+<span class="nc" id="L349">    static enum FrameworkType {</span>
+<span class="nc" id="L350">        PERSISTENCE,</span>
+<span class="nc" id="L351">        GENERAL,</span>
+<span class="nc" id="L352">        LOGGING,</span>
+<span class="nc" id="L353">        UI,</span>
+<span class="nc" id="L354">        XML,</span>
+<span class="nc" id="L355">        UTILITY,</span>
+<span class="nc" id="L356">        SCHEDULER,</span>
+<span class="nc" id="L357">        CACHE,</span>
+<span class="nc" id="L358">        RULES,</span>
+<span class="nc" id="L359">        ECOMMERCE,</span>
+<span class="nc" id="L360">        OTHER</span>
+    }        
+
+<span class="nc" id="L363">    static class Category {</span>
+
+        String categoryName;
+        LicenseType licenseType;
+        FrameworkType frameworkType;
+<span class="nc" id="L368">        List&lt;Dependency&gt; dependencyList = new ArrayList&lt;Dependency&gt;();</span>
+        Category[] usedByCategories;
+
+
+<span class="nc" id="L372">        public Category(String categoryName, LicenseType type, FrameworkType frameworkType) {</span>
+<span class="nc" id="L373">            this.categoryName = categoryName;</span>
+<span class="nc" id="L374">            this.licenseType = type;</span>
+<span class="nc" id="L375">            this.frameworkType = frameworkType;</span>
+<span class="nc" id="L376">        }</span>
+
+        public Category(String categoryName, LicenseType type, FrameworkType frameworkType, Category... usedByCategories) {
+<span class="nc" id="L379">            this(categoryName, type, frameworkType);</span>
+<span class="nc" id="L380">            this.usedByCategories = usedByCategories;</span>
+<span class="nc" id="L381">        }</span>
+
+        public String toString() {
+<span class="nc" id="L384">            return &quot;Category Name : &quot; + categoryName +</span>
+                    &quot;\rLicense Type : &quot; + licenseType.name +
+                    &quot;\rLicense URL : &quot; + licenseType.url;
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

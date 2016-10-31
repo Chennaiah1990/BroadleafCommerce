@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MergeManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.context.merge</a> &gt; <span class="el_source">MergeManager.java</span></div><h1>MergeManager.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.context.merge;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extensibility.context.ResourceInputStream;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeException;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeManagerSetupException;
+import org.broadleafcommerce.common.extensibility.context.merge.handlers.MergeHandler;
+import org.broadleafcommerce.common.extensibility.context.merge.handlers.MergeHandlerAdapter;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+/**
+ * This class manages all xml merge interactions with callers. It is responsible for
+ * not only loading the handler configurations, but also for cycling through the handlers
+ * in a prioritized fashion and exporting the final merged document.
+ *
+ * @author jfischer
+ *
+ */
+public class MergeManager {
+
+    /**
+     * Additional merge points may be added by the caller. Also default merge points
+     * may be overriden to change their current behavior. This is accomplished by
+     * specifying the system property denoted by the key MergeManager.MERGE_DEFINITION_SYSTEM_PROPERTY
+     * with a value stating the fully qualified path of user-created property file. Please refer
+     * to the default properties file located at org/broadleafcommerce/profile/extensibility/context/merge/default.properties
+     * for more details.
+     *
+     */
+    public static final String MERGE_DEFINITION_SYSTEM_PROPERTY = &quot;org.broadleafcommerce.extensibility.context.merge.handlers.merge.properties&quot;;
+
+<span class="nc" id="L81">    private static final Log LOG = LogFactory.getLog(MergeManager.class);</span>
+
+    private static DocumentBuilder builder;
+
+    static {
+<span class="nc" id="L86">        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();</span>
+        try {
+<span class="nc" id="L88">            builder = dbf.newDocumentBuilder();</span>
+<span class="nc" id="L89">        } catch (ParserConfigurationException e) {</span>
+<span class="nc" id="L90">            LOG.error(&quot;Unable to create document builder&quot;, e);</span>
+<span class="nc" id="L91">            throw new RuntimeException(e);</span>
+<span class="nc" id="L92">        }</span>
+<span class="nc" id="L93">    }</span>
+
+    private MergeHandler[] handlers;
+
+<span class="nc" id="L97">    public MergeManager() throws MergeManagerSetupException {</span>
+        try {
+<span class="nc" id="L99">            Properties props = loadProperties();</span>
+<span class="nc" id="L100">            removeSkippedMergeComponents(props);</span>
+<span class="nc" id="L101">            setHandlers(props);</span>
+<span class="nc" id="L102">        } catch (IOException e) {</span>
+<span class="nc" id="L103">            throw new MergeManagerSetupException(e);</span>
+<span class="nc" id="L104">        } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L105">            throw new MergeManagerSetupException(e);</span>
+<span class="nc" id="L106">        } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L107">            throw new MergeManagerSetupException(e);</span>
+<span class="nc" id="L108">        } catch (InstantiationException e) {</span>
+<span class="nc" id="L109">            throw new MergeManagerSetupException(e);</span>
+<span class="nc" id="L110">        }</span>
+<span class="nc" id="L111">    }</span>
+
+    private void removeSkippedMergeComponents(Properties props)
+            throws UnsupportedEncodingException {
+<span class="nc" id="L115">        InputStream inputStream = null;</span>
+<span class="nc" id="L116">        InputStreamReader inputStreamReader = null;</span>
+<span class="nc" id="L117">        BufferedReader bufferedReader = null;</span>
+        try {
+<span class="nc" id="L119">            inputStream = this.getClass().getClassLoader()</span>
+                    .getResourceAsStream(&quot;/broadleaf-commmerce/skipMergeComponents.txt&quot;);
+
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            if (inputStream == null) {</span>
+                return;
+            }
+
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L127">                LOG.debug(&quot;mergeClassOverrides file found.&quot;);</span>
+            }
+
+<span class="nc" id="L130">            inputStreamReader = new InputStreamReader(inputStream, &quot;UTF-8&quot;);</span>
+<span class="nc" id="L131">            bufferedReader = new BufferedReader(inputStreamReader);</span>
+
+            String line;
+<span class="nc bnc" id="L134" title="All 2 branches missed.">            while ((line = bufferedReader.readLine()) != null) {</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">                if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L136">                    LOG.debug(&quot;mergeComponentOverrides - overridding &quot;</span>
+                            + line);
+                }
+<span class="nc" id="L139">                removeSkipMergeComponents(props, line);</span>
+            }
+<span class="nc" id="L141">        } catch (IOException e) {</span>
+<span class="nc" id="L142">            LOG.error(&quot;Error reading resource - /broadleaf-commmerce/skipMergeComponents.txt&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L144" title="All 8 branches missed.">            if (inputStream != null) {</span>
+<span class="nc" id="L145">                IOUtils.closeQuietly(inputStream);</span>
+            }
+<span class="nc bnc" id="L147" title="All 8 branches missed.">            if (inputStreamReader != null) {</span>
+<span class="nc" id="L148">                IOUtils.closeQuietly(inputStreamReader);</span>
+            }
+<span class="nc bnc" id="L150" title="All 8 branches missed.">            if (bufferedReader != null) {</span>
+<span class="nc" id="L151">                IOUtils.closeQuietly(bufferedReader);</span>
+            }
+        }
+<span class="nc" id="L154">    }</span>
+
+    /**
+     * Examines the properties file for an entry with an id equal to the component that we want
+     * to ignore and then removes all keys that have the same number (e.g. if xpath.28 is the key
+     * then handler.28, xpath.28, and priority.28 will all be removed).
+     * 
+     * @param props
+     * @param componentName
+     */
+    private void removeSkipMergeComponents(Properties props, String componentName) {
+<span class="nc" id="L165">        String lookupName = &quot;@id='&quot; + componentName.trim() + &quot;'&quot;;</span>
+<span class="nc" id="L166">        String key = findComponentKey(lookupName, props);</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">        while (key  != null) {</span>
+<span class="nc" id="L168">            removeItemsMatchingKey(key, props);</span>
+<span class="nc" id="L169">            key = findComponentKey(lookupName, props);</span>
+        }
+<span class="nc" id="L171">    }</span>
+
+    /**
+     * Examines the properties file for an entry that contains the passed in component id string and returns its key
+     * 
+     * to ignore. 
+     * 
+     * @param componentName
+     * @param props
+     * @return
+     */
+    private String findComponentKey(String componentIdStr, Properties props) {
+<span class="nc bnc" id="L183" title="All 2 branches missed.">        for (Map.Entry&lt;Object, Object&gt; entry : props.entrySet()) {</span>
+<span class="nc" id="L184">            Object value = entry.getValue();</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L186">                String valueStr = (String) value;</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">                if (valueStr.contains(componentIdStr)) {</span>
+<span class="nc" id="L188">                    Object key = entry.getKey();</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">                    if (key instanceof String) {</span>
+<span class="nc" id="L190">                        return (String) key;</span>
+                    }
+                }
+            }
+<span class="nc" id="L194">        }</span>
+<span class="nc" id="L195">        return null;</span>
+    }
+
+    /**
+     * Removes all keys that share the same number.   (e.g. if xpath.28 is the key
+     * then handler.28, xpath.28, and priority.28 will all be removed).
+     * 
+     * @param firstKey
+     * @param props
+     * @return
+     */
+    private void removeItemsMatchingKey(String firstKey, Properties props) {
+<span class="nc" id="L207">        int dotPos = firstKey.indexOf(&quot;.&quot;);</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">        if (dotPos &gt; 0) {</span>
+<span class="nc" id="L209">            String keyNumberToMatch = firstKey.substring(dotPos);</span>
+            
+<span class="nc" id="L211">            Iterator&lt;Object&gt; iter = props.keySet().iterator();</span>
+            
+<span class="nc bnc" id="L213" title="All 2 branches missed.">            while (iter.hasNext()) {</span>
+<span class="nc" id="L214">                Object keyObj = iter.next();</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">                if (keyObj instanceof String) {</span>
+<span class="nc" id="L216">                    String keyStr = (String) keyObj;</span>
+<span class="nc" id="L217">                    dotPos = keyStr.indexOf(&quot;.&quot;);</span>
+<span class="nc" id="L218">                    String keyNumber = keyStr.substring(dotPos);</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">                    if (keyNumber.equals(keyNumberToMatch)) {</span>
+<span class="nc" id="L220">                        iter.remove();</span>
+                    }
+                }
+<span class="nc" id="L223">            }</span>
+        }
+<span class="nc" id="L225">    }</span>
+
+    /**
+     * Merge 2 xml document streams together into a final resulting stream. During
+     * the merge, various merge business rules are followed based on configuration
+     * defined for various merge points.
+     *
+     * @param stream1
+     * @param stream2
+     * @return the stream representing the merged document
+     * @throws org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeException
+     */
+    public ResourceInputStream merge(ResourceInputStream stream1, ResourceInputStream stream2) throws MergeException {
+        try {
+<span class="nc" id="L239">            Document doc1 = builder.parse(stream1);</span>
+<span class="nc" id="L240">            Document doc2 = builder.parse(stream2);</span>
+
+<span class="nc" id="L242">            List&lt;Node&gt; exhaustedNodes = new ArrayList&lt;Node&gt;();</span>
+
+            //process any defined handlers
+<span class="nc bnc" id="L245" title="All 2 branches missed.">            for (MergeHandler handler : this.handlers) {</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">                if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L247">                    LOG.debug(&quot;Processing handler: &quot; + handler.getXPath());</span>
+                }
+<span class="nc" id="L249">                MergePoint point = new MergePoint(handler, doc1, doc2);</span>
+<span class="nc" id="L250">                Node[] list = point.merge(exhaustedNodes);</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">                if (list != null) {</span>
+<span class="nc" id="L252">                    Collections.addAll(exhaustedNodes, list);</span>
+                }
+            }
+
+<span class="nc" id="L256">            TransformerFactory tFactory = TransformerFactory.newInstance();</span>
+<span class="nc" id="L257">            Transformer xmlTransformer = tFactory.newTransformer();</span>
+<span class="nc" id="L258">            xmlTransformer.setOutputProperty(OutputKeys.VERSION, &quot;1.0&quot;);</span>
+<span class="nc" id="L259">            xmlTransformer.setOutputProperty(OutputKeys.ENCODING, &quot;UTF-8&quot;);</span>
+<span class="nc" id="L260">            xmlTransformer.setOutputProperty(OutputKeys.METHOD, &quot;xml&quot;);</span>
+<span class="nc" id="L261">            xmlTransformer.setOutputProperty(OutputKeys.INDENT, &quot;yes&quot;);</span>
+
+<span class="nc" id="L263">            DOMSource source = new DOMSource(doc1);</span>
+<span class="nc" id="L264">            ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L265">            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(baos, &quot;UTF-8&quot;));</span>
+<span class="nc" id="L266">            StreamResult result = new StreamResult(writer);</span>
+<span class="nc" id="L267">            xmlTransformer.transform(source, result);</span>
+
+<span class="nc" id="L269">            byte[] itemArray = baos.toByteArray();</span>
+
+<span class="nc" id="L271">            return new ResourceInputStream(new ByteArrayInputStream(itemArray), stream2.getName(), stream1.getNames());</span>
+<span class="nc" id="L272">        } catch (Exception e) {</span>
+<span class="nc" id="L273">            throw new MergeException(e);</span>
+        }
+    }
+
+    private void setHandlers(Properties props) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+<span class="nc" id="L278">        ArrayList&lt;MergeHandler&gt; handlers = new ArrayList&lt;MergeHandler&gt;();</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">        for (String key : props.stringPropertyNames()) {</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">            if (key.startsWith(&quot;handler.&quot;)) {</span>
+<span class="nc" id="L281">                MergeHandler temp = (MergeHandler) Class.forName(props.getProperty(key)).newInstance();</span>
+<span class="nc" id="L282">                String name = key.substring(8, key.length());</span>
+<span class="nc" id="L283">                temp.setName(name);</span>
+<span class="nc" id="L284">                String priority = props.getProperty(&quot;priority.&quot; + name);</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">                if (priority != null) {</span>
+<span class="nc" id="L286">                    temp.setPriority(Integer.parseInt(priority));</span>
+                }
+<span class="nc" id="L288">                String xpath = props.getProperty(&quot;xpath.&quot; + name);</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">                if (priority != null) {</span>
+<span class="nc" id="L290">                    temp.setXPath(xpath);</span>
+                }
+<span class="nc" id="L292">                handlers.add(temp);</span>
+            }
+<span class="nc" id="L294">        }</span>
+<span class="nc" id="L295">        MergeHandler[] explodedView = {};</span>
+<span class="nc" id="L296">        explodedView = handlers.toArray(explodedView);</span>
+<span class="nc" id="L297">        Comparator&lt;Object&gt; nameCompare = new Comparator&lt;Object&gt;() {</span>
+            @Override
+            public int compare(Object arg0, Object arg1) {
+<span class="nc" id="L300">                return ((MergeHandler) arg0).getName().compareTo(((MergeHandler) arg1).getName());</span>
+            }
+        };
+<span class="nc" id="L303">        Arrays.sort(explodedView, nameCompare);</span>
+<span class="nc" id="L304">        ArrayList&lt;MergeHandler&gt; finalHandlers = new ArrayList&lt;MergeHandler&gt;();</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">        for (MergeHandler temp : explodedView) {</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">            if (temp.getName().contains(&quot;.&quot;)) {</span>
+<span class="nc" id="L307">                final String parentName = temp.getName().substring(0, temp.getName().lastIndexOf(&quot;.&quot;));</span>
+<span class="nc" id="L308">                int pos = Arrays.binarySearch(explodedView, new MergeHandlerAdapter() {</span>
+                    @Override
+                    public String getName() {
+<span class="nc" id="L311">                        return parentName;</span>
+                    }
+                }, nameCompare);
+<span class="nc bnc" id="L314" title="All 2 branches missed.">                if (pos &gt;= 0) {</span>
+<span class="nc" id="L315">                    MergeHandler[] parentHandlers = explodedView[pos].getChildren();</span>
+<span class="nc" id="L316">                    MergeHandler[] newHandlers = new MergeHandler[parentHandlers.length + 1];</span>
+<span class="nc" id="L317">                    System.arraycopy(parentHandlers, 0, newHandlers, 0, parentHandlers.length);</span>
+<span class="nc" id="L318">                    newHandlers[newHandlers.length - 1] = temp;</span>
+<span class="nc" id="L319">                    Arrays.sort(newHandlers);</span>
+<span class="nc" id="L320">                    explodedView[pos].setChildren(newHandlers);</span>
+                }
+<span class="nc" id="L322">            } else {</span>
+<span class="nc" id="L323">                finalHandlers.add(temp);</span>
+            }
+        }
+
+<span class="nc" id="L327">        this.handlers = new MergeHandler[0];</span>
+<span class="nc" id="L328">        this.handlers = finalHandlers.toArray(this.handlers);</span>
+<span class="nc" id="L329">        Arrays.sort(this.handlers);</span>
+<span class="nc" id="L330">    }</span>
+
+    private Properties loadProperties() throws IOException {
+<span class="nc" id="L333">        Properties defaultProperties = new Properties();</span>
+<span class="nc" id="L334">        defaultProperties.load(MergeManager.class.getResourceAsStream(&quot;default.properties&quot;));</span>
+        Properties props;
+<span class="nc" id="L336">        String overrideFileClassPath = System.getProperty(MERGE_DEFINITION_SYSTEM_PROPERTY);</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">        if (overrideFileClassPath != null) {</span>
+<span class="nc" id="L338">            props = new Properties(defaultProperties);</span>
+<span class="nc" id="L339">            props.load(MergeManager.class.getClassLoader().getResourceAsStream(overrideFileClassPath));</span>
+        } else {
+<span class="nc" id="L341">            props = defaultProperties;</span>
+        }
+
+<span class="nc" id="L344">        return props;</span>
+    }
+
+    public String serialize(InputStream in) {
+<span class="nc" id="L348">        InputStreamReader reader = null;</span>
+        int temp;
+<span class="nc" id="L350">        StringBuilder item = new StringBuilder();</span>
+<span class="nc" id="L351">        boolean eof = false;</span>
+        try {
+<span class="nc" id="L353">            reader = new InputStreamReader(in);</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">            while (!eof) {</span>
+<span class="nc" id="L355">                temp = reader.read();</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">                if (temp == -1) {</span>
+<span class="nc" id="L357">                    eof = true;</span>
+                } else {
+<span class="nc" id="L359">                    item.append((char) temp);</span>
+                }
+            }
+<span class="nc" id="L362">        } catch (IOException e) {</span>
+<span class="nc" id="L363">            LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L365" title="All 6 branches missed.">            if (reader != null) {</span>
+<span class="nc" id="L366">                try{ reader.close(); } catch (Throwable e) {</span>
+<span class="nc" id="L367">                    LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L368">                }</span>
+            }
+        }
+
+<span class="nc" id="L372">        return item.toString();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

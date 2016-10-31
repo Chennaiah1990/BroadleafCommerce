@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SiteMapConfigurationImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.sitemap.domain</a> &gt; <span class="el_source">SiteMapConfigurationImpl.java</span></div><h1>SiteMapConfigurationImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.sitemap.domain;
+
+import org.apache.commons.lang3.StringUtils;
+import org.broadleafcommerce.common.config.domain.AbstractModuleConfiguration;
+import org.broadleafcommerce.common.config.service.type.ModuleConfigurationType;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.broadleafcommerce.common.presentation.AdminPresentationCollection;
+import org.broadleafcommerce.common.presentation.client.VisibilityEnum;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+
+/**
+ * 
+ * @author Joshua Skorton (jskorton)
+ */
+@Entity
+@Table(name = &quot;BLC_SITE_MAP_CFG&quot;)
+//@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = &quot;blConfigurationModuleElements&quot;)
+@AdminPresentationClass(friendlyName = &quot;SiteMapConfigurationImpl&quot;)
+public class SiteMapConfigurationImpl extends AbstractModuleConfiguration implements SiteMapConfiguration {
+
+    private static final long serialVersionUID = 1L;
+<span class="fc" id="L51">    private static Integer DEFAULT_MAX_URL_ENTRIES = 50000;</span>
+
+<span class="fc" id="L53">    private static String DEFAULT_SITE_MAP_FILE_NAME = &quot;sitemap.xml&quot;;</span>
+
+    @Column(name = &quot;MAX_URL_ENTRIES_PER_FILE&quot;)
+    @AdminPresentation(excluded = true)
+    protected Integer maximumURLEntriesPerFile;
+
+<span class="fc" id="L59">    @OneToMany(mappedBy = &quot;siteMapConfiguration&quot;, targetEntity = SiteMapGeneratorConfigurationImpl.class, cascade = { CascadeType.ALL }, orphanRemoval = true)</span>
+    @AdminPresentationCollection(friendlyName = &quot;SiteMapConfigurationImpl_Generator_Configurations&quot;)
+    protected List&lt;SiteMapGeneratorConfiguration&gt; siteMapGeneratorConfigurations = new ArrayList&lt;SiteMapGeneratorConfiguration&gt;();
+
+    @Column(name = &quot;SITE_MAP_FILE_NAME&quot;)
+    @AdminPresentation(visibility = VisibilityEnum.HIDDEN_ALL)
+    protected String siteMapFileName;
+
+    @Column(name = &quot;INDEXED_SITE_MAP_FILE_NAME&quot;)
+    @AdminPresentation(visibility = VisibilityEnum.HIDDEN_ALL)
+    protected String indexedSiteMapFileName;
+
+    @Column(name = &quot;INDEXED_SITE_MAP_FILE_PATTERN&quot;)
+    @AdminPresentation(visibility = VisibilityEnum.HIDDEN_ALL)
+    protected String indexedSiteMapFilePattern;
+
+    public SiteMapConfigurationImpl() {
+<span class="fc" id="L76">        super();</span>
+<span class="fc" id="L77">        super.setModuleConfigurationType(ModuleConfigurationType.SITE_MAP);</span>
+<span class="fc" id="L78">    }</span>
+
+    @Override
+    public List&lt;SiteMapGeneratorConfiguration&gt; getSiteMapGeneratorConfigurations() {
+<span class="fc" id="L82">        return siteMapGeneratorConfigurations;</span>
+    }
+
+    @Override
+    public void setSiteMapGeneratorConfigurations(List&lt;SiteMapGeneratorConfiguration&gt; siteMapGeneratorConfigurations) {
+<span class="fc" id="L87">        this.siteMapGeneratorConfigurations = siteMapGeneratorConfigurations;</span>
+<span class="fc" id="L88">    }</span>
+
+    @Override
+    public Integer getMaximumUrlEntriesPerFile() {
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">        if (maximumURLEntriesPerFile == null) {</span>
+<span class="nc" id="L93">            return DEFAULT_MAX_URL_ENTRIES;</span>
+        } else {
+<span class="fc" id="L95">            return maximumURLEntriesPerFile.intValue();</span>
+        }
+    }
+
+    @Override
+    public void setMaximumUrlEntriesPerFile(Integer maximumSiteMapURLEntriesPerFile) {
+<span class="fc" id="L101">        this.maximumURLEntriesPerFile = maximumSiteMapURLEntriesPerFile;</span>
+<span class="fc" id="L102">    }</span>
+
+    @Override
+    public String fixSiteUrlPath(String siteUrlPath) {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (siteUrlPath == null) {</span>
+<span class="nc" id="L107">            return siteUrlPath;</span>
+        }
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (siteUrlPath.endsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L110">            return siteUrlPath.substring(0, siteUrlPath.length() - 1);</span>
+        }
+<span class="nc" id="L112">        return siteUrlPath;</span>
+    }
+
+    @Override
+    public String getSiteMapFileName() {
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        if (StringUtils.isEmpty(siteMapFileName)) {</span>
+<span class="fc" id="L118">            return DEFAULT_SITE_MAP_FILE_NAME;</span>
+        } else {
+<span class="nc" id="L120">            return siteMapFileName;</span>
+        }
+    }
+
+    @Override
+    public void setSiteMapFileName(String siteMapFileName) {
+<span class="nc" id="L126">        this.siteMapFileName = siteMapFileName;</span>
+<span class="nc" id="L127">    }</span>
+
+    @Override
+    public String getIndexedSiteMapFileName() {
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">        if (StringUtils.isEmpty(indexedSiteMapFileName)) {</span>
+<span class="nc" id="L132">            return getSiteMapFileName();</span>
+        }
+<span class="fc" id="L134">        return indexedSiteMapFileName;</span>
+    }
+
+    @Override
+    public void setIndexedSiteMapFileName(String fileName) {
+<span class="fc" id="L139">        this.indexedSiteMapFileName = fileName;</span>
+<span class="fc" id="L140">    }</span>
+
+    @Override
+    public String getSiteMapIndexFilePattern() {
+<span class="pc bpc" id="L144" title="3 of 4 branches missed.">        if (!StringUtils.isEmpty(indexedSiteMapFilePattern) &amp;&amp;</span>
+                indexedSiteMapFilePattern.contains(&quot;###&quot;)) {
+<span class="nc" id="L146">            return indexedSiteMapFilePattern;</span>
+        }
+
+<span class="fc" id="L149">        String siteMapFileName = getSiteMapFileName();</span>
+<span class="fc" id="L150">        int pos = siteMapFileName.indexOf(&quot;.xml&quot;);</span>
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">        if (pos &gt; 0) {</span>
+<span class="fc" id="L152">            return siteMapFileName.substring(0, pos) + &quot;###&quot; + siteMapFileName.substring(pos);</span>
+        } else {
+<span class="nc" id="L154">            return &quot;sitemap###.xml&quot;;</span>
+        }
+    }
+
+    @Override
+    public void setIndexedSiteMapFilePattern(String indexedSiteMapFilePattern) {
+<span class="nc" id="L160">        this.indexedSiteMapFilePattern = indexedSiteMapFilePattern;</span>
+<span class="nc" id="L161">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

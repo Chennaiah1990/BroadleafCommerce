@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SandBoxImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.sandbox.domain</a> &gt; <span class="el_source">SandBoxImpl.java</span></div><h1>SandBoxImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.sandbox.domain;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.admin.domain.AdminMainEntity;
+import org.broadleafcommerce.common.persistence.ArchiveStatus;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.ValidationConfiguration;
+import org.broadleafcommerce.common.presentation.client.SupportedFieldType;
+import org.broadleafcommerce.common.presentation.client.VisibilityEnum;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Index;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.SQLDelete;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name=&quot;BLC_SANDBOX&quot;)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region=&quot;blSandBoxElements&quot;)
+@SQLDelete(sql=&quot;UPDATE BLC_SANDBOX SET ARCHIVED = 'Y' WHERE SANDBOX_ID = ?&quot;)
+<span class="nc" id="L62">public class SandBoxImpl implements SandBox, AdminMainEntity {</span>
+
+<span class="nc" id="L64">    private static final Log LOG = LogFactory.getLog(SandBoxImpl.class);</span>
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator = &quot;SandBoxId&quot;)
+    @GenericGenerator(
+        name=&quot;SandBoxId&quot;,
+        strategy=&quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+        parameters = {
+            @Parameter(name=&quot;segment_value&quot;, value=&quot;SandBoxImpl&quot;),
+            @Parameter(name=&quot;entity_name&quot;, value=&quot;org.broadleafcommerce.common.sandbox.domain.SandBoxImpl&quot;)
+        }
+    )
+    @Column(name = &quot;SANDBOX_ID&quot;)
+    @AdminPresentation(visibility = VisibilityEnum.HIDDEN_ALL)
+    protected Long id;
+    
+    @Column(name = &quot;SANDBOX_NAME&quot;)
+    @Index(name=&quot;SANDBOX_NAME_INDEX&quot;, columnNames={&quot;SANDBOX_NAME&quot;})
+    @AdminPresentation(friendlyName = &quot;SandBoxImpl_Name&quot;, group = &quot;SandBoxImpl_Description&quot;, prominent = true, 
+            gridOrder = 2000, order = 1000,
+            validationConfigurations = { @ValidationConfiguration(validationImplementation = &quot;blSandBoxNameValidator&quot;) })
+    protected String name;
+    
+    @Column(name=&quot;AUTHOR&quot;)
+    @AdminPresentation(friendlyName = &quot;SandBoxImpl_Author&quot;, group = &quot;SandBoxImpl_Description&quot;, prominent = true, 
+        gridOrder = 3000, order = 3000, visibility = VisibilityEnum.FORM_HIDDEN)
+    protected Long author;
+
+<span class="nc" id="L93">    @Column(name = &quot;SANDBOX_TYPE&quot;)</span>
+    @AdminPresentation(friendlyName = &quot;SandBoxImpl_SandBox_Type&quot;, group = &quot;SandBoxImpl_Description&quot;,
+        visibility = VisibilityEnum.HIDDEN_ALL, readOnly = true,
+        fieldType = SupportedFieldType.BROADLEAF_ENUMERATION,
+        broadleafEnumeration=&quot;org.broadleafcommerce.common.sandbox.domain.SandBoxType&quot;)
+    //need to set a default value so that add sandbox works correctly in the admin
+    protected String sandboxType = SandBoxType.APPROVAL.getType();
+
+    @ManyToOne(targetEntity = SandBoxImpl.class)
+    @JoinColumn(name = &quot;PARENT_SANDBOX_ID&quot;)
+    protected SandBox parentSandBox;
+
+    @OneToMany(mappedBy = &quot;parentSandBox&quot;, targetEntity = SandBoxImpl.class)
+    protected List&lt;SandBox&gt; childSandBoxes;
+
+    @Column(name = &quot;COLOR&quot;)
+    @AdminPresentation(friendlyName = &quot;SandBoxImpl_Color&quot;, group = &quot;SandBoxImpl_Description&quot;, 
+        prominent = true, gridOrder = 1000, fieldType = SupportedFieldType.COLOR, order = 2000)
+    protected String color;
+
+    @Column(name = &quot;DESCRIPTION&quot;)
+    @AdminPresentation(friendlyName = &quot;SandBoxImpl_Description&quot;, group = &quot;SandBoxImpl_Description&quot;,
+        prominent = true, gridOrder = 4000, order = 4000)
+    protected String description;
+
+    /*
+     * This field should not be used until logic for it is implemented.
+     * 
+     * @AdminPresentation(friendlyName = &quot;SandBoxImpl_Go_Live_Date&quot;, group = &quot;SandBoxImpl_Description&quot;,
+     *   prominent = true, gridOrder = 5000, order = 3000)
+    */
+    @Column(name = &quot;GO_LIVE_DATE&quot;)
+    protected Date goLiveDate;
+
+<span class="nc" id="L127">    @Embedded</span>
+    protected ArchiveStatus archiveStatus = new ArchiveStatus();
+
+    @Override
+    public Long getId() {
+<span class="nc" id="L132">        return id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L137">        this.id = id;</span>
+<span class="nc" id="L138">    }</span>
+
+    @Override
+    public String getName() {
+<span class="nc" id="L142">        return name;</span>
+    }
+
+    @Override
+    public void setName(String name) {
+<span class="nc" id="L147">        this.name = name;</span>
+<span class="nc" id="L148">    }</span>
+
+    @Override
+    public SandBoxType getSandBoxType() {
+<span class="nc" id="L152">        return SandBoxType.getInstance(sandboxType);</span>
+    }
+
+    @Override
+    public void setSandBoxType(final SandBoxType sandboxType) {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        if (sandboxType != null) {</span>
+<span class="nc" id="L158">            this.sandboxType = sandboxType.getType();</span>
+        }
+<span class="nc" id="L160">    }</span>
+
+    @Override
+    public Long getAuthor() {
+<span class="nc" id="L164">        return author;</span>
+    }
+
+    @Override
+    public void setAuthor(Long author) {
+<span class="nc" id="L169">        this.author = author;</span>
+<span class="nc" id="L170">    }</span>
+
+    @Override
+    public SandBox getParentSandBox() {
+<span class="nc" id="L174">        return parentSandBox;</span>
+    }
+
+    @Override
+    public void setParentSandBox(SandBox parentSandBox) {
+<span class="nc" id="L179">        this.parentSandBox = parentSandBox;</span>
+<span class="nc" id="L180">    }</span>
+
+    @Override
+    public String getColor() {
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if (StringUtils.isNotBlank(color)) {</span>
+<span class="nc" id="L185">            return color;</span>
+        }
+
+<span class="nc bnc" id="L188" title="All 2 branches missed.">        if (parentSandBox != null) {</span>
+<span class="nc" id="L189">            return parentSandBox.getColor();</span>
+        }
+
+<span class="nc" id="L192">        return null;</span>
+    }
+
+    @Override
+    public void setColor(String color) {
+<span class="nc" id="L197">        this.color = color;</span>
+<span class="nc" id="L198">    }</span>
+
+    @Override
+    public Date getGoLiveDate() {
+<span class="nc" id="L202">        return goLiveDate;</span>
+    }
+
+    @Override
+    public void setGoLiveDate(Date goLiveDate) {
+<span class="nc" id="L207">        this.goLiveDate = goLiveDate;</span>
+<span class="nc" id="L208">    }</span>
+
+    public List&lt;SandBox&gt; getChildSandBoxes() {
+<span class="nc" id="L211">        return childSandBoxes;</span>
+    }
+
+    public void setChildSandBoxes(List&lt;SandBox&gt; childSandBoxes) {
+<span class="nc" id="L215">        this.childSandBoxes = childSandBoxes;</span>
+<span class="nc" id="L216">    }</span>
+
+    @Override
+    public List&lt;Long&gt; getSandBoxIdsForUpwardHierarchy(boolean includeInherited) {
+<span class="nc" id="L220">        return getSandBoxIdsForUpwardHierarchy(includeInherited, true);</span>
+    }
+
+    @Override
+    public List&lt;Long&gt; getSandBoxIdsForUpwardHierarchy(boolean includeInherited, boolean includeCurrent) {
+<span class="nc" id="L225">        List&lt;Long&gt; ids = new ArrayList&lt;Long&gt;();</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        if (includeCurrent) {</span>
+<span class="nc" id="L227">            ids.add(this.getId());</span>
+        }
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        if (includeInherited) {</span>
+<span class="nc" id="L230">            SandBox current = this;</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">            while (current.getParentSandBox() != null) {</span>
+<span class="nc" id="L232">                current = current.getParentSandBox();</span>
+<span class="nc" id="L233">                ids.add(current.getId());</span>
+            }
+<span class="nc" id="L235">            Collections.reverse(ids);</span>
+        }
+<span class="nc" id="L237">        return ids;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L242">        return new HashCodeBuilder(1, 31)</span>
+            .append(author)
+            .append(id)
+            .append(name)
+            .append(color)
+            .append(goLiveDate)
+            .toHashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L253" title="All 4 branches missed.">        if (obj != null &amp;&amp; getClass().isAssignableFrom(obj.getClass())) {</span>
+<span class="nc" id="L254">            SandBoxImpl other = (SandBoxImpl) obj;</span>
+<span class="nc" id="L255">            return new EqualsBuilder()</span>
+                .append(author, other.author)
+                .append(id, other.id)
+                .append(name, other.name)
+                .append(color, other.color)
+                .append(goLiveDate, other.goLiveDate)
+                .build();
+        }
+<span class="nc" id="L263">        return false;</span>
+    }
+
+    @Override
+    public String getMainEntityName() {
+<span class="nc" id="L268">        return getName();</span>
+    }
+    
+    @Override
+    public boolean getIsInDefaultHierarchy() {
+<span class="nc bnc" id="L273" title="All 2 branches missed.">        if (SandBoxType.DEFAULT.equals(getSandBoxType())) {</span>
+<span class="nc" id="L274">            return true;</span>
+        }
+
+<span class="nc bnc" id="L277" title="All 2 branches missed.">        if (getParentSandBox() != null) {</span>
+<span class="nc" id="L278">            return getParentSandBox().getIsInDefaultHierarchy();</span>
+        }
+        
+<span class="nc" id="L281">        return false;</span>
+    }
+
+    @Override
+    public void setArchived(Character archived) {
+<span class="nc bnc" id="L286" title="All 2 branches missed.">        if (archiveStatus == null) {</span>
+<span class="nc" id="L287">            archiveStatus = new ArchiveStatus();</span>
+        }
+<span class="nc" id="L289">        archiveStatus.setArchived(archived);</span>
+<span class="nc" id="L290">    }</span>
+
+    @Override
+    public Character getArchived() {
+        ArchiveStatus temp;
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        if (archiveStatus == null) {</span>
+<span class="nc" id="L296">            temp = new ArchiveStatus();</span>
+        } else {
+<span class="nc" id="L298">            temp = archiveStatus;</span>
+        }
+<span class="nc" id="L300">        return temp.getArchived();</span>
+    }
+
+    @Override
+    public boolean isActive() {
+<span class="nc bnc" id="L305" title="All 2 branches missed.">        return 'Y'!=getArchived();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

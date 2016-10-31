@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MinuteType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.time</a> &gt; <span class="el_source">MinuteType.java</span></div><h1>MinuteType.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.time;
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * An extendible enumeration of container shape types.
+ * 
+ * @author jfischer
+ */
+public class MinuteType implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L37">    private static final Map&lt;String, MinuteType&gt; TYPES = new LinkedHashMap&lt;String, MinuteType&gt;();</span>
+
+<span class="nc" id="L39">    public static final MinuteType ZERO  = new MinuteType(&quot;0&quot;, &quot;00&quot;);</span>
+<span class="nc" id="L40">    public static final MinuteType ONE  = new MinuteType(&quot;1&quot;, &quot;01&quot;);</span>
+<span class="nc" id="L41">    public static final MinuteType TWO  = new MinuteType(&quot;2&quot;, &quot;02&quot;);</span>
+<span class="nc" id="L42">    public static final MinuteType THREE  = new MinuteType(&quot;3&quot;, &quot;03&quot;);</span>
+<span class="nc" id="L43">    public static final MinuteType FOUR  = new MinuteType(&quot;4&quot;, &quot;04&quot;);</span>
+<span class="nc" id="L44">    public static final MinuteType FIVE  = new MinuteType(&quot;5&quot;, &quot;05&quot;);</span>
+<span class="nc" id="L45">    public static final MinuteType SIX  = new MinuteType(&quot;6&quot;, &quot;06&quot;);</span>
+<span class="nc" id="L46">    public static final MinuteType SEVEN  = new MinuteType(&quot;7&quot;, &quot;07&quot;);</span>
+<span class="nc" id="L47">    public static final MinuteType EIGHT  = new MinuteType(&quot;8&quot;, &quot;08&quot;);</span>
+<span class="nc" id="L48">    public static final MinuteType NINE  = new MinuteType(&quot;9&quot;, &quot;09&quot;);</span>
+<span class="nc" id="L49">    public static final MinuteType TEN  = new MinuteType(&quot;10&quot;, &quot;10&quot;);</span>
+<span class="nc" id="L50">    public static final MinuteType ELEVEN  = new MinuteType(&quot;11&quot;, &quot;11&quot;);</span>
+<span class="nc" id="L51">    public static final MinuteType TWELVE  = new MinuteType(&quot;12&quot;, &quot;12&quot;);</span>
+<span class="nc" id="L52">    public static final MinuteType THIRTEEN  = new MinuteType(&quot;13&quot;, &quot;13&quot;);</span>
+<span class="nc" id="L53">    public static final MinuteType FOURTEEN  = new MinuteType(&quot;14&quot;, &quot;14&quot;);</span>
+<span class="nc" id="L54">    public static final MinuteType FIFTEEN  = new MinuteType(&quot;15&quot;, &quot;15&quot;);</span>
+<span class="nc" id="L55">    public static final MinuteType SIXTEEN  = new MinuteType(&quot;16&quot;, &quot;16&quot;);</span>
+<span class="nc" id="L56">    public static final MinuteType SEVENTEEN  = new MinuteType(&quot;17&quot;, &quot;17&quot;);</span>
+<span class="nc" id="L57">    public static final MinuteType EIGHTEEN  = new MinuteType(&quot;18&quot;, &quot;18&quot;);</span>
+<span class="nc" id="L58">    public static final MinuteType NINETEEN  = new MinuteType(&quot;19&quot;, &quot;19&quot;);</span>
+<span class="nc" id="L59">    public static final MinuteType TWENTY  = new MinuteType(&quot;20&quot;, &quot;20&quot;);</span>
+<span class="nc" id="L60">    public static final MinuteType TWENTYONE  = new MinuteType(&quot;21&quot;, &quot;21&quot;);</span>
+<span class="nc" id="L61">    public static final MinuteType TWNETYTWO  = new MinuteType(&quot;22&quot;, &quot;22&quot;);</span>
+<span class="nc" id="L62">    public static final MinuteType TWENTYTHREE  = new MinuteType(&quot;23&quot;, &quot;23&quot;);</span>
+<span class="nc" id="L63">    public static final MinuteType TWENTYFOUR  = new MinuteType(&quot;24&quot;, &quot;24&quot;);</span>
+<span class="nc" id="L64">    public static final MinuteType TWENTYFIVE  = new MinuteType(&quot;25&quot;, &quot;25&quot;);</span>
+<span class="nc" id="L65">    public static final MinuteType TWENTYSIX  = new MinuteType(&quot;26&quot;, &quot;26&quot;);</span>
+<span class="nc" id="L66">    public static final MinuteType TWENTYSEVEN  = new MinuteType(&quot;27&quot;, &quot;27&quot;);</span>
+<span class="nc" id="L67">    public static final MinuteType TWENTYEIGHT  = new MinuteType(&quot;28&quot;, &quot;28&quot;);</span>
+<span class="nc" id="L68">    public static final MinuteType TWENTYNINE  = new MinuteType(&quot;29&quot;, &quot;29&quot;);</span>
+<span class="nc" id="L69">    public static final MinuteType THIRTY  = new MinuteType(&quot;30&quot;, &quot;30&quot;);</span>
+<span class="nc" id="L70">    public static final MinuteType THIRTYONE  = new MinuteType(&quot;31&quot;, &quot;31&quot;);</span>
+<span class="nc" id="L71">    public static final MinuteType THIRTYTWO  = new MinuteType(&quot;32&quot;, &quot;32&quot;);</span>
+<span class="nc" id="L72">    public static final MinuteType THIRTYTHREE  = new MinuteType(&quot;33&quot;, &quot;33&quot;);</span>
+<span class="nc" id="L73">    public static final MinuteType THIRTYFOUR  = new MinuteType(&quot;34&quot;, &quot;34&quot;);</span>
+<span class="nc" id="L74">    public static final MinuteType THIRTYFIVE  = new MinuteType(&quot;35&quot;, &quot;35&quot;);</span>
+<span class="nc" id="L75">    public static final MinuteType THIRTYSIX  = new MinuteType(&quot;36&quot;, &quot;36&quot;);</span>
+<span class="nc" id="L76">    public static final MinuteType THIRTYSEVEN  = new MinuteType(&quot;37&quot;, &quot;37&quot;);</span>
+<span class="nc" id="L77">    public static final MinuteType THIRTYEIGHT  = new MinuteType(&quot;38&quot;, &quot;38&quot;);</span>
+<span class="nc" id="L78">    public static final MinuteType THIRTYNINE  = new MinuteType(&quot;39&quot;, &quot;39&quot;);</span>
+<span class="nc" id="L79">    public static final MinuteType FOURTY  = new MinuteType(&quot;40&quot;, &quot;40&quot;);</span>
+<span class="nc" id="L80">    public static final MinuteType FOURTYONE  = new MinuteType(&quot;41&quot;, &quot;41&quot;);</span>
+<span class="nc" id="L81">    public static final MinuteType FOURTYTWO  = new MinuteType(&quot;42&quot;, &quot;42&quot;);</span>
+<span class="nc" id="L82">    public static final MinuteType FOURTYTHREE  = new MinuteType(&quot;43&quot;, &quot;43&quot;);</span>
+<span class="nc" id="L83">    public static final MinuteType FOURTYFOUR  = new MinuteType(&quot;44&quot;, &quot;44&quot;);</span>
+<span class="nc" id="L84">    public static final MinuteType FOURTYFIVE  = new MinuteType(&quot;45&quot;, &quot;45&quot;);</span>
+<span class="nc" id="L85">    public static final MinuteType FOURTYSIX  = new MinuteType(&quot;46&quot;, &quot;46&quot;);</span>
+<span class="nc" id="L86">    public static final MinuteType FOURTYSEVEN  = new MinuteType(&quot;47&quot;, &quot;47&quot;);</span>
+<span class="nc" id="L87">    public static final MinuteType FOURTYEIGHT  = new MinuteType(&quot;48&quot;, &quot;48&quot;);</span>
+<span class="nc" id="L88">    public static final MinuteType FOURTYNINE  = new MinuteType(&quot;49&quot;, &quot;49&quot;);</span>
+<span class="nc" id="L89">    public static final MinuteType FIFTY  = new MinuteType(&quot;50&quot;, &quot;50&quot;);</span>
+<span class="nc" id="L90">    public static final MinuteType FIFTYONE  = new MinuteType(&quot;51&quot;, &quot;51&quot;);</span>
+<span class="nc" id="L91">    public static final MinuteType FIFTYTWO  = new MinuteType(&quot;52&quot;, &quot;52&quot;);</span>
+<span class="nc" id="L92">    public static final MinuteType FIFTYTHREE  = new MinuteType(&quot;53&quot;, &quot;53&quot;);</span>
+<span class="nc" id="L93">    public static final MinuteType FIFTYFOUR  = new MinuteType(&quot;54&quot;, &quot;54&quot;);</span>
+<span class="nc" id="L94">    public static final MinuteType FIFTYFIVE  = new MinuteType(&quot;55&quot;, &quot;55&quot;);</span>
+<span class="nc" id="L95">    public static final MinuteType FIFTYSIX  = new MinuteType(&quot;56&quot;, &quot;56&quot;);</span>
+<span class="nc" id="L96">    public static final MinuteType FIFTYSEVEN  = new MinuteType(&quot;57&quot;, &quot;57&quot;);</span>
+<span class="nc" id="L97">    public static final MinuteType FIFTYEIGHT  = new MinuteType(&quot;58&quot;, &quot;58&quot;);</span>
+<span class="nc" id="L98">    public static final MinuteType FIFTYNINE  = new MinuteType(&quot;59&quot;, &quot;59&quot;);</span>
+    
+    public static MinuteType getInstance(final String type) {
+<span class="nc" id="L101">        return TYPES.get(type);</span>
+    }
+
+    private String type;
+    private String friendlyType;
+
+<span class="nc" id="L107">    public MinuteType() {</span>
+        //do nothing
+<span class="nc" id="L109">    }</span>
+
+<span class="nc" id="L111">    public MinuteType(final String type, final String friendlyType) {</span>
+<span class="nc" id="L112">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L113">        setType(type);</span>
+<span class="nc" id="L114">    }</span>
+
+    public String getType() {
+<span class="nc" id="L117">        return type;</span>
+    }
+
+    public String getFriendlyType() {
+<span class="nc" id="L121">        return friendlyType;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L125">        this.type = type;</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (!TYPES.containsKey(type)) {</span>
+<span class="nc" id="L127">            TYPES.put(type, this);</span>
+        } else {
+<span class="nc" id="L129">            throw new RuntimeException(&quot;Cannot add the type: (&quot; + type + &quot;). It already exists as a type via &quot; + getInstance(type).getClass().getName());</span>
+        }
+<span class="nc" id="L131">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L135">        final int prime = 31;</span>
+<span class="nc" id="L136">        int result = 1;</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L138">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L144">            return true;</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L146">            return false;</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L148">            return false;</span>
+<span class="nc" id="L149">        MinuteType other = (MinuteType) obj;</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L152">                return false;</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L154">            return false;</span>
+<span class="nc" id="L155">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

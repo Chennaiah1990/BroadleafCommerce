@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ProtoSecureChannelProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.security.channel</a> &gt; <span class="el_source">ProtoSecureChannelProcessor.java</span></div><h1>ProtoSecureChannelProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.security.channel;
+
+import org.springframework.security.access.ConfigAttribute;
+import org.springframework.security.web.FilterInvocation;
+import org.springframework.security.web.access.channel.SecureChannelProcessor;
+import org.springframework.util.Assert;
+
+import java.io.IOException;
+import java.util.Collection;
+
+import javax.servlet.ServletException;
+
+/**
+ * &lt;p&gt;Very similar to the {@link SecureChannelProcessor} except that instead of relying on only the HttpServletRequest this
+ * also allows
+ * inspection of the X-Forwarded-Proto header to determine if the request is secure. This class is required when the
+ * application is deployed to an environment where SSL termination happens at a layer above the servlet container
+ * (like at a load balancer)&lt;/p&gt;
+ * 
+ * &lt;p&gt;This is intended to be used in conjunction with the {@link ProtoChannelBeanPostProcessor}. See that class for
+ * more information on how to configure.&lt;/p&gt;
+ *
+ * &lt;p&gt;This class encapsulates functionality given in {@link SecureChannelProcessor} so it is unnecessary to configure
+ * both&lt;/p&gt;
+ *
+ * @author Jeff Fischer
+ * @author Phillip Verheyden (phillipuniverse)
+ * @see {@link SecureChannelProcessor}
+ * @see {@link ProtoChannelBeanPostProcessor}
+ */
+<span class="nc" id="L50">public class ProtoSecureChannelProcessor extends SecureChannelProcessor {</span>
+
+    @Override
+    public void decide(FilterInvocation invocation, Collection&lt;ConfigAttribute&gt; config) throws IOException, ServletException {
+<span class="nc bnc" id="L54" title="All 4 branches missed.">        Assert.isTrue((invocation != null) &amp;&amp; (config != null), &quot;Nulls cannot be provided&quot;);</span>
+
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        for (ConfigAttribute attribute : config) {</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">            if (supports(attribute)) {</span>
+<span class="nc bnc" id="L58" title="All 4 branches missed.">                if (invocation.getHttpRequest().getHeader(&quot;X-Forwarded-Proto&quot;) != null</span>
+                        &amp;&amp; &quot;https&quot;.equalsIgnoreCase(invocation.getHttpRequest().getHeader(&quot;X-Forwarded-Proto&quot;))) {
+<span class="nc" id="L60">                    return;</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">                } else if (invocation.getHttpRequest().isSecure()) {</span>
+<span class="nc" id="L62">                    return;</span>
+                } else {
+<span class="nc" id="L64">                    getEntryPoint().commence(invocation.getRequest(), invocation.getResponse());</span>
+                }
+            }
+<span class="nc" id="L67">        }</span>
+<span class="nc" id="L68">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

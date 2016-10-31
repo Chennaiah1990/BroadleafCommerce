@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>IdentityExecutionUtils.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util.tenant</a> &gt; <span class="el_source">IdentityExecutionUtils.java</span></div><h1>IdentityExecutionUtils.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util.tenant;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.site.domain.Catalog;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.broadleafcommerce.common.util.TransactionUtils;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.hibernate.ejb.HibernateEntityManager;
+import org.springframework.orm.jpa.EntityManagerHolder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
+
+/**
+ * The utility methods in this class provide a way to ignore the currently configured site/catalog contexts and instead
+ * explicitly run operations in the specified context.
+ * 
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L47">public class IdentityExecutionUtils {</span>
+
+<span class="nc" id="L49">    private static final Log LOG = LogFactory.getLog(IdentityExecutionUtils.class);</span>
+
+    public static &lt;T, G extends Throwable&gt; T runOperationByIdentifier(IdentityOperation&lt;T, G&gt; operation, Site site, Site profile, Catalog catalog,
+                                                              PlatformTransactionManager transactionManager) throws G {
+<span class="nc" id="L53">        IdentityUtilContext context = new IdentityUtilContext();</span>
+<span class="nc" id="L54">        context.setIdentifier(site);</span>
+<span class="nc" id="L55">        IdentityUtilContext.setUtilContext(context);</span>
+
+<span class="nc" id="L57">        BroadleafRequestContext brc = BroadleafRequestContext.getBroadleafRequestContext();</span>
+<span class="nc" id="L58">        Site previousSite = brc.getSite();</span>
+<span class="nc" id="L59">        Catalog previousCatalog = brc.getCurrentCatalog();</span>
+<span class="nc" id="L60">        Site previousProfile = brc.getCurrentProfile();</span>
+        
+<span class="nc" id="L62">        boolean isNew = initRequestContext(site, profile, catalog);</span>
+
+<span class="nc" id="L64">        activateSession();</span>
+        
+<span class="nc" id="L66">        TransactionContainer container = null;</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (transactionManager != null) {</span>
+<span class="nc" id="L68">            container = establishTransaction(transactionManager);</span>
+        }
+        
+<span class="nc" id="L71">        boolean isError = false;</span>
+        try {
+<span class="nc" id="L73">            return operation.execute();</span>
+<span class="nc" id="L74">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L75">            isError = true;</span>
+<span class="nc" id="L76">            throw e;</span>
+        } finally {
+<span class="nc bnc" id="L78" title="All 4 branches missed.">            if (container != null) {</span>
+<span class="nc" id="L79">                finalizeTransaction(transactionManager, container, isError);</span>
+            }
+<span class="nc" id="L81">            IdentityUtilContext.setUtilContext(null);</span>
+<span class="nc bnc" id="L82" title="All 4 branches missed.">            if (isNew) {</span>
+<span class="nc" id="L83">                BroadleafRequestContext.setBroadleafRequestContext(null);</span>
+            }
+<span class="nc" id="L85">            BroadleafRequestContext.getBroadleafRequestContext().setSite(previousSite);</span>
+<span class="nc" id="L86">            BroadleafRequestContext.getBroadleafRequestContext().setCurrentCatalog(previousCatalog);</span>
+<span class="nc" id="L87">            BroadleafRequestContext.getBroadleafRequestContext().setCurrentProfile(previousProfile);</span>
+        }
+    }
+
+    public static &lt;T, G extends Throwable&gt; T runOperationByIdentifier(IdentityOperation&lt;T, G&gt; operation, Site site, Catalog catalog) throws G {
+<span class="nc" id="L92">        return runOperationByIdentifier(operation, site, null, catalog, null);</span>
+    }
+
+    public static &lt;T, G extends Throwable&gt; T runOperationByIdentifier(IdentityOperation&lt;T, G&gt; operation, Site site, Site profile, Catalog catalog) throws G {
+<span class="nc" id="L96">        return runOperationByIdentifier(operation, site, profile, catalog, null);</span>
+    }
+
+    public static &lt;T, G extends Throwable&gt; T runOperationByIdentifier(IdentityOperation&lt;T, G&gt; operation, Site site) throws G {
+<span class="nc" id="L100">        return runOperationByIdentifier(operation, site, null, null, null);</span>
+    }
+
+    public static &lt;T, G extends Throwable&gt; T runOperationByIdentifier(IdentityOperation&lt;T, G&gt; operation, Site site, Site profile) throws G {
+<span class="nc" id="L104">        return runOperationByIdentifier(operation, site, profile, null);</span>
+    }
+
+    public static &lt;T, G extends Throwable&gt; T runOperationAndIgnoreIdentifier(IdentityOperation&lt;T, G&gt; operation) throws G {
+<span class="nc" id="L108">        return runOperationAndIgnoreIdentifier(operation, null);</span>
+    }
+    
+    public static &lt;T, G extends Throwable&gt; T runOperationAndIgnoreIdentifier(IdentityOperation&lt;T, G&gt; operation, 
+            PlatformTransactionManager transactionManager) throws G {
+<span class="nc" id="L113">        BroadleafRequestContext brc = BroadleafRequestContext.getBroadleafRequestContext();</span>
+<span class="nc" id="L114">        Site previousSite = brc.getSite();</span>
+<span class="nc" id="L115">        Catalog previousCatalog = brc.getCurrentCatalog();</span>
+<span class="nc" id="L116">        Site previousProfile = brc.getCurrentProfile();</span>
+    
+<span class="nc" id="L118">        boolean isNew = initRequestContext(null, null, null);</span>
+<span class="nc" id="L119">        boolean isIgnoringSite = BroadleafRequestContext.getBroadleafRequestContext().getIgnoreSite();</span>
+<span class="nc" id="L120">        BroadleafRequestContext.getBroadleafRequestContext().setIgnoreSite(true);</span>
+
+<span class="nc" id="L122">        activateSession();</span>
+        
+<span class="nc" id="L124">        TransactionContainer container = null;</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (transactionManager != null) {</span>
+<span class="nc" id="L126">            container = establishTransaction(transactionManager);</span>
+        }
+<span class="nc" id="L128">        boolean isError = false;</span>
+        try {
+<span class="nc" id="L130">            return operation.execute();</span>
+<span class="nc" id="L131">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L132">            isError = true;</span>
+<span class="nc" id="L133">            throw e;</span>
+        } finally {
+<span class="nc bnc" id="L135" title="All 4 branches missed.">            if (container != null) {</span>
+<span class="nc" id="L136">                finalizeTransaction(transactionManager, container, isError);</span>
+            }
+            
+<span class="nc bnc" id="L139" title="All 4 branches missed.">            if (isNew) {</span>
+<span class="nc" id="L140">                BroadleafRequestContext.setBroadleafRequestContext(null);</span>
+            }
+<span class="nc" id="L142">            BroadleafRequestContext.getBroadleafRequestContext().setIgnoreSite(isIgnoringSite);</span>
+<span class="nc" id="L143">            BroadleafRequestContext.getBroadleafRequestContext().setSite(previousSite);</span>
+<span class="nc" id="L144">            BroadleafRequestContext.getBroadleafRequestContext().setCurrentCatalog(previousCatalog);</span>
+<span class="nc" id="L145">            BroadleafRequestContext.getBroadleafRequestContext().setCurrentProfile(previousProfile);</span>
+        }
+    }
+
+    private static boolean initRequestContext(Site site, Site profile, Catalog catalog) {
+<span class="nc" id="L150">        boolean isNew = false;</span>
+<span class="nc" id="L151">        BroadleafRequestContext requestContext = BroadleafRequestContext.getBroadleafRequestContext();</span>
+
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        if (requestContext == null) {</span>
+<span class="nc" id="L154">            requestContext = new BroadleafRequestContext();</span>
+<span class="nc" id="L155">            BroadleafRequestContext.setBroadleafRequestContext(requestContext);</span>
+<span class="nc" id="L156">            isNew = true;</span>
+        }
+
+<span class="nc" id="L159">        requestContext.setSite(site);</span>
+<span class="nc" id="L160">        requestContext.setCurrentCatalog(catalog);</span>
+<span class="nc" id="L161">        requestContext.setCurrentProfile(profile);</span>
+        
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        if (site != null) {</span>
+<span class="nc" id="L164">            requestContext.setIgnoreSite(false);</span>
+        }
+
+<span class="nc" id="L167">        return isNew;</span>
+    }
+
+    private static void activateSession() {
+<span class="nc" id="L171">        Map&lt;Object, Object&gt; resourceMap = TransactionSynchronizationManager.getResourceMap();</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        for (Map.Entry&lt;Object, Object&gt; entry : resourceMap.entrySet()) {</span>
+<span class="nc bnc" id="L173" title="All 4 branches missed.">            if (entry.getKey() instanceof EntityManagerFactory &amp;&amp; entry.getValue() instanceof EntityManagerHolder) {</span>
+<span class="nc" id="L174">                ((HibernateEntityManager) ((EntityManagerHolder) entry.getValue()).getEntityManager()).getSession();</span>
+            }
+<span class="nc" id="L176">        }</span>
+<span class="nc" id="L177">    }</span>
+
+    private static void finalizeTransaction(PlatformTransactionManager transactionManager, TransactionContainer
+            container, boolean error) {
+<span class="nc" id="L181">        TransactionUtils.finalizeTransaction(container.status, transactionManager, error);</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        for (Map.Entry&lt;Object, Object&gt; entry : container.usedResources.entrySet()) {</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">            if (!TransactionSynchronizationManager.hasResource(entry.getKey())) {</span>
+<span class="nc" id="L184">                TransactionSynchronizationManager.bindResource(entry.getKey(), entry.getValue());</span>
+            }
+<span class="nc" id="L186">        }</span>
+<span class="nc" id="L187">    }</span>
+
+    private static TransactionContainer establishTransaction(PlatformTransactionManager transactionManager) {
+<span class="nc" id="L190">        Map&lt;Object, Object&gt; usedResources = new HashMap&lt;Object, Object&gt;();</span>
+<span class="nc" id="L191">        Map&lt;Object, Object&gt; resources = TransactionSynchronizationManager.getResourceMap();</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        for (Map.Entry&lt;Object, Object&gt; entry : resources.entrySet()) {</span>
+<span class="nc bnc" id="L193" title="All 6 branches missed.">            if ((entry.getKey() instanceof EntityManagerFactory  || entry.getKey() instanceof DataSource) &amp;&amp;</span>
+                    TransactionSynchronizationManager.hasResource(entry.getKey())) {
+<span class="nc" id="L195">                usedResources.put(entry.getKey(), entry.getValue());</span>
+            }
+<span class="nc" id="L197">        }</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        for (Map.Entry&lt;Object, Object&gt; entry : usedResources.entrySet()) {</span>
+<span class="nc" id="L199">            TransactionSynchronizationManager.unbindResource(entry.getKey());</span>
+<span class="nc" id="L200">        }</span>
+
+        TransactionStatus status;
+        try {
+<span class="nc" id="L204">            status = TransactionUtils.createTransaction(TransactionDefinition.PROPAGATION_REQUIRES_NEW,</span>
+                    transactionManager, false);
+<span class="nc" id="L206">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L207">            throw e;</span>
+<span class="nc" id="L208">        }</span>
+<span class="nc" id="L209">        return new TransactionContainer(status, usedResources);</span>
+    }
+
+<span class="nc" id="L212">    private static class TransactionContainer {</span>
+        TransactionStatus status;
+        Map&lt;Object, Object&gt; usedResources;
+
+<span class="nc" id="L216">        private TransactionContainer(TransactionStatus status, Map&lt;Object, Object&gt; usedResources) {</span>
+<span class="nc" id="L217">            this.status = status;</span>
+<span class="nc" id="L218">            this.usedResources = usedResources;</span>
+<span class="nc" id="L219">        }</span>
+
+        public TransactionStatus getStatus() {
+<span class="nc" id="L222">            return status;</span>
+        }
+
+        public void setStatus(TransactionStatus status) {
+<span class="nc" id="L226">            this.status = status;</span>
+<span class="nc" id="L227">        }</span>
+
+        public Map&lt;Object, Object&gt; getUsedResources() {
+<span class="nc" id="L230">            return usedResources;</span>
+        }
+
+        public void setUsedResources(Map&lt;Object, Object&gt; usedResources) {
+<span class="nc" id="L234">            this.usedResources = usedResources;</span>
+<span class="nc" id="L235">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

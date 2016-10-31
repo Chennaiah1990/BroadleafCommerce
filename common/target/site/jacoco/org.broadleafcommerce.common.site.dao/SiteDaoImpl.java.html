@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SiteDaoImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.site.dao</a> &gt; <span class="el_source">SiteDaoImpl.java</span></div><h1>SiteDaoImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.site.dao;
+
+import org.broadleafcommerce.common.persistence.EntityConfiguration;
+import org.broadleafcommerce.common.site.domain.Catalog;
+import org.broadleafcommerce.common.site.domain.CatalogImpl;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.broadleafcommerce.common.site.domain.SiteImpl;
+import org.broadleafcommerce.common.site.service.type.SiteResolutionType;
+import org.broadleafcommerce.common.util.dao.TypedQueryBuilder;
+import org.hibernate.ejb.QueryHints;
+import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
+
+@Repository(&quot;blSiteDao&quot;)
+<span class="nc" id="L44">public class SiteDaoImpl implements SiteDao {</span>
+
+    @PersistenceContext(unitName = &quot;blPU&quot;)
+    protected EntityManager em;
+
+    @Resource(name = &quot;blEntityConfiguration&quot;)
+    protected EntityConfiguration entityConfiguration;
+
+    @Override
+    public Site create() {
+<span class="nc" id="L54">        return (Site) entityConfiguration.createEntityInstance(Site.class.getName());</span>
+    }
+
+    @Override
+    public Site retrieve(Long id) {
+<span class="nc" id="L59">        return em.find(SiteImpl.class, id);</span>
+    }
+    
+    @Override
+    public Catalog retrieveCatalog(Long id) {
+<span class="nc" id="L64">        return em.find(CatalogImpl.class, id);</span>
+    }
+    
+    @Override
+    public List&lt;Site&gt; readAllActiveSites() {
+<span class="nc" id="L69">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L70">        CriteriaQuery&lt;Site&gt; criteria = builder.createQuery(Site.class);</span>
+<span class="nc" id="L71">        Root&lt;SiteImpl&gt; site = criteria.from(SiteImpl.class);</span>
+<span class="nc" id="L72">        criteria.select(site);</span>
+<span class="nc" id="L73">        criteria.where(</span>
+            builder.and(
+                builder.or(builder.isNull(site.get(&quot;archiveStatus&quot;).get(&quot;archived&quot;).as(String.class)),
+                    builder.notEqual(site.get(&quot;archiveStatus&quot;).get(&quot;archived&quot;).as(Character.class), 'Y')),
+                builder.or(builder.isNull(site.get(&quot;deactivated&quot;).as(Boolean.class)),
+                    builder.notEqual(site.get(&quot;deactivated&quot;).as(Boolean.class), true))
+            )
+        );
+        
+<span class="nc" id="L82">        TypedQuery&lt;Site&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L83">        query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+        
+<span class="nc" id="L85">        return query.getResultList();</span>
+    }
+
+    @Override
+    public Site retrieveSiteByDomainOrDomainPrefix(String domain, String domainPrefix) {
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (domain == null) {</span>
+<span class="nc" id="L91">            return null;</span>
+        }
+
+<span class="nc" id="L94">        List&lt;String&gt; siteIdentifiers = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L95">        siteIdentifiers.add(domain);</span>
+<span class="nc" id="L96">        siteIdentifiers.add(domainPrefix);</span>
+
+<span class="nc" id="L98">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L99">        CriteriaQuery&lt;Site&gt; criteria = builder.createQuery(Site.class);</span>
+<span class="nc" id="L100">        Root&lt;SiteImpl&gt; site = criteria.from(SiteImpl.class);</span>
+<span class="nc" id="L101">        criteria.select(site);</span>
+
+<span class="nc" id="L103">        criteria.where(builder.and(site.get(&quot;siteIdentifierValue&quot;).as(String.class).in(siteIdentifiers),</span>
+                builder.and(
+                    builder.or(builder.isNull(site.get(&quot;archiveStatus&quot;).get(&quot;archived&quot;).as(String.class)),
+                        builder.notEqual(site.get(&quot;archiveStatus&quot;).get(&quot;archived&quot;).as(Character.class), 'Y')),
+                    builder.or(builder.isNull(site.get(&quot;deactivated&quot;).as(Boolean.class)),
+                        builder.notEqual(site.get(&quot;deactivated&quot;).as(Boolean.class), true))
+                )
+            )
+        );
+<span class="nc" id="L112">        TypedQuery&lt;Site&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L113">        query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+
+<span class="nc" id="L115">        List&lt;Site&gt; results = query.getResultList();</span>
+        
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        for (Site currentSite : results) {</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">            if (SiteResolutionType.DOMAIN.equals(currentSite.getSiteResolutionType())) {</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">                if (domain.equals(currentSite.getSiteIdentifierValue())) {</span>
+<span class="nc" id="L120">                    return currentSite;</span>
+                }
+            }
+
+<span class="nc bnc" id="L124" title="All 2 branches missed.">            if (SiteResolutionType.DOMAIN_PREFIX.equals(currentSite.getSiteResolutionType())) {</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">                if (domainPrefix.equals(currentSite.getSiteIdentifierValue())) {</span>
+<span class="nc" id="L126">                    return currentSite;</span>
+                }
+            }
+<span class="nc" id="L129">        }</span>
+
+<span class="nc" id="L131">        return null;</span>
+    }
+
+    @Override
+    public Site save(Site site) {
+<span class="nc" id="L136">        return em.merge(site);</span>
+    }
+
+    @Override
+    public Site retrieveDefaultSite() {
+<span class="nc" id="L141">        return null;</span>
+    }
+    
+    @Override
+    public Catalog save(Catalog catalog) {
+<span class="nc" id="L146">        return em.merge(catalog);</span>
+    }
+    
+    @Override
+    public List&lt;Catalog&gt; retrieveAllCatalogs() {
+<span class="nc" id="L151">        TypedQuery&lt;Catalog&gt; q = new TypedQueryBuilder&lt;Catalog&gt;(Catalog.class, &quot;c&quot;)</span>
+                .toQuery(em);
+<span class="nc" id="L153">        return q.getResultList();</span>
+    } 
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

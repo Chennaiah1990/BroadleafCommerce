@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RuleIdentifier.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.presentation</a> &gt; <span class="el_source">RuleIdentifier.java</span></div><h1>RuleIdentifier.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.presentation;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L28">public class RuleIdentifier {</span>
+
+    public static final String CUSTOMER  = &quot;CUSTOMER_FIELDS&quot;;
+    public static final String FULFILLMENTGROUP  = &quot;FULFILLMENT_GROUP_FIELDS&quot;;
+    public static final String LOCALE  = &quot;LOCALE_FIELDS&quot;;
+    public static final String ORDER  = &quot;ORDER_FIELDS&quot;;
+    public static final String ORDERITEM  = &quot;ORDER_ITEM_FIELDS&quot;;
+    public static final String SKU = &quot;SKU_FIELDS&quot;;
+    public static final String TIME = &quot;TIME_FIELDS&quot;;
+    public static final String REQUEST = &quot;REQUEST_FIELDS&quot;;
+    public static final String PRICING_CONTEXT = &quot;PRICING_CONTEXT_FIELDS&quot;;
+    public static final String PRODUCT = &quot;PRODUCT_FIELDS&quot;;
+    public static final String CATEGORY = &quot;CATEGORY_FIELDS&quot;;
+
+    public static final String CUSTOMER_ENTITY_KEY = &quot;customer&quot;;
+    public static final String FULFILLMENTGROUP_ENTITY_KEY = &quot;fulfillmentGroup&quot;;
+    public static final String LOCALE_ENTITY_KEY = &quot;locale&quot;;
+    public static final String ORDER_ENTITY_KEY = &quot;order&quot;;
+    public static final String ORDERITEM_ENTITY_KEY = &quot;orderItem&quot;;
+    public static final String SKU_ENTITY_KEY = &quot;sku&quot;;
+    public static final String TIME_ENTITY_KEY = &quot;time&quot;;
+    public static final String REQUEST_ENTITY_KEY = &quot;request&quot;;
+    public static final String PRICING_CONTEXT_ENTITY_KEY = &quot;pricingContext&quot;;
+    public static final String PRODUCT_ENTITY_KEY = &quot;product&quot;;
+    public static final String CATEGORY_ENTITY_KEY = &quot;category&quot;;
+
+    public static final String CUSTOMER_FIELD_KEY = &quot;CUSTOMER&quot;;
+    public static final String LOCALE_FIELD_KEY = &quot;LOCALE&quot;;
+    public static final String ORDER_FIELD_KEY = &quot;ORDER&quot;;
+    public static final String FULFILLMENT_GROUP_FIELD_KEY = &quot;FULFILLMENT_GROUP&quot;;
+    public static final String TIME_FIELD_KEY = &quot;TIME&quot;;
+    public static final String REQUEST_FIELD_KEY = &quot;REQUEST&quot;;
+    public static final String PRICING_CONTEXT_FIELD_KEY = &quot;PRICING_CONTEXT&quot;;
+    public static final String PRODUCT_FIELD_KEY = &quot;PRODUCT&quot;;
+    public static final String CATEGORY_FIELD_KEY = &quot;CATEGORY&quot;;
+
+<span class="nc" id="L64">    public static Map&lt;String, String&gt; ENTITY_KEY_MAP = new HashMap&lt;String, String&gt;();</span>
+    static {
+<span class="nc" id="L66">        ENTITY_KEY_MAP.put(CUSTOMER, CUSTOMER_ENTITY_KEY);</span>
+<span class="nc" id="L67">        ENTITY_KEY_MAP.put(FULFILLMENTGROUP, FULFILLMENTGROUP_ENTITY_KEY);</span>
+<span class="nc" id="L68">        ENTITY_KEY_MAP.put(LOCALE, LOCALE_ENTITY_KEY);</span>
+<span class="nc" id="L69">        ENTITY_KEY_MAP.put(ORDER, ORDER_ENTITY_KEY);</span>
+<span class="nc" id="L70">        ENTITY_KEY_MAP.put(ORDERITEM, ORDERITEM_ENTITY_KEY);</span>
+<span class="nc" id="L71">        ENTITY_KEY_MAP.put(SKU, SKU_ENTITY_KEY);</span>
+<span class="nc" id="L72">        ENTITY_KEY_MAP.put(TIME, TIME_ENTITY_KEY);</span>
+<span class="nc" id="L73">        ENTITY_KEY_MAP.put(REQUEST, REQUEST_ENTITY_KEY);</span>
+<span class="nc" id="L74">        ENTITY_KEY_MAP.put(PRODUCT, PRODUCT_ENTITY_KEY);</span>
+<span class="nc" id="L75">        ENTITY_KEY_MAP.put(CATEGORY, CATEGORY_ENTITY_KEY);</span>
+<span class="nc" id="L76">        ENTITY_KEY_MAP.put(PRICING_CONTEXT, PRICING_CONTEXT_ENTITY_KEY);</span>
+<span class="nc" id="L77">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

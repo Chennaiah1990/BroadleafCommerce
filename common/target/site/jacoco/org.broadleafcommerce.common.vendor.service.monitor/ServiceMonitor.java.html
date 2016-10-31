@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ServiceMonitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.vendor.service.monitor</a> &gt; <span class="el_source">ServiceMonitor.java</span></div><h1>ServiceMonitor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.vendor.service.monitor;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.broadleafcommerce.common.vendor.service.monitor.handler.LogStatusHandler;
+import org.broadleafcommerce.common.vendor.service.type.ServiceStatusType;
+
+import java.util.HashMap;
+import java.util.Map;
+
+<span class="nc" id="L31">public class ServiceMonitor {</span>
+
+<span class="nc" id="L33">    private static final Log LOG = LogFactory.getLog(ServiceMonitor.class);</span>
+
+<span class="nc" id="L35">    protected Map&lt;ServiceStatusDetectable, StatusHandler&gt; serviceHandlers = new HashMap&lt;ServiceStatusDetectable, StatusHandler&gt;();</span>
+<span class="nc" id="L36">    protected StatusHandler defaultHandler = new LogStatusHandler();</span>
+<span class="nc" id="L37">    protected Map&lt;ServiceStatusDetectable, ServiceStatusType&gt; statusMap = new HashMap&lt;ServiceStatusDetectable, ServiceStatusType&gt;();</span>
+
+    public synchronized void init() {
+<span class="nc bnc" id="L40" title="All 2 branches missed.">        for (ServiceStatusDetectable statusDetectable : serviceHandlers.keySet()) {</span>
+<span class="nc" id="L41">            checkService(statusDetectable);</span>
+<span class="nc" id="L42">        }</span>
+<span class="nc" id="L43">    }</span>
+
+    public Object checkServiceAOP(ProceedingJoinPoint call) throws Throwable {
+        try {
+<span class="nc" id="L47">            checkService((ServiceStatusDetectable) call.getThis());</span>
+<span class="nc" id="L48">        } catch (Throwable e) {</span>
+<span class="nc" id="L49">            LOG.error(&quot;Could not check service status&quot;, e);</span>
+<span class="nc" id="L50">        }</span>
+<span class="nc" id="L51">        return call.proceed();</span>
+    }
+
+    public void checkService(ServiceStatusDetectable statusDetectable) {
+<span class="nc" id="L55">        ServiceStatusType type = statusDetectable.getServiceStatus();</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (!statusMap.containsKey(statusDetectable)) {</span>
+<span class="nc" id="L57">            statusMap.put(statusDetectable, type);</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">            if (type.equals(ServiceStatusType.DOWN)) {</span>
+<span class="nc" id="L59">                handleStatusChange(statusDetectable, type);</span>
+            }
+        }
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (!statusMap.get(statusDetectable).equals(type)) {</span>
+<span class="nc" id="L63">            handleStatusChange(statusDetectable, type);</span>
+<span class="nc" id="L64">            statusMap.put(statusDetectable, type);</span>
+        }
+<span class="nc" id="L66">    }</span>
+
+    protected void handleStatusChange(ServiceStatusDetectable serviceStatus, ServiceStatusType serviceStatusType) {
+<span class="nc bnc" id="L69" title="All 2 branches missed.">        if (serviceHandlers.containsKey(serviceStatus)) {</span>
+<span class="nc" id="L70">            serviceHandlers.get(serviceStatus).handleStatus(serviceStatus.getServiceName(), serviceStatusType);</span>
+        } else {
+<span class="nc" id="L72">            defaultHandler.handleStatus(serviceStatus.getServiceName(), serviceStatusType);</span>
+        }
+<span class="nc" id="L74">    }</span>
+
+    public Map&lt;ServiceStatusDetectable, StatusHandler&gt; getServiceHandlers() {
+<span class="nc" id="L77">        return serviceHandlers;</span>
+    }
+
+    public void setServiceHandlers(Map&lt;ServiceStatusDetectable, StatusHandler&gt; serviceHandlers) {
+<span class="nc" id="L81">        this.serviceHandlers = serviceHandlers;</span>
+<span class="nc" id="L82">    }</span>
+
+    public StatusHandler getDefaultHandler() {
+<span class="nc" id="L85">        return defaultHandler;</span>
+    }
+
+    public void setDefaultHandler(StatusHandler defaultHandler) {
+<span class="nc" id="L89">        this.defaultHandler = defaultHandler;</span>
+<span class="nc" id="L90">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

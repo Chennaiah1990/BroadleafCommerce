@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafMergeResourceBundleMessageSource.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">BroadleafMergeResourceBundleMessageSource.java</span></div><h1>BroadleafMergeResourceBundleMessageSource.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
+import org.broadleafcommerce.common.extension.ExtensionResultHolder;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.core.io.ResourceLoader;
+import java.text.MessageFormat;
+import java.util.Locale;
+import javax.annotation.Resource;
+
+
+/**
+ * &lt;p&gt;Replaces the deprecated {@link BLResourceBundleMessageSource} by using a {@link ReloadableResourceBundleMessageSource}
+ * instead. The main advantage of using this is the out-of-the-box ability to merge multiple property files together. There
+ * is one important difference: When there is a conflict for a property (declared in multiple files) this implementation
+ * assumes that the &lt;i&gt;later&lt;/i&gt; one in the list takes precedence. This follows with normal Broadleaf assumptions that bean
+ * definitions declared later in the merge process win.&lt;/p&gt;
+ * 
+ * &lt;p&gt;While this theoretically supports caching via the features provided in ReloadableResourceBundleMessageSource, this should
+ * not be used and instead should have cacheMillis always set to -1 (which is the default implementation). This ensures
+ * that codes are always obtained from a merged property list.&lt;/p&gt;
+ * 
+ * &lt;p&gt;The basenames in this implementation are Spring path resources so if you need to refer to a resource on the classpath,
+ * these should be prefixed with classpath:. This is slightly different from the {@link ResourceBundleMessageSource}; see
+ * {@link ReloadableResourceBundleMessageSource#setBasenames(String...)} for more information.&lt;/p&gt;
+ *
+ * &lt;p&gt;The {@link BroadleafMergeResourceExtensionManager} will get invoked first and return any
+ * resolved message from an implementing module.&lt;/p&gt;
+ * 
+ * @author Phillip Verheyden
+ * @see {@link ReloadableResourceBundleMessageSource}
+ * @see {@link ResourceLoader#getResource(String)}
+ * @see {@link #setBasenames(String...)}
+ */
+<span class="nc" id="L56">public class BroadleafMergeResourceBundleMessageSource extends ReloadableResourceBundleMessageSource {</span>
+
+    @Resource(name = &quot;blBroadleafMergeResourceExtensionManager&quot;)
+    protected BroadleafMergeResourceExtensionManager extensionManager;
+
+    /**
+     * The super implementation ensures the basenames defined at the beginning take precedence. We require the opposite in
+     * order to be in line with previous assumptions about the applicationContext merge process (meaning, beans defined in
+     * later applicationContexts take precedence). Thus, this reverses &lt;b&gt;basenames&lt;/b&gt; before passing it up to the super
+     * implementation.
+     * 
+     * @param basenames
+     * @param resourceBundleExtensionPoint
+     * @see {@link ReloadableResourceBundleMessageSource#setBasenames(String...)}
+     */
+    @Override
+    public void setBasenames(String... basenames) {
+<span class="nc" id="L73">        CollectionUtils.reverseArray(basenames);</span>
+<span class="nc" id="L74">        super.setBasenames(basenames);</span>
+<span class="nc" id="L75">    }</span>
+
+    @Override
+    protected MessageFormat resolveCode(String code, Locale locale) {
+<span class="nc" id="L79">        ExtensionResultHolder&lt;String&gt; messageHolder = new ExtensionResultHolder&lt;String&gt;();</span>
+<span class="nc" id="L80">        extensionManager.getProxy().resolveMessageSource(code, locale, messageHolder);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (StringUtils.isNotBlank(messageHolder.getResult())) {</span>
+<span class="nc" id="L82">            return createMessageFormat(messageHolder.getResult(), locale);</span>
+        }
+
+<span class="nc" id="L85">        return super.resolveCode(code, locale);</span>
+    }
+
+    @Override
+    protected String resolveCodeWithoutArguments(String code, Locale locale) {
+<span class="nc" id="L90">        ExtensionResultHolder&lt;String&gt; messageHolder = new ExtensionResultHolder&lt;String&gt;();</span>
+<span class="nc" id="L91">        extensionManager.getProxy().resolveMessageSource(code, locale, messageHolder);</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (StringUtils.isNotBlank(messageHolder.getResult())) {</span>
+<span class="nc" id="L93">            return messageHolder.getResult();</span>
+        }
+
+<span class="nc" id="L96">        return super.resolveCodeWithoutArguments(code, locale);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

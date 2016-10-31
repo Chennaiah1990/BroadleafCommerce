@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractGeneratedResourceHandler.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.resource</a> &gt; <span class="el_source">AbstractGeneratedResourceHandler.java</span></div><h1>AbstractGeneratedResourceHandler.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.resource;
+
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Element;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.cache.CacheStatType;
+import org.broadleafcommerce.common.cache.StatisticsService;
+import org.broadleafcommerce.common.extension.ExtensionResultHolder;
+import org.broadleafcommerce.common.resource.GeneratedResource;
+import org.broadleafcommerce.common.util.StreamingTransactionCapableUtil;
+import org.springframework.core.Ordered;
+import org.springframework.core.io.Resource;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.util.List;
+
+
+/**
+ * An abstract GeneratedResourceHandler that is capable of responding to a single specified filename and generate
+ * contents for that filename. This abstract parent will handle caching of the generated resource.
+ * 
+ * @author Andre Azzolini (apazzolini)
+ *
+ */
+<span class="nc" id="L49">public abstract class AbstractGeneratedResourceHandler implements Ordered {</span>
+    
+    public static final int DEFAULT_ORDER = 10000;
+
+<span class="nc" id="L53">    protected static final Log LOG = LogFactory.getLog(AbstractGeneratedResourceHandler.class);</span>
+
+    @javax.annotation.Resource(name=&quot;blStatisticsService&quot;)
+    protected StatisticsService statisticsService;
+
+    @javax.annotation.Resource(name=&quot;blStreamingTransactionCapableUtil&quot;)
+    protected StreamingTransactionCapableUtil transUtil;
+
+    @javax.annotation.Resource(name = &quot;blResourceRequestExtensionManager&quot;)
+    protected ResourceRequestExtensionManager extensionManager;
+
+    protected Cache generatedResourceCache;
+    
+    /**
+     * @param path
+     * @return booelean determining whether or not this handler is able to handle the given request
+     */
+    public abstract boolean canHandle(String path);
+    
+    /**
+     * @param path
+     * @param locations 
+     * @return the Resource representing this file
+     */
+    public abstract Resource getFileContents(String path, List&lt;Resource&gt; locations);
+    
+    /**
+     * @param cachedResource
+     * @param path
+     * @param locations
+     * @return whether or not the given cachedResource needs to be regenerated
+     */
+    public abstract boolean isCachedResourceExpired(GeneratedResource cachedResource, String path, List&lt;Resource&gt; locations);
+
+    /**
+     * Attempts to retrive the requested resource from cache. If not cached, generates the resource, caches it,
+     * and then returns it
+     * 
+     * @param request
+     * @param location
+     * @return the generated resource
+     */
+    public Resource getResource(final String path, final List&lt;Resource&gt; locations) {
+<span class="nc" id="L96">        Element e = getGeneratedResourceCache().get(path);</span>
+<span class="nc" id="L97">        Resource r = null;</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (e == null) {</span>
+<span class="nc" id="L99">            statisticsService.addCacheStat(CacheStatType.GENERATED_RESOURCE_CACHE_HIT_RATE.toString(), false);</span>
+        } else {
+<span class="nc" id="L101">            statisticsService.addCacheStat(CacheStatType.GENERATED_RESOURCE_CACHE_HIT_RATE.toString(), true);</span>
+        }
+<span class="nc" id="L103">        boolean shouldGenerate = false;</span>
+<span class="nc bnc" id="L104" title="All 4 branches missed.">        if (e == null || e.getObjectValue() == null) {</span>
+<span class="nc" id="L105">            shouldGenerate = true;</span>
+<span class="nc bnc" id="L106" title="All 4 branches missed.">        } else if (e.getObjectValue() instanceof GeneratedResource</span>
+                &amp;&amp; isCachedResourceExpired((GeneratedResource) e.getObjectValue(), path, locations)) {
+<span class="nc" id="L108">            shouldGenerate = true;</span>
+        } else {
+<span class="nc" id="L110">            r = (Resource) e.getObjectValue();</span>
+        }
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (shouldGenerate) {</span>
+<span class="nc" id="L114">            r = getFileContents(path, locations);</span>
+<span class="nc" id="L115">            e = new Element(path,  r);</span>
+<span class="nc" id="L116">            getGeneratedResourceCache().put(e);</span>
+        }
+<span class="nc" id="L118">        return r;</span>
+    }
+    
+    /**
+     * This method can be used to read in a resource given a path and at least one resource location
+     * 
+     * @param path
+     * @param locations
+     * @return the resource from the file system, classpath, etc, if it exists
+     */
+    protected Resource getRawResource(String path, List&lt;Resource&gt; locations) {
+<span class="nc" id="L129">        ExtensionResultHolder erh = new ExtensionResultHolder();</span>
+<span class="nc" id="L130">        extensionManager.getProxy().getOverrideResource(path, erh);</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (erh.getContextMap().get(ResourceRequestExtensionHandler.RESOURCE_ATTR) != null) {</span>
+<span class="nc" id="L132">            return (Resource) erh.getContextMap().get(ResourceRequestExtensionHandler.RESOURCE_ATTR);</span>
+        }
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		for (Resource location : locations) {</span>
+			try {
+<span class="nc" id="L137">				Resource resource = location.createRelative(path);</span>
+<span class="nc bnc" id="L138" title="All 4 branches missed.">				if (resource.exists() &amp;&amp; resource.isReadable()) {</span>
+<span class="nc" id="L139">				    return resource;</span>
+				}
+			}
+<span class="nc" id="L142">			catch (IOException ex) {</span>
+<span class="nc" id="L143">				LOG.debug(&quot;Failed to create relative resource - trying next resource location&quot;, ex);</span>
+<span class="nc" id="L144">			}</span>
+<span class="nc" id="L145">		}</span>
+<span class="nc" id="L146">		return null;</span>
+    }
+    
+	/**
+	 * @param resource
+	 * @return the UTF-8 String represetation of the contents of the resource
+	 */
+	protected String getResourceContents(Resource resource) throws IOException {
+<span class="nc" id="L154">    	StringWriter writer = null;</span>
+	    try {
+<span class="nc" id="L156">	        writer = new StringWriter();</span>
+<span class="nc" id="L157">    	    IOUtils.copy(resource.getInputStream(), writer, &quot;UTF-8&quot;);</span>
+<span class="nc" id="L158">    	    return writer.toString();</span>
+	    } finally {
+<span class="nc bnc" id="L160" title="All 4 branches missed.">	        if (writer != null) {</span>
+<span class="nc" id="L161">    	        writer.flush();</span>
+<span class="nc" id="L162">    	        writer.close();</span>
+	        }
+	    }
+	}
+    
+    protected Cache getGeneratedResourceCache() {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        if (generatedResourceCache == null) {</span>
+<span class="nc" id="L169">            generatedResourceCache = CacheManager.getInstance().getCache(&quot;generatedResourceCache&quot;);</span>
+        }
+<span class="nc" id="L171">        return generatedResourceCache;</span>
+    }
+
+    @Override
+    public int getOrder() {
+<span class="nc" id="L176">        return DEFAULT_ORDER;</span>
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

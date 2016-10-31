@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ExceptionHelper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.exception</a> &gt; <span class="el_source">ExceptionHelper.java</span></div><h1>ExceptionHelper.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Workflow
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.exception;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.UndeclaredThrowableException;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+/**
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L32">public class ExceptionHelper {</span>
+
+<span class="nc" id="L34">    private static final Log LOG = LogFactory.getLog(ExceptionHelper.class);</span>
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; RuntimeException refineException(Class&lt;G&gt; refineType, Class&lt;J&gt; wrapType, String message, Throwable e) {
+<span class="nc bnc" id="L37" title="All 2 branches missed.">        if (refineType.isAssignableFrom(e.getClass())) {</span>
+<span class="nc" id="L38">            return wrapException(e, wrapType, message);</span>
+        }
+<span class="nc bnc" id="L40" title="All 2 branches missed.">        if (e.getCause() != null) {</span>
+<span class="nc" id="L41">            return refineException(refineType, wrapType, message, e.getCause());</span>
+        }
+<span class="nc bnc" id="L43" title="All 2 branches missed.">        if (e instanceof UndeclaredThrowableException) {</span>
+<span class="nc" id="L44">            return refineException(refineType, wrapType, message, ((UndeclaredThrowableException) e).getUndeclaredThrowable());</span>
+        }
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        if (e instanceof InvocationTargetException) {</span>
+<span class="nc" id="L47">            return refineException(refineType, wrapType, message, ((InvocationTargetException) e).getTargetException());</span>
+        }
+<span class="nc" id="L49">        return wrapException(e, wrapType, message);</span>
+    }
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; RuntimeException refineException(Class&lt;G&gt; refineType, Class&lt;J&gt; wrapType, Throwable e) {
+<span class="nc" id="L53">        return refineException(refineType, wrapType, null, e);</span>
+    }
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; RuntimeException refineException(Class&lt;J&gt; wrapType, Throwable e) {
+<span class="nc" id="L57">        return refineException(RuntimeException.class, wrapType, null, e);</span>
+    }
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; RuntimeException refineException(Throwable e) {
+<span class="nc" id="L61">        return refineException(RuntimeException.class, RuntimeException.class, null, e);</span>
+    }
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; void processException(Class&lt;G&gt; refineType, Class&lt;J&gt; wrapType, String message, Throwable e) throws G {
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (refineType.isAssignableFrom(e.getClass())) {</span>
+<span class="nc" id="L66">            throw (G) e;</span>
+        }
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (e.getCause() != null) {</span>
+<span class="nc" id="L69">            processException(refineType, wrapType, message, e.getCause());</span>
+        }
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (e instanceof UndeclaredThrowableException) {</span>
+<span class="nc" id="L72">            processException(refineType, wrapType, message, ((UndeclaredThrowableException) e).getUndeclaredThrowable());</span>
+        }
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        if (e instanceof InvocationTargetException) {</span>
+<span class="nc" id="L75">            processException(refineType, wrapType, message, ((InvocationTargetException) e).getTargetException());</span>
+        }
+<span class="nc" id="L77">        throw wrapException(e, wrapType, message);</span>
+    }
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; void processException(Class&lt;G&gt; refineType, Class&lt;J&gt; wrapType, Throwable e) throws G {
+<span class="nc" id="L81">        processException(refineType, wrapType, null, e);</span>
+<span class="nc" id="L82">    }</span>
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; void processException(Class&lt;J&gt; wrapType, Throwable e) throws G {
+<span class="nc" id="L85">        processException(RuntimeException.class, wrapType, null, e);</span>
+<span class="nc" id="L86">    }</span>
+
+    public static &lt;G extends Throwable, J extends RuntimeException&gt; void processException(Throwable e) throws G {
+<span class="nc" id="L89">        processException(RuntimeException.class, RuntimeException.class, null, e);</span>
+<span class="nc" id="L90">    }</span>
+
+    private static &lt;J extends RuntimeException&gt; RuntimeException wrapException(Throwable e, Class&lt;J&gt; wrapType, String message) {
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        if (e instanceof RuntimeException) {</span>
+<span class="nc" id="L94">            return (RuntimeException) e;</span>
+        }
+        try {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            if (StringUtils.isEmpty(message)) {</span>
+<span class="nc" id="L98">                return wrapType.getConstructor(Throwable.class).newInstance(e);</span>
+            } else {
+<span class="nc" id="L100">                return wrapType.getConstructor(String.class, Throwable.class).newInstance(message, e);</span>
+            }
+<span class="nc" id="L102">        } catch (Exception e1) {</span>
+<span class="nc" id="L103">            LOG.error(&quot;Could not wrap exception&quot;, e1);</span>
+<span class="nc" id="L104">            throw new RuntimeException(e);</span>
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

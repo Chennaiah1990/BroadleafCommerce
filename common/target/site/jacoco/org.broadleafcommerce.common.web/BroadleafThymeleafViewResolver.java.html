@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafThymeleafViewResolver.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafThymeleafViewResolver.java</span></div><h1>BroadleafThymeleafViewResolver.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extension.ExtensionResultHolder;
+import org.broadleafcommerce.common.util.BLCSystemProperty;
+import org.broadleafcommerce.common.web.controller.BroadleafControllerUtility;
+import org.springframework.util.PatternMatchUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.servlet.View;
+import org.springframework.web.servlet.view.RedirectView;
+import org.thymeleaf.spring4.view.AbstractThymeleafView;
+import org.thymeleaf.spring4.view.ThymeleafViewResolver;
+
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * This class extends the default ThymeleafViewResolver to facilitate rendering
+ * template fragments (such as those used by AJAX modals or iFrames) within a 
+ * full page container should the request for that template have occurred in a 
+ * stand-alone context.
+ * 
+ * @author Andre Azzolini (apazzolini)
+ */
+<span class="nc" id="L51">public class BroadleafThymeleafViewResolver extends ThymeleafViewResolver {</span>
+<span class="nc" id="L52">    private static final Log LOG = LogFactory.getLog(BroadleafThymeleafViewResolver.class);</span>
+    
+    @Resource(name = &quot;blBroadleafThymeleafViewResolverExtensionManager&quot;)
+    protected BroadleafThymeleafViewResolverExtensionManager extensionManager;
+    
+    public static final String EXTENSION_TEMPLATE_ATTR_NAME = &quot;extensionTemplateAttr&quot;;
+    
+    /**
+     * &lt;p&gt;
+     *   Prefix to be used in view names (returned by controllers) for specifying an
+     *   HTTP redirect with AJAX support. That is, if you want a redirect to be followed
+     *   by the browser as the result of an AJAX call or within an iFrame at the parent 
+     *   window, you can utilize this prefix. Note that this requires a JavaScript component,
+     *   which is provided as part of BLC.js
+     *   
+     *   If the request was not performed in an AJAX / iFrame context, this method will
+     *   delegate to the normal &quot;redirect:&quot; prefix.
+     * &lt;/p&gt;
+     * &lt;p&gt;
+     *   Value: &lt;tt&gt;ajaxredirect:&lt;/tt&gt;
+     * &lt;/p&gt;
+     */
+    public static final String AJAX_REDIRECT_URL_PREFIX = &quot;ajaxredirect:&quot;;
+    
+<span class="nc" id="L76">    protected Map&lt;String, String&gt; layoutMap = new HashMap&lt;String, String&gt;();</span>
+<span class="nc" id="L77">    protected String fullPageLayout = &quot;layout/fullPageLayout&quot;;</span>
+<span class="nc" id="L78">    protected String iframeLayout = &quot;layout/iframeLayout&quot;;</span>
+    
+    protected boolean useThymeleafLayoutDialect() {
+<span class="nc" id="L81">        return BLCSystemProperty.resolveBooleanSystemProperty(&quot;thymeleaf.useLayoutDialect&quot;);</span>
+    }
+    
+    /*
+     * This method is a copy of the same method in ThymeleafViewResolver, but since it is marked private,
+     * we are unable to call it from the BroadleafThymeleafViewResolver
+     */
+    protected boolean canHandle(final String viewName) {
+<span class="nc" id="L89">        final String[] viewNamesToBeProcessed = getViewNames();</span>
+<span class="nc" id="L90">        final String[] viewNamesNotToBeProcessed = getExcludedViewNames();</span>
+<span class="nc bnc" id="L91" title="All 8 branches missed.">        return ((viewNamesToBeProcessed == null || PatternMatchUtils.simpleMatch(viewNamesToBeProcessed, viewName)) &amp;&amp;</span>
+                (viewNamesNotToBeProcessed == null || !PatternMatchUtils.simpleMatch(viewNamesNotToBeProcessed, viewName)));
+    }
+
+    @Override
+    public View resolveViewName(String viewName, Locale locale) throws Exception {
+<span class="nc" id="L97">        ExtensionResultHolder&lt;String&gt; erh = new ExtensionResultHolder&lt;String&gt;();</span>
+<span class="nc" id="L98">        extensionManager.getProxy().overrideView(erh, viewName, isAjaxRequest());</span>
+
+<span class="nc" id="L100">        String viewOverride = (String) erh.getResult();</span>
+
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (viewOverride != null) {</span>
+<span class="nc" id="L103">            viewName = viewOverride;</span>
+        }
+
+<span class="nc" id="L106">        return super.resolveViewName(viewName, locale);</span>
+    }
+
+    /**
+     * Determines which internal method to call for creating the appropriate view. If no
+     * Broadleaf specific methods match the viewName, it delegates to the parent 
+     * ThymeleafViewResolver createView method
+     */
+    @Override
+    protected View createView(final String viewName, final Locale locale) throws Exception {
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (!canHandle(viewName)) {</span>
+<span class="nc" id="L117">            LOG.trace(&quot;[THYMELEAF] View {&quot; + viewName + &quot;} cannot be handled by ThymeleafViewResolver. Passing on to the next resolver in the chain&quot;);</span>
+<span class="nc" id="L118">            return null;</span>
+        }
+        
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (viewName.startsWith(AJAX_REDIRECT_URL_PREFIX)) {</span>
+<span class="nc" id="L122">            LOG.trace(&quot;[THYMELEAF] View {&quot; + viewName + &quot;} is an ajax redirect, and will be handled directly by BroadleafThymeleafViewResolver&quot;);</span>
+<span class="nc" id="L123">            String redirectUrl = viewName.substring(AJAX_REDIRECT_URL_PREFIX.length());</span>
+<span class="nc" id="L124">            return loadAjaxRedirectView(redirectUrl, locale);</span>
+        }
+        
+<span class="nc" id="L127">        return super.createView(viewName, locale);</span>
+    }
+    
+    /**
+     * Performs a Broadleaf AJAX redirect. This is used in conjunction with BLC.js to support
+     * doing a browser page change as as result of an AJAX call.
+     * 
+     * @param redirectUrl
+     * @param locale
+     * @return
+     * @throws Exception
+     */
+    protected View loadAjaxRedirectView(String redirectUrl, final Locale locale) throws Exception {
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (isAjaxRequest()) {</span>
+<span class="nc" id="L141">            String viewName = &quot;utility/blcRedirect&quot;;</span>
+<span class="nc" id="L142">            addStaticVariable(BroadleafControllerUtility.BLC_REDIRECT_ATTRIBUTE, redirectUrl);</span>
+<span class="nc" id="L143">            return super.loadView(viewName, locale);</span>
+        } else {
+<span class="nc" id="L145">            return new RedirectView(redirectUrl, false, isRedirectHttp10Compatible());</span>
+        }
+    }
+    
+    @Override
+    protected View loadView(final String originalViewName, final Locale locale) throws Exception {
+<span class="nc" id="L151">        String viewName = originalViewName;</span>
+        
+<span class="nc bnc" id="L153" title="All 4 branches missed.">        if (!isAjaxRequest() &amp;&amp; !useThymeleafLayoutDialect()) {</span>
+<span class="nc" id="L154">            String longestPrefix = &quot;&quot;;</span>
+            
+<span class="nc bnc" id="L156" title="All 2 branches missed.">            for (Entry&lt;String, String&gt; entry : layoutMap.entrySet()) {</span>
+<span class="nc" id="L157">                String viewPrefix = entry.getKey();</span>
+<span class="nc" id="L158">                String viewLayout = entry.getValue();</span>
+                
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                if (viewPrefix.length() &gt; longestPrefix.length()) {</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">                    if (originalViewName.startsWith(viewPrefix)) {</span>
+<span class="nc" id="L162">                        longestPrefix = viewPrefix;</span>
+                        
+<span class="nc bnc" id="L164" title="All 2 branches missed.">                        if (!&quot;NONE&quot;.equals(viewLayout)) {</span>
+<span class="nc" id="L165">                            viewName = viewLayout;</span>
+                        }
+                    }
+                }
+<span class="nc" id="L169">            }  </span>
+            
+<span class="nc bnc" id="L171" title="All 2 branches missed.">            if (longestPrefix.equals(&quot;&quot;)) {</span>
+<span class="nc" id="L172">                viewName = getFullPageLayout();</span>
+            }
+        }
+
+<span class="nc" id="L176">        AbstractThymeleafView view = null;</span>
+<span class="nc" id="L177">        boolean ajaxRequest = isAjaxRequest();</span>
+        
+<span class="nc" id="L179">        ExtensionResultHolder&lt;String&gt; erh = new ExtensionResultHolder&lt;String&gt;();</span>
+<span class="nc" id="L180">        extensionManager.getProxy().provideTemplateWrapper(erh, originalViewName, ajaxRequest);</span>
+<span class="nc" id="L181">        String templateWrapper = erh.getResult();</span>
+
+<span class="nc bnc" id="L183" title="All 4 branches missed.">        if (templateWrapper != null &amp;&amp; ajaxRequest) {</span>
+<span class="nc" id="L184">            view = (AbstractThymeleafView) super.loadView(templateWrapper, locale);</span>
+<span class="nc" id="L185">            view.addStaticVariable(&quot;wrappedTemplate&quot;, viewName);</span>
+        } else {
+<span class="nc" id="L187">            view = (AbstractThymeleafView) super.loadView(viewName, locale);</span>
+        }
+        
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if (!ajaxRequest) {</span>
+<span class="nc" id="L191">            view.addStaticVariable(&quot;templateName&quot;, originalViewName);</span>
+        }
+        
+<span class="nc" id="L194">        return view;</span>
+    }
+    
+    @Override
+    protected Object getCacheKey(String viewName, Locale locale) {
+<span class="nc" id="L199">        String cacheKey = viewName + &quot;_&quot; + locale + &quot;_&quot; + isAjaxRequest();</span>
+
+<span class="nc" id="L201">        ExtensionResultHolder&lt;String&gt; erh = new ExtensionResultHolder&lt;String&gt;();</span>
+<span class="nc" id="L202">        extensionManager.getProxy().appendCacheKey(erh, viewName, isAjaxRequest());</span>
+
+<span class="nc" id="L204">        String addlCacheKey = (String) erh.getResult();</span>
+
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        if (addlCacheKey != null) {</span>
+<span class="nc" id="L207">            cacheKey = cacheKey + &quot;_&quot; + addlCacheKey;</span>
+        }
+
+<span class="nc" id="L210">        return cacheKey;</span>
+    }
+    
+    protected boolean isIFrameRequest() {
+<span class="nc" id="L214">        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();</span>
+<span class="nc" id="L215">        String iFrameParameter = request.getParameter(&quot;blcIFrame&quot;);</span>
+<span class="nc bnc" id="L216" title="All 4 branches missed.">        return (iFrameParameter != null &amp;&amp; &quot;true&quot;.equals(iFrameParameter));</span>
+    }
+    
+    protected boolean isAjaxRequest() {
+        // First, let's try to get it from the BroadleafRequestContext
+<span class="nc" id="L221">        HttpServletRequest request = null;</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">        if (BroadleafRequestContext.getBroadleafRequestContext() != null) {</span>
+<span class="nc" id="L223">            HttpServletRequest brcRequest = BroadleafRequestContext.getBroadleafRequestContext().getRequest();</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">            if (brcRequest != null) {</span>
+<span class="nc" id="L225">                request = brcRequest;</span>
+            }
+        }
+        
+        // If we didn't find it there, we might be outside of a security-configured uri. Let's see if the filter got it
+<span class="nc bnc" id="L230" title="All 2 branches missed.">        if (request == null) {</span>
+            try {
+<span class="nc" id="L232">                request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest(); </span>
+<span class="nc" id="L233">            } catch (ClassCastException e) {</span>
+                // In portlet environments, we won't be able to cast to a ServletRequestAttributes. We don't want to 
+                // blow up in these scenarios.
+<span class="nc" id="L236">                LOG.warn(&quot;Unable to cast to ServletRequestAttributes and the request in BroadleafRequestContext &quot; + </span>
+                         &quot;was not set. This may introduce incorrect AJAX behavior.&quot;);
+<span class="nc" id="L238">            }</span>
+        }
+        
+        // If we still don't have a request object, we'll default to non-ajax
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        if (request == null) {</span>
+<span class="nc" id="L243">            return false;</span>
+        }
+                
+<span class="nc" id="L246">        return BroadleafControllerUtility.isAjaxRequest(request);</span>
+    }
+
+    /**
+     * Gets the map of prefix : layout for use in determining which layout
+     * to dispatch the request to in non-AJAX calls
+     * 
+     * @return the layout map
+     */
+    public Map&lt;String, String&gt; getLayoutMap() {
+<span class="nc" id="L256">        return layoutMap;</span>
+    }
+
+    /**
+     * @see #getLayoutMap()
+     * @param layoutMap
+     */
+    public void setLayoutMap(Map&lt;String, String&gt; layoutMap) {
+<span class="nc" id="L264">        this.layoutMap = layoutMap;</span>
+<span class="nc" id="L265">    }</span>
+
+    /**
+     * The default layout to use if there is no specifc entry in the layout map
+     * 
+     * @return the full page layout
+     */
+    public String getFullPageLayout() {
+<span class="nc" id="L273">        return fullPageLayout;</span>
+    }
+
+    /**
+     * @see #getFullPageLayout()
+     * @param fullPageLayout
+     */
+    public void setFullPageLayout(String fullPageLayout) {
+<span class="nc" id="L281">        this.fullPageLayout = fullPageLayout;</span>
+<span class="nc" id="L282">    }</span>
+
+    /**
+     * The layout to use for iframe requests
+     * 
+     * @return the iframe layout
+     */
+    public String getIframeLayout() {
+<span class="nc" id="L290">        return iframeLayout;</span>
+    }
+
+    /**
+     * @see #getIframeLayout()
+     * @param iframeLayout
+     */
+    public void setIframeLayout(String iframeLayout) {
+<span class="nc" id="L298">        this.iframeLayout = iframeLayout;</span>
+<span class="nc" id="L299">    }</span>
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

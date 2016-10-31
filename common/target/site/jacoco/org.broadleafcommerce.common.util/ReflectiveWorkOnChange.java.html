@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ReflectiveWorkOnChange.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">ReflectiveWorkOnChange.java</span></div><h1>ReflectiveWorkOnChange.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import org.broadleafcommerce.common.exception.ExceptionHelper;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.ReflectionUtils;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Map;
+
+/**
+ * This WorkOnChange implementation is for a narrow case where the work to be done is simply calling a method on a target object
+ * and passing to that method the changed collection. Of course, there must be a method with the correct signature on
+ * the target object. This implementation also uses caching to optimize repeat searches for the same method and minimize
+ * reflection time.
+ *
+ * @author Jeff Fischer
+ */
+public class ReflectiveWorkOnChange implements WorkOnChange {
+
+<span class="nc" id="L41">    private static Map&lt;String, Method&gt; methodCache = new EfficientLRUMap&lt;String, Method&gt;(1000);</span>
+
+    private final Object target;
+    private final String methodName;
+
+<span class="nc" id="L46">    public ReflectiveWorkOnChange(Object target, String methodName) {</span>
+<span class="nc" id="L47">        this.target = target;</span>
+<span class="nc" id="L48">        this.methodName = methodName;</span>
+<span class="nc" id="L49">    }</span>
+
+    @Override
+    public void doWork(Collection changed) {
+<span class="nc" id="L53">        String key = target.getClass().getName() + &quot;.&quot; + methodName + &quot;(&quot; + changed.getClass().getName() + &quot;)&quot;;</span>
+<span class="nc" id="L54">        Method method = methodCache.get(key);</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (method == null) {</span>
+<span class="nc" id="L56">            method = searchForMethod(target.getClass(), changed);</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">            if (method != null) {</span>
+<span class="nc" id="L58">                methodCache.put(key, method);</span>
+            }
+        }
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        if (method == null) {</span>
+<span class="nc" id="L62">            throw new IllegalArgumentException(&quot;Unable to find the method (&quot; + methodName + &quot;) on the class (&quot; + target.getClass().getName() + &quot;)&quot;);</span>
+        }
+        try {
+<span class="nc" id="L65">            method.invoke(target, changed);</span>
+<span class="nc" id="L66">        } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L67">            throw ExceptionHelper.refineException(e);</span>
+<span class="nc" id="L68">        } catch (InvocationTargetException e) {</span>
+<span class="nc" id="L69">            throw ExceptionHelper.refineException(e);</span>
+<span class="nc" id="L70">        }</span>
+<span class="nc" id="L71">    }</span>
+
+    protected Method searchForMethod(Class&lt;?&gt; targetClass, Object test) {
+<span class="nc" id="L74">        Method method = ReflectionUtils.findMethod(target.getClass(), methodName, test.getClass());</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (method == null) {</span>
+<span class="nc" id="L76">            Class[] interfaces = ClassUtils.getAllInterfaces(test);</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">            for (Class clazz : interfaces) {</span>
+<span class="nc" id="L78">                method = ReflectionUtils.findMethod(targetClass, methodName, clazz);</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">                if (method != null) {</span>
+<span class="nc" id="L80">                    break;</span>
+                }
+            }
+        }
+<span class="nc" id="L84">        return method;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

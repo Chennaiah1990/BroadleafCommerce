@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UrlUtil.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">UrlUtil.java</span></div><h1>UrlUtil.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import org.apache.commons.lang.StringUtils;
+
+<span class="nc" id="L24">public class UrlUtil {</span>
+    public static String generateUrlKey(String toConvert) {
+<span class="nc bnc" id="L26" title="All 2 branches missed.">        if (toConvert != null) {</span>
+<span class="nc" id="L27">            toConvert = toConvert.replaceAll(&quot; &quot;, &quot;-&quot;);</span>
+<span class="nc bnc" id="L28" title="All 2 branches missed.">            if (toConvert.matches(&quot;.*?\\W.*?&quot;)) {</span>
+                //remove all non-word characters
+<span class="nc" id="L30">                String result = toConvert.replaceAll(&quot;[^\\w-]+&quot;, &quot;&quot;);</span>
+                //uncapitalizes the first letter of the url key
+<span class="nc" id="L32">                return StringUtils.uncapitalize(result);</span>
+            } else {
+<span class="nc" id="L34">                return StringUtils.uncapitalize(toConvert);</span>
+            }
+        }
+<span class="nc" id="L37">        return toConvert;</span>
+    }
+    
+        /**
+         * If the url does not include &quot;//&quot; then the system will ensure that the
+         * application context is added to the start of the URL.
+         * 
+         * @param url
+         * @return
+         */
+        public static String fixRedirectUrl(String contextPath, String url) {
+<span class="nc bnc" id="L48" title="All 2 branches missed.">            if (url.indexOf(&quot;//&quot;) &lt; 0) {</span>
+
+<span class="nc bnc" id="L50" title="All 4 branches missed.">                if (contextPath != null &amp;&amp; (!&quot;&quot;.equals(contextPath))) {</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">                    if (!url.startsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L52">                        url = &quot;/&quot; + url;</span>
+                    }
+<span class="nc bnc" id="L54" title="All 2 branches missed.">                    if (!url.startsWith(contextPath)) {</span>
+<span class="nc" id="L55">                        url = contextPath + url;</span>
+                    }
+                }
+            }
+<span class="nc" id="L59">            return url;</span>
+
+        }
+        
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

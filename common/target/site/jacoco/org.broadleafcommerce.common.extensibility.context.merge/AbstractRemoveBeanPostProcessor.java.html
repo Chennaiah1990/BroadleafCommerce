@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractRemoveBeanPostProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.context.merge</a> &gt; <span class="el_source">AbstractRemoveBeanPostProcessor.java</span></div><h1>AbstractRemoveBeanPostProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.context.merge;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.beans.factory.config.ListFactoryBean;
+import org.springframework.beans.factory.config.MapFactoryBean;
+import org.springframework.beans.factory.config.SetFactoryBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+
+/**
+ * &lt;p&gt;
+ * Contains useful processing code for merge bean post processors. The BeanPostProcessor instances can
+ * be used to remove collection members from collections declared elsewhere. In effect, this allows
+ * an implementer to remove a bean that was declared in a collection (list, set or map) or previously merged
+ * via LateStageMergeBeanPostProcessor or EarlyStageMergeBeanPostProcessor.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * This code demonstrates using one of the concrete implementations, {@link LateStageRemoveBeanPostProcessor}. The
+ * basic usage pattern is to specify the id of the member you want to remove (beanRef) and the id
+ * of the pre-existing, target collection (targetRef) that should receive the removal. The collection
+ * can be represented using ListFactoryBean, SetFactoryBean or MapFactoryBean. For MapFactoryBeans, use either the
+ * mapKey or mapKeyRef property instead to reference the map item to remove.
+ * &lt;/p&gt;
+ * &lt;pre&gt;
+ * {@code
+ * &lt;bean class=&quot;org.broadleafcommerce.common.extensibility.context.merge.LateStageRemoveBeanPostProcessor&quot;&gt;
+ *  &lt;property name=&quot;beanRef&quot; value=&quot;myBean&quot;/&gt;
+ *  &lt;property name=&quot;targetRef&quot; value=&quot;targetCollection&quot;/&gt;
+ * &lt;/bean&gt;
+ * }
+ * &lt;/pre&gt;
+ *
+ * @see LateStageRemoveBeanPostProcessor
+ * @see EarlyStageRemoveBeanPostProcessor
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L66">public abstract class AbstractRemoveBeanPostProcessor implements BeanPostProcessor, ApplicationContextAware {</span>
+
+    protected String beanRef;
+    protected String targetRef;
+    protected String mapKey;
+    protected String mapKeyRef;
+    protected ApplicationContext applicationContext;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+<span class="nc" id="L76">        this.applicationContext = applicationContext;</span>
+<span class="nc" id="L77">    }</span>
+
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+<span class="nc" id="L81">        return bean;</span>
+    }
+
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (beanName.equals(targetRef)) {</span>
+<span class="nc bnc" id="L87" title="All 4 branches missed.">            if (bean instanceof ListFactoryBean || bean instanceof List) {</span>
+<span class="nc" id="L88">                Object beanToRemove = applicationContext.getBean(beanRef);</span>
+                try {
+                    List sourceList;
+<span class="nc bnc" id="L91" title="All 2 branches missed.">                    if (bean instanceof ListFactoryBean) {</span>
+<span class="nc" id="L92">                        Field field = ListFactoryBean.class.getDeclaredField(&quot;sourceList&quot;);</span>
+<span class="nc" id="L93">                        field.setAccessible(true);</span>
+<span class="nc" id="L94">                        sourceList = (List) field.get(bean);</span>
+<span class="nc" id="L95">                    } else {</span>
+<span class="nc" id="L96">                        sourceList = (List) bean;</span>
+                    }
+<span class="nc" id="L98">                    Iterator itr = sourceList.iterator();</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">                    while (itr.hasNext()) {</span>
+<span class="nc" id="L100">                        Object member = itr.next();</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">                        if (member.equals(beanToRemove)) {</span>
+<span class="nc" id="L102">                            itr.remove();</span>
+                        }
+<span class="nc" id="L104">                    }</span>
+<span class="nc" id="L105">                } catch (Exception e) {</span>
+<span class="nc" id="L106">                    throw new BeanCreationException(e.getMessage());</span>
+<span class="nc" id="L107">                }</span>
+<span class="nc bnc" id="L108" title="All 4 branches missed.">            } else if (bean instanceof SetFactoryBean || bean instanceof Set) {</span>
+<span class="nc" id="L109">                Object beanToRemove = applicationContext.getBean(beanRef);</span>
+                try {
+                    Set sourceSet;
+<span class="nc bnc" id="L112" title="All 2 branches missed.">                    if (bean instanceof SetFactoryBean) {</span>
+<span class="nc" id="L113">                        Field field = SetFactoryBean.class.getDeclaredField(&quot;sourceSet&quot;);</span>
+<span class="nc" id="L114">                        field.setAccessible(true);</span>
+<span class="nc" id="L115">                        sourceSet = (Set) field.get(bean);</span>
+<span class="nc" id="L116">                    } else {</span>
+<span class="nc" id="L117">                        sourceSet = (Set)bean;</span>
+                    }
+<span class="nc" id="L119">                    List tempList = new ArrayList(sourceSet);</span>
+<span class="nc" id="L120">                    Iterator itr = tempList.iterator();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">                    while (itr.hasNext()) {</span>
+<span class="nc" id="L122">                        Object member = itr.next();</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">                        if (member.equals(beanToRemove)) {</span>
+<span class="nc" id="L124">                            itr.remove();</span>
+                        }
+<span class="nc" id="L126">                    }</span>
+<span class="nc" id="L127">                    sourceSet.clear();</span>
+<span class="nc" id="L128">                    sourceSet.addAll(tempList);</span>
+<span class="nc" id="L129">                } catch (Exception e) {</span>
+<span class="nc" id="L130">                    throw new BeanCreationException(e.getMessage());</span>
+<span class="nc" id="L131">                }</span>
+<span class="nc bnc" id="L132" title="All 4 branches missed.">            } else if (bean instanceof MapFactoryBean || bean instanceof Map) {</span>
+                try {
+                    Map sourceMap;
+<span class="nc bnc" id="L135" title="All 2 branches missed.">                    if (bean instanceof MapFactoryBean) {</span>
+<span class="nc" id="L136">                        Field field = MapFactoryBean.class.getDeclaredField(&quot;sourceMap&quot;);</span>
+<span class="nc" id="L137">                        field.setAccessible(true);</span>
+<span class="nc" id="L138">                        sourceMap = (Map) field.get(bean);</span>
+<span class="nc" id="L139">                    } else {</span>
+<span class="nc" id="L140">                        sourceMap = (Map) bean;</span>
+                    }
+                    Object key;
+<span class="nc bnc" id="L143" title="All 2 branches missed.">                    if (mapKey != null) {</span>
+<span class="nc" id="L144">                        key = mapKey;</span>
+                    } else {
+<span class="nc" id="L146">                        key = applicationContext.getBean(mapKeyRef);</span>
+                    }
+<span class="nc" id="L148">                    Map referenceMap = new LinkedHashMap(sourceMap);</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">                    for (Object sourceKey : referenceMap.keySet()) {</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">                        if (sourceKey.equals(key)) {</span>
+<span class="nc" id="L151">                            sourceMap.remove(key);</span>
+                        }
+<span class="nc" id="L153">                    }</span>
+<span class="nc" id="L154">                } catch (Exception e) {</span>
+<span class="nc" id="L155">                    throw new BeanCreationException(e.getMessage());</span>
+<span class="nc" id="L156">                }</span>
+            } else {
+<span class="nc" id="L158">                throw new IllegalArgumentException(&quot;Bean (&quot; + beanName + &quot;) is specified as a merge target, &quot; +</span>
+                        &quot;but is not&quot; +
+                        &quot; of type ListFactoryBean, SetFactoryBean or MapFactoryBean&quot;);
+            }
+        }
+
+<span class="nc" id="L164">        return bean;</span>
+    }
+
+    public String getBeanRef() {
+<span class="nc" id="L168">        return beanRef;</span>
+    }
+
+    public void setBeanRef(String beanRef) {
+<span class="nc" id="L172">        this.beanRef = beanRef;</span>
+<span class="nc" id="L173">    }</span>
+
+    public String getTargetRef() {
+<span class="nc" id="L176">        return targetRef;</span>
+    }
+
+    public void setTargetRef(String targetRef) {
+<span class="nc" id="L180">        this.targetRef = targetRef;</span>
+<span class="nc" id="L181">    }</span>
+
+    public String getMapKey() {
+<span class="nc" id="L184">        return mapKey;</span>
+    }
+
+    public void setMapKey(String mapKey) {
+<span class="nc" id="L188">        this.mapKey = mapKey;</span>
+<span class="nc" id="L189">    }</span>
+
+    public String getMapKeyRef() {
+<span class="nc" id="L192">        return mapKeyRef;</span>
+    }
+
+    public void setMapKeyRef(String mapKeyRef) {
+<span class="nc" id="L196">        this.mapKeyRef = mapKeyRef;</span>
+<span class="nc" id="L197">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

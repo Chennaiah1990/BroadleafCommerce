@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BLCJSResourceResolver.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.resource.resolver</a> &gt; <span class="el_source">BLCJSResourceResolver.java</span></div><h1>BLCJSResourceResolver.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * broadleaf-theme
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.resource.resolver;
+
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.resource.GeneratedResource;
+import org.broadleafcommerce.common.web.BaseUrlResolver;
+import org.springframework.core.Ordered;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
+import org.springframework.util.FileCopyUtils;
+import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.servlet.resource.AbstractResourceResolver;
+import org.springframework.web.servlet.resource.ResourceResolver;
+import org.springframework.web.servlet.resource.ResourceResolverChain;
+
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * A {@link ResourceResolver} that replaces the //BLC-SERVLET-CONTEXT and //BLC-SITE-BASEURL&quot; 
+ * tokens before serving the BLC.js file.
+ * 
+ * Works in conjunction with {@link BLCJSUrlPathResolver}
+ * 
+ * @since 4.0
+ * 
+ * @author Reggie Cole
+ * @author Brian Polster
+ * @since Broadleaf 4.0
+ */
+@Component(&quot;blBLCJSResolver&quot;)
+<span class="nc" id="L59">public class BLCJSResourceResolver extends AbstractResourceResolver implements Ordered {</span>
+
+<span class="nc" id="L61">    protected static final Log LOG = LogFactory.getLog(BLCJSResourceResolver.class);</span>
+
+    private static final String BLC_JS_NAME = &quot;BLC.js&quot;;
+<span class="nc" id="L64">    protected static final Charset DEFAULT_CHARSET = Charset.forName(&quot;UTF-8&quot;);</span>
+
+    @javax.annotation.Resource(name = &quot;blBaseUrlResolver&quot;)
+    BaseUrlResolver urlResolver;
+
+<span class="nc" id="L69">    private int order = BroadleafResourceResolverOrder.BLC_JS_RESOURCE_RESOLVER;</span>
+
+<span class="nc" id="L71">    protected static final Pattern pattern = Pattern.compile(&quot;(\\S*)BLC((\\S{0})|([-]{1,2}[0-9]+)|([-]{1,2}[0-9]+(-[0-9]+)+)).js&quot;);</span>
+
+
+    @Override
+    protected String resolveUrlPathInternal(String resourceUrlPath, List&lt;? extends Resource&gt; locations,
+            ResourceResolverChain chain) {
+<span class="nc" id="L77">        return chain.resolveUrlPath(resourceUrlPath, locations);</span>
+    }
+    
+    @Override
+    protected Resource resolveResourceInternal(HttpServletRequest request, String requestPath,
+            List&lt;? extends Resource&gt; locations, ResourceResolverChain chain) {
+<span class="nc bnc" id="L83" title="All 4 branches missed.">        if (requestPath != null &amp;&amp; requestPath.contains(&quot;BLC&quot;)) {</span>
+<span class="nc" id="L84">            Matcher matcher = pattern.matcher(requestPath);</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">            if (matcher.find()) {</span>
+<span class="nc" id="L86">                requestPath = matcher.group(1) + &quot;BLC.js&quot;;</span>
+<span class="nc" id="L87">                Resource resource = chain.resolveResource(request, &quot;BLC.js&quot;, locations);</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">                if (resource == null) {</span>
+<span class="nc" id="L89">                    requestPath = matcher.group(1) + &quot;BLC.js&quot;;</span>
+<span class="nc" id="L90">                    resource = chain.resolveResource(request, requestPath, locations);</span>
+                }
+
+                try {
+<span class="nc" id="L94">                    resource = convertResource(resource, requestPath);</span>
+<span class="nc" id="L95">                } catch (IOException ioe) {</span>
+<span class="nc" id="L96">                    LOG.error(&quot;Exception modifying &quot; + BLC_JS_NAME, ioe);</span>
+<span class="nc" id="L97">                }</span>
+<span class="nc" id="L98">                return resource;</span>
+            }
+        }
+<span class="nc" id="L101">        return chain.resolveResource(request, requestPath, locations);</span>
+    }
+
+    protected Resource convertResource(Resource origResource, String resourceFileName) throws IOException {
+<span class="nc" id="L105">        byte[] bytes = FileCopyUtils.copyToByteArray(origResource.getInputStream());</span>
+<span class="nc" id="L106">        String content = new String(bytes, DEFAULT_CHARSET);</span>
+        
+<span class="nc" id="L108">        String newContent = content;</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (! StringUtils.isEmpty(content)) {</span>
+<span class="nc" id="L110">            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();</span>
+<span class="nc" id="L111">            newContent = newContent.replace(&quot;//BLC-SERVLET-CONTEXT&quot;, request.getContextPath());</span>
+
+<span class="nc" id="L113">            String siteBaseUrl = urlResolver.getSiteBaseUrl();</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            if (! StringUtils.isEmpty(siteBaseUrl)) {</span>
+<span class="nc" id="L115">                newContent = newContent.replace(&quot;//BLC-SITE-BASEURL&quot;, siteBaseUrl);</span>
+            }
+        }
+        
+<span class="nc" id="L119">        return new GeneratedResource(newContent.getBytes(), resourceFileName);</span>
+    }
+    
+    protected String addVersion(String requestPath, String version) {
+<span class="nc" id="L123">        String baseFilename = StringUtils.stripFilenameExtension(requestPath);</span>
+<span class="nc" id="L124">        String extension = StringUtils.getFilenameExtension(requestPath);</span>
+<span class="nc" id="L125">        return baseFilename + version + &quot;.&quot; + extension;</span>
+    }
+
+    @Override
+    public int getOrder() {
+<span class="nc" id="L130">        return order;</span>
+    }
+
+    public void setOrder(int order) {
+<span class="nc" id="L134">        this.order = order;</span>
+<span class="nc" id="L135">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

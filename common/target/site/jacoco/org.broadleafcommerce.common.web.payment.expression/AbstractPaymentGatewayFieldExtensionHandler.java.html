@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractPaymentGatewayFieldExtensionHandler.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.payment.expression</a> &gt; <span class="el_source">AbstractPaymentGatewayFieldExtensionHandler.java</span></div><h1>AbstractPaymentGatewayFieldExtensionHandler.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.web.payment.expression;
+
+import org.broadleafcommerce.common.extension.AbstractExtensionHandler;
+import org.broadleafcommerce.common.extension.ExtensionResultStatusType;
+import org.broadleafcommerce.common.payment.PaymentGatewayType;
+import org.broadleafcommerce.common.payment.service.PaymentGatewayResolver;
+
+import java.util.Map;
+import javax.annotation.Resource;
+
+/**
+ * @author Elbert Bautista (elbertbautista)
+ *
+ */
+<span class="nc" id="L35">public abstract class AbstractPaymentGatewayFieldExtensionHandler extends AbstractExtensionHandler</span>
+        implements PaymentGatewayFieldExtensionHandler {
+
+    @Resource(name = &quot;blPaymentGatewayResolver&quot;)
+    protected PaymentGatewayResolver paymentGatewayResolver;
+
+    public abstract String getCreditCardHolderName();
+    public abstract String getCreditCardType();
+    public abstract String getCreditCardNum();
+    public abstract String getCreditCardExpDate();
+    public abstract String getCreditCardExpMonth();
+    public abstract String getCreditCardExpYear();
+    public abstract String getCreditCardCvv();
+
+    public abstract String getBillToAddressFirstName();
+    public abstract String getBillToAddressLastName();
+    public abstract String getBillToAddressCompanyName();
+    public abstract String getBillToAddressLine1();
+    public abstract String getBillToAddressLine2();
+    public abstract String getBillToAddressCityLocality();
+    public abstract String getBillToAddressStateRegion();
+    public abstract String getBillToAddressPostalCode();
+    public abstract String getBillToAddressCountryCode();
+    public abstract String getBillToAddressPhone();
+    public abstract String getBillToAddressEmail();
+
+    public abstract String getShipToAddressFirstName();
+    public abstract String getShipToAddressLastName();
+    public abstract String getShipToAddressCompanyName();
+    public abstract String getShipToAddressLine1();
+    public abstract String getShipToAddressLine2();
+    public abstract String getShipToAddressCityLocality();
+    public abstract String getShipToAddressStateRegion();
+    public abstract String getShipToAddressPostalCode();
+    public abstract String getShipToAddressCountryCode();
+    public abstract String getShipToAddressPhone();
+    public abstract String getShipToAddressEmail();
+
+    public abstract PaymentGatewayType getHandlerType();
+
+    @Override
+    public ExtensionResultStatusType mapFieldName(String fieldNameKey, Map&lt;String, String&gt; fieldNameMap) {
+
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if (paymentGatewayResolver.isHandlerCompatible(getHandlerType())) {</span>
+            //-------------------------
+            // Credit Card Fields
+            //-------------------------
+
+<span class="nc bnc" id="L83" title="All 2 branches missed.">            if (&quot;creditCard.creditCardHolderName&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getCreditCardHolderName() != null ? getCreditCardHolderName() : fieldNameKey);
+<span class="nc" id="L86">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">            if (&quot;creditCard.creditCardType&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getCreditCardType() != null ? getCreditCardType() : fieldNameKey);
+<span class="nc" id="L92">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if (&quot;creditCard.creditCardNum&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getCreditCardNum() != null ? getCreditCardNum() : fieldNameKey);
+<span class="nc" id="L98">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L101" title="All 2 branches missed.">            if (&quot;creditCard.creditCardExpDate&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getCreditCardExpDate() != null ? getCreditCardExpDate() : fieldNameKey);
+<span class="nc" id="L104">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            if (&quot;creditCard.creditCardExpMonth&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getCreditCardExpMonth() != null ? getCreditCardExpMonth() : fieldNameKey);
+<span class="nc" id="L110">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">            if (&quot;creditCard.creditCardExpYear&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getCreditCardExpYear() != null ? getCreditCardExpYear() : fieldNameKey);
+<span class="nc" id="L116">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L119" title="All 2 branches missed.">            if (&quot;creditCard.creditCardCvv&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getCreditCardCvv() != null ? getCreditCardCvv() : fieldNameKey);
+<span class="nc" id="L122">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+            //-------------------------
+            // BillTo Fields
+            //-------------------------
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">            if (&quot;billTo.addressFirstName&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressFirstName() != null ? getBillToAddressFirstName() : fieldNameKey);
+<span class="nc" id="L132">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">            if (&quot;billTo.addressLastName&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressLastName() != null ? getBillToAddressLastName() : fieldNameKey);
+<span class="nc" id="L138">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">            if (&quot;billTo.addressCompanyName&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressCompanyName() != null ? getBillToAddressCompanyName() : fieldNameKey);
+<span class="nc" id="L144">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">            if (&quot;billTo.addressLine1&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressLine1() != null ? getBillToAddressLine1() : fieldNameKey);
+<span class="nc" id="L150">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L153" title="All 2 branches missed.">            if (&quot;billTo.addressLine2&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressLine2() != null ? getBillToAddressLine2() : fieldNameKey);
+<span class="nc" id="L156">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L159" title="All 2 branches missed.">            if (&quot;billTo.addressCityLocality&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressCityLocality() != null ? getBillToAddressCityLocality() : fieldNameKey);
+<span class="nc" id="L162">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L165" title="All 2 branches missed.">            if (&quot;billTo.addressStateRegion&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressStateRegion() != null ? getBillToAddressStateRegion() : fieldNameKey);
+<span class="nc" id="L168">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L171" title="All 2 branches missed.">            if (&quot;billTo.addressPostalCode&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressPostalCode() != null ? getBillToAddressPostalCode() : fieldNameKey);
+<span class="nc" id="L174">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L177" title="All 2 branches missed.">            if (&quot;billTo.addressCountryCode&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressCountryCode() != null ? getBillToAddressCountryCode() : fieldNameKey);
+<span class="nc" id="L180">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L183" title="All 2 branches missed.">            if (&quot;billTo.addressPhone&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressPhone() != null ? getBillToAddressPhone() : fieldNameKey);
+<span class="nc" id="L186">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L189" title="All 2 branches missed.">            if (&quot;billTo.addressEmail&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getBillToAddressEmail() != null ? getBillToAddressEmail() : fieldNameKey);
+<span class="nc" id="L192">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+            //-------------------------
+            // ShipTo Fields
+            //-------------------------
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">            if (&quot;shipTo.addressFirstName&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressFirstName() != null ? getShipToAddressFirstName() : fieldNameKey);
+<span class="nc" id="L202">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L205" title="All 2 branches missed.">            if (&quot;shipTo.addressLastName&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressLastName() != null ? getShipToAddressLastName() : fieldNameKey);
+<span class="nc" id="L208">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L211" title="All 2 branches missed.">            if (&quot;shipTo.addressCompanyName&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressCompanyName() != null ? getShipToAddressCompanyName() : fieldNameKey);
+<span class="nc" id="L214">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L217" title="All 2 branches missed.">            if (&quot;shipTo.addressLine1&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressLine1() != null ? getShipToAddressLine1() : fieldNameKey);
+<span class="nc" id="L220">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L223" title="All 2 branches missed.">            if (&quot;shipTo.addressLine2&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressLine2() != null ? getShipToAddressLine2() : fieldNameKey);
+<span class="nc" id="L226">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L229" title="All 2 branches missed.">            if (&quot;shipTo.addressCityLocality&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressCityLocality() != null ? getShipToAddressCityLocality() : fieldNameKey);
+<span class="nc" id="L232">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L235" title="All 2 branches missed.">            if (&quot;shipTo.addressStateRegion&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressStateRegion() != null ? getShipToAddressStateRegion() : fieldNameKey);
+<span class="nc" id="L238">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L241" title="All 2 branches missed.">            if (&quot;shipTo.addressPostalCode&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressPostalCode() != null ? getShipToAddressPostalCode() : fieldNameKey);
+<span class="nc" id="L244">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L247" title="All 2 branches missed.">            if (&quot;shipTo.addressCountryCode&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressCountryCode() != null ? getShipToAddressCountryCode() : fieldNameKey);
+<span class="nc" id="L250">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L253" title="All 2 branches missed.">            if (&quot;shipTo.addressPhone&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressPhone() != null ? getShipToAddressPhone() : fieldNameKey);
+<span class="nc" id="L256">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc bnc" id="L259" title="All 2 branches missed.">            if (&quot;shipTo.addressEmail&quot;.equals(fieldNameKey)){</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">                fieldNameMap.put( fieldNameKey,</span>
+                        getShipToAddressEmail() != null ? getShipToAddressEmail() : fieldNameKey);
+<span class="nc" id="L262">                return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+            }
+
+<span class="nc" id="L265">            return ExtensionResultStatusType.HANDLED_CONTINUE;</span>
+        }
+
+<span class="nc" id="L268">        return ExtensionResultStatusType.NOT_HANDLED;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EmailServiceMDP.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.email.service.jms</a> &gt; <span class="el_source">EmailServiceMDP.java</span></div><h1>EmailServiceMDP.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.email.service.jms;
+
+import org.broadleafcommerce.common.email.service.exception.EmailException;
+import org.broadleafcommerce.common.email.service.message.MessageCreator;
+import org.springframework.mail.MailAuthenticationException;
+import org.springframework.mail.MailParseException;
+import org.springframework.mail.MailPreparationException;
+import org.springframework.mail.MailSendException;
+
+import javax.annotation.Resource;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.ObjectMessage;
+import java.util.HashMap;
+
+/**
+ * @author jfischer
+ */
+<span class="nc" id="L39">public class EmailServiceMDP implements MessageListener {</span>
+
+    @Resource(name = &quot;blMessageCreator&quot;)
+    private MessageCreator messageCreator;
+
+    /*
+     * (non-Javadoc)
+     * @see javax.jms.MessageListener#onMessage(javax.jms.Message)
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public void onMessage(Message message) {
+        try {
+<span class="nc" id="L51">            HashMap props = (HashMap) ((ObjectMessage) message).getObject();</span>
+<span class="nc" id="L52">            messageCreator.sendMessage(props);</span>
+<span class="nc" id="L53">        } catch (MailAuthenticationException e) {</span>
+<span class="nc" id="L54">            throw new EmailException(e);</span>
+<span class="nc" id="L55">        } catch (MailPreparationException e) {</span>
+<span class="nc" id="L56">            throw new EmailException(e);</span>
+<span class="nc" id="L57">        } catch (MailParseException e) {</span>
+<span class="nc" id="L58">            throw new EmailException(e);</span>
+<span class="nc" id="L59">        } catch (MailSendException e) {</span>
+            /*
+             * TODO find the specific exception that results from the smtp
+             * server being down, and throw this as an EmailException.
+             * Otherwise, log and then swallow this exception, as it may have
+             * been possible that this email was actually sent.
+             */
+<span class="nc" id="L66">            throw new EmailException(e);</span>
+<span class="nc" id="L67">        } catch (JMSException e) {</span>
+<span class="nc" id="L68">            throw new EmailException(e);</span>
+<span class="nc" id="L69">        }</span>
+<span class="nc" id="L70">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

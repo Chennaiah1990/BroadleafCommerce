@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TranslationDaoImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.i18n.dao</a> &gt; <span class="el_source">TranslationDaoImpl.java</span></div><h1>TranslationDaoImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.i18n.dao;
+
+import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.collections.CollectionUtils;
+import org.broadleafcommerce.common.extension.ExtensionResultHolder;
+import org.broadleafcommerce.common.extension.ResultType;
+import org.broadleafcommerce.common.extension.StandardCacheItem;
+import org.broadleafcommerce.common.i18n.domain.TranslatedEntity;
+import org.broadleafcommerce.common.i18n.domain.Translation;
+import org.broadleafcommerce.common.i18n.domain.TranslationImpl;
+import org.broadleafcommerce.common.i18n.service.TranslationServiceExtensionManager;
+import org.broadleafcommerce.common.persistence.EntityConfiguration;
+import org.broadleafcommerce.common.sandbox.SandBoxHelper;
+import org.broadleafcommerce.common.util.dao.DynamicDaoHelper;
+import org.broadleafcommerce.common.util.dao.DynamicDaoHelperImpl;
+import org.hibernate.ejb.HibernateEntityManager;
+import org.hibernate.ejb.QueryHints;
+import org.hibernate.type.LongType;
+import org.hibernate.type.StringType;
+import org.hibernate.type.Type;
+import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+
+@Repository(&quot;blTranslationDao&quot;)
+<span class="nc" id="L56">public class TranslationDaoImpl implements TranslationDao {</span>
+
+    @PersistenceContext(unitName = &quot;blPU&quot;)
+    protected EntityManager em;
+
+    @Resource(name = &quot;blEntityConfiguration&quot;)
+    protected EntityConfiguration entityConfiguration;
+
+    @Resource(name=&quot;blTranslationServiceExtensionManager&quot;)
+    protected TranslationServiceExtensionManager extensionManager;
+
+    @Resource(name=&quot;blSandBoxHelper&quot;)
+    protected SandBoxHelper sandBoxHelper;
+
+<span class="nc" id="L70">    protected DynamicDaoHelper dynamicDaoHelper = new DynamicDaoHelperImpl();</span>
+    
+    @Override
+    public Translation save(Translation translation) {
+<span class="nc" id="L74">        return em.merge(translation);</span>
+    }
+    
+    @Override
+    public Translation create() {
+<span class="nc" id="L79">        return (Translation) entityConfiguration.createEntityInstance(Translation.class.getName());</span>
+    }
+    
+    @Override
+    public void delete(Translation translation) {
+<span class="nc" id="L84">        em.remove(translation);</span>
+<span class="nc" id="L85">    }</span>
+    
+    @Override
+    public Map&lt;String, Object&gt; getIdPropertyMetadata(TranslatedEntity entity) {
+<span class="nc" id="L89">        Class&lt;?&gt; implClass = entityConfiguration.lookupEntityClass(entity.getType());</span>
+<span class="nc" id="L90">        return dynamicDaoHelper.getIdMetadata(implClass, (HibernateEntityManager) em);</span>
+    }
+
+    @Override
+    public Class&lt;?&gt; getEntityImpl(TranslatedEntity entity) {
+<span class="nc" id="L95">        return entityConfiguration.lookupEntityClass(entity.getType());</span>
+    }
+    
+    @Override
+    public Translation readTranslationById(Long translationId) {
+<span class="nc" id="L100">        return em.find(TranslationImpl.class, translationId);</span>
+    }
+    
+    @Override
+    public List&lt;Translation&gt; readTranslations(TranslatedEntity entity, String entityId, String fieldName) {
+<span class="nc" id="L105">        entityId = getUpdatedEntityId(entity, entityId);</span>
+
+<span class="nc" id="L107">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L108">        CriteriaQuery&lt;Translation&gt; criteria = builder.createQuery(Translation.class);</span>
+<span class="nc" id="L109">        Root&lt;TranslationImpl&gt; translation = criteria.from(TranslationImpl.class);</span>
+
+<span class="nc" id="L111">        criteria.select(translation);</span>
+<span class="nc" id="L112">        criteria.where(builder.equal(translation.get(&quot;entityType&quot;), entity.getFriendlyType()),</span>
+            builder.equal(translation.get(&quot;entityId&quot;), entityId),
+            builder.equal(translation.get(&quot;fieldName&quot;), fieldName)
+        );
+
+<span class="nc" id="L117">        TypedQuery&lt;Translation&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L118">        query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+
+<span class="nc" id="L120">        return query.getResultList();</span>
+    }
+
+    @Override
+    public Translation readTranslation(TranslatedEntity entity, String entityId, String fieldName, String localeCode) {
+<span class="nc" id="L125">        entityId = getUpdatedEntityId(entity, entityId);</span>
+
+<span class="nc" id="L127">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L128">        CriteriaQuery&lt;Translation&gt; criteria = builder.createQuery(Translation.class);</span>
+<span class="nc" id="L129">        Root&lt;TranslationImpl&gt; translation = criteria.from(TranslationImpl.class);</span>
+
+<span class="nc" id="L131">        criteria.select(translation);</span>
+<span class="nc" id="L132">        criteria.where(builder.equal(translation.get(&quot;entityType&quot;), entity.getFriendlyType()),</span>
+            builder.equal(translation.get(&quot;entityId&quot;), entityId),
+            builder.equal(translation.get(&quot;fieldName&quot;), fieldName),
+            builder.equal(translation.get(&quot;localeCode&quot;), localeCode)
+        );
+<span class="nc" id="L137">        TypedQuery&lt;Translation&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L138">        query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+<span class="nc" id="L139">        List&lt;Translation&gt; translations = query.getResultList();</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (translations.size() &gt; 1) {</span>
+<span class="nc" id="L141">            throw new IllegalStateException(&quot;Found multiple translations for: &quot; + entity.getFriendlyType() + &quot;|&quot; + entityId + &quot;|&quot; + fieldName + &quot;|&quot; + localeCode);</span>
+        }
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (!translations.isEmpty()) {</span>
+<span class="nc" id="L144">            return translations.get(0);</span>
+        }
+<span class="nc" id="L146">        return null;</span>
+    }
+
+    @Override
+    public String getEntityId(TranslatedEntity entityType, Object entity) {
+<span class="nc" id="L151">        Map&lt;String, Object&gt; idMetadata = getIdPropertyMetadata(entityType);</span>
+<span class="nc" id="L152">        String idProperty = (String) idMetadata.get(&quot;name&quot;);</span>
+<span class="nc" id="L153">        Type idType = (Type) idMetadata.get(&quot;type&quot;);</span>
+
+<span class="nc bnc" id="L155" title="All 4 branches missed.">        if (!(idType instanceof LongType || idType instanceof StringType)) {</span>
+<span class="nc" id="L156">            throw new UnsupportedOperationException(&quot;Only ID types of String and Long are currently supported&quot;);</span>
+        }
+
+        Object idValue;
+        try {
+<span class="nc" id="L161">            idValue = PropertyUtils.getProperty(entity, idProperty);</span>
+<span class="nc" id="L162">        } catch (Exception e) {</span>
+<span class="nc" id="L163">            throw new RuntimeException(&quot;Error reading id property&quot;, e);</span>
+<span class="nc" id="L164">        }</span>
+
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (idType instanceof StringType) {</span>
+<span class="nc" id="L167">            return (String) idValue;</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        } else if (idType instanceof LongType) {</span>
+<span class="nc" id="L169">            return getUpdatedEntityId(entityType, (Long) idValue);</span>
+        }
+
+<span class="nc" id="L172">        throw new IllegalArgumentException(String.format(&quot;Could not retrieve value for id property. Object: [%s], &quot; +</span>
+                &quot;ID Property: [%s], ID Type: [%s]&quot;, entity, idProperty, idType));
+    }
+
+    @Override
+    public Long countTranslationEntries(TranslatedEntity entityType, ResultType stage) {
+<span class="nc" id="L178">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L179">        CriteriaQuery&lt;Long&gt; criteria = builder.createQuery(Long.class);</span>
+<span class="nc" id="L180">        Root&lt;TranslationImpl&gt; root = criteria.from(TranslationImpl.class);</span>
+<span class="nc" id="L181">        criteria.select(builder.count(root));</span>
+<span class="nc" id="L182">        List&lt;Predicate&gt; restrictions = new ArrayList&lt;Predicate&gt;();</span>
+<span class="nc" id="L183">        restrictions.add(builder.equal(root.get(&quot;entityType&quot;), entityType.getFriendlyType()));</span>
+        try {
+<span class="nc bnc" id="L185" title="All 2 branches missed.">            if (extensionManager != null) {</span>
+<span class="nc" id="L186">                extensionManager.getProxy().setup(TranslationImpl.class, stage);</span>
+<span class="nc" id="L187">                extensionManager.getProxy().refineRetrieve(TranslationImpl.class, stage, builder, criteria, root, restrictions);</span>
+            }
+<span class="nc" id="L189">            criteria.where(restrictions.toArray(new Predicate[restrictions.size()]));</span>
+
+<span class="nc" id="L191">            TypedQuery&lt;Long&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L192">            query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+<span class="nc" id="L193">            return query.getSingleResult();</span>
+        } finally {
+<span class="nc bnc" id="L195" title="All 4 branches missed.">            if (extensionManager != null) {</span>
+<span class="nc" id="L196">                extensionManager.getProxy().breakdown(TranslationImpl.class, stage);</span>
+            }
+        }
+    }
+
+    @Override
+    public List&lt;Translation&gt; readAllTranslationEntries(TranslatedEntity entityType, ResultType stage) {
+<span class="nc" id="L203">        return readAllTranslationEntries(entityType, stage, null);</span>
+    }
+    
+    public List&lt;Translation&gt; readAllTranslationEntries(TranslatedEntity entityType, ResultType stage, List&lt;String&gt; entityIds) {
+<span class="nc" id="L207">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L208">        CriteriaQuery&lt;Translation&gt; criteria = builder.createQuery(Translation.class);</span>
+<span class="nc" id="L209">        Root&lt;TranslationImpl&gt; root = criteria.from(TranslationImpl.class);</span>
+<span class="nc" id="L210">        criteria.select(root);</span>
+<span class="nc" id="L211">        List&lt;Predicate&gt; restrictions = new ArrayList&lt;Predicate&gt;();</span>
+<span class="nc" id="L212">        restrictions.add(builder.equal(root.get(&quot;entityType&quot;), entityType.getFriendlyType()));</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        if (CollectionUtils.isNotEmpty(entityIds)) {</span>
+<span class="nc" id="L214">            restrictions.add(root.get(&quot;entityId&quot;).in(entityIds));</span>
+        }
+        try {
+<span class="nc bnc" id="L217" title="All 2 branches missed.">            if (extensionManager != null) {</span>
+<span class="nc" id="L218">                extensionManager.getProxy().setup(TranslationImpl.class, stage);</span>
+<span class="nc" id="L219">                extensionManager.getProxy().refineRetrieve(TranslationImpl.class, stage, builder, criteria, root, restrictions);</span>
+            }
+<span class="nc" id="L221">            criteria.where(restrictions.toArray(new Predicate[restrictions.size()]));</span>
+
+<span class="nc" id="L223">            TypedQuery&lt;Translation&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L224">            query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+<span class="nc" id="L225">            return query.getResultList();</span>
+        } finally {
+<span class="nc bnc" id="L227" title="All 4 branches missed.">            if (extensionManager != null) {</span>
+<span class="nc" id="L228">                extensionManager.getProxy().breakdown(TranslationImpl.class, stage);</span>
+            }
+        }
+    }
+
+    @Override
+    public List&lt;StandardCacheItem&gt; readConvertedTranslationEntries(TranslatedEntity entityType, ResultType stage) {
+<span class="nc" id="L235">        List&lt;Translation&gt; results = readAllTranslationEntries(entityType, stage);</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">        if (extensionManager == null) {</span>
+<span class="nc" id="L237">            throw new IllegalStateException(&quot;extensionManager cannot be null&quot;);</span>
+        }
+<span class="nc" id="L239">        ExtensionResultHolder&lt;List&lt;StandardCacheItem&gt;&gt; response = new ExtensionResultHolder&lt;List&lt;StandardCacheItem&gt;&gt;();</span>
+<span class="nc" id="L240">        extensionManager.getProxy().buildStatus(TranslationImpl.class, results, response);</span>
+<span class="nc" id="L241">        return response.getResult();</span>
+    }
+
+    @Override
+    public Translation readTranslation(TranslatedEntity entityType, String entityId, String fieldName, String localeCode, String localeCountryCode, ResultType stage) {
+<span class="nc" id="L246">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L247">        CriteriaQuery&lt;Translation&gt; criteria = builder.createQuery(Translation.class);</span>
+<span class="nc" id="L248">        Root&lt;TranslationImpl&gt; root = criteria.from(TranslationImpl.class);</span>
+<span class="nc" id="L249">        criteria.select(root);</span>
+<span class="nc" id="L250">        List&lt;Predicate&gt; restrictions = new ArrayList&lt;Predicate&gt;();</span>
+<span class="nc" id="L251">        restrictions.add(builder.equal(root.get(&quot;entityType&quot;), entityType.getFriendlyType()));</span>
+<span class="nc" id="L252">        restrictions.add(builder.equal(root.get(&quot;entityId&quot;), entityId));</span>
+<span class="nc" id="L253">        restrictions.add(builder.equal(root.get(&quot;fieldName&quot;), fieldName));</span>
+<span class="nc" id="L254">        restrictions.add(builder.like(root.get(&quot;localeCode&quot;).as(String.class), localeCode + &quot;%&quot;));</span>
+        try {
+<span class="nc bnc" id="L256" title="All 2 branches missed.">            if (extensionManager != null) {</span>
+<span class="nc" id="L257">                extensionManager.getProxy().setup(TranslationImpl.class, stage);</span>
+<span class="nc" id="L258">                extensionManager.getProxy().refineRetrieve(TranslationImpl.class, stage, builder, criteria, root, restrictions);</span>
+            }
+<span class="nc" id="L260">            criteria.where(restrictions.toArray(new Predicate[restrictions.size()]));</span>
+
+<span class="nc" id="L262">            TypedQuery&lt;Translation&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L263">            query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+<span class="nc" id="L264">            List&lt;Translation&gt; translations = query.getResultList();</span>
+
+<span class="nc bnc" id="L266" title="All 2 branches missed.">            if (!translations.isEmpty()) {</span>
+<span class="nc" id="L267">                return findBestTranslation(localeCountryCode, translations);</span>
+            } else {
+<span class="nc" id="L269">                return null;</span>
+            }
+        } finally {
+<span class="nc bnc" id="L272" title="All 6 branches missed.">            if (extensionManager != null) {</span>
+<span class="nc" id="L273">                extensionManager.getProxy().breakdown(TranslationImpl.class, stage);</span>
+            }
+        }
+    }
+
+    protected String getUpdatedEntityId(TranslatedEntity entityType, String entityId) {
+<span class="nc" id="L279">        return getUpdatedEntityId(entityType, Long.parseLong(entityId));</span>
+    }
+
+    protected String getUpdatedEntityId(TranslatedEntity entityType, Long idValue) {
+<span class="nc" id="L283">        SandBoxHelper.OriginalIdResponse originalIdResponse = sandBoxHelper.getOriginalId(getEntityImpl(entityType), idValue);</span>
+<span class="nc bnc" id="L284" title="All 4 branches missed.">        if (originalIdResponse.isRecordFound() &amp;&amp; originalIdResponse.getOriginalId() != null) {</span>
+<span class="nc" id="L285">            idValue = originalIdResponse.getOriginalId();</span>
+<span class="nc" id="L286">            originalIdResponse = sandBoxHelper.getProductionOriginalId(getEntityImpl(entityType), idValue);</span>
+            //We may have a standard site production id - we want the template site original id
+<span class="nc bnc" id="L288" title="All 4 branches missed.">            if (originalIdResponse.isRecordFound() &amp;&amp; !originalIdResponse.getOriginalId().equals(idValue)) {</span>
+<span class="nc" id="L289">                idValue = originalIdResponse.getOriginalId();</span>
+            }
+        }
+<span class="nc" id="L292">        return String.valueOf(idValue);</span>
+    }
+
+    protected Translation findBestTranslation(String specificLocale, List&lt;Translation&gt; translations) {
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        for (Translation translation : translations) {</span>
+<span class="nc bnc" id="L297" title="All 2 branches missed.">            if (translation.getLocaleCode().equals(specificLocale)) {</span>
+<span class="nc" id="L298">                return translation;</span>
+            }
+<span class="nc" id="L300">        }</span>
+<span class="nc" id="L301">        return translations.get(0);</span>
+    }
+
+    public DynamicDaoHelper getDynamicDaoHelper() {
+<span class="nc" id="L305">        return dynamicDaoHelper;</span>
+    }
+
+    public void setDynamicDaoHelper(DynamicDaoHelper dynamicDaoHelper) {
+<span class="nc" id="L309">        this.dynamicDaoHelper = dynamicDaoHelper;</span>
+<span class="nc" id="L310">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

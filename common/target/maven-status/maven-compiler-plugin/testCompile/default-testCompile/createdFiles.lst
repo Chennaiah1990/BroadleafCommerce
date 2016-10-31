@@ -1,0 +1,12 @@
+org\broadleafcommerce\common\file\service\FileSystemFileServiceProviderTest.class
+org\broadleafcommerce\common\sitemap\service\SiteMapGeneratorTest.class
+org\broadleafcommerce\common\util\EfficientLRUMapTest.class
+org\broadleafcommerce\common\sitemap\service\CustomUrlSiteMapGeneratorTest.class
+org\broadleafcommerce\common\time\SystemTimeTest.class
+org\broadleafcommerce\common\extensibility\context\merge\handlers\SchemaLocationMergeTest$DummyNode.class
+org\broadleafcommerce\common\sitemap\service\SiteMapGeneratorTest$1.class
+org\broadleafcommerce\common\util\dao\TypedQueryBuilderTest.class
+org\broadleafcommerce\common\test\util\StringUtilSpec.class
+org\broadleafcommerce\common\extensibility\context\merge\handlers\SchemaLocationMergeTest.class
+org\broadleafcommerce\common\file\service\BroadleafFileServiceImplTest.class
+org\broadleafcommerce\common\rule\MvelHelperTest.class

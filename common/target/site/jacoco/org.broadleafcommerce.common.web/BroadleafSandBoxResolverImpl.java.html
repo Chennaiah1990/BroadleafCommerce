@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafSandBoxResolverImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafSandBoxResolverImpl.java</span></div><h1>BroadleafSandBoxResolverImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.crossapp.service.CrossAppAuthService;
+import org.broadleafcommerce.common.sandbox.dao.SandBoxDao;
+import org.broadleafcommerce.common.sandbox.domain.SandBox;
+import org.broadleafcommerce.common.sandbox.domain.SandBoxType;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.broadleafcommerce.common.time.FixedTimeSource;
+import org.broadleafcommerce.common.time.SystemTime;
+import org.broadleafcommerce.common.util.BLCRequestUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+
+import java.text.ParseException;
+import java.util.Calendar;
+import java.util.Date;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * Responsible for determining the SandBox to use for the current request. 
+ * SandBox's are used to store a user's changes to products, content-items, etc. 
+ * until they are ready to be pushed to production.  
+ * 
+ * If a request is being served with a SandBox parameter, it indicates that the user
+ * wants to see the site as if their changes were applied.
+ *
+ * @author bpolster
+ */
+@Component(&quot;blSandBoxResolver&quot;)
+<span class="nc" id="L58">public class BroadleafSandBoxResolverImpl implements BroadleafSandBoxResolver  {</span>
+<span class="nc" id="L59">    private final Log LOG = LogFactory.getLog(BroadleafSandBoxResolverImpl.class);</span>
+    
+    /**
+     * Property used to disable sandbox mode.   Some implementations will want to
+     * turn off sandboxes in production.
+     */
+<span class="nc" id="L65">    protected Boolean sandBoxPreviewEnabled = true;</span>
+    
+    // Request Parameters and Attributes for Sandbox Mode properties - mostly values to manage dates.
+<span class="nc" id="L68">    private static String SANDBOX_DATE_TIME_VAR = &quot;blSandboxDateTime&quot;;</span>
+<span class="nc" id="L69">    private static final FastDateFormat CONTENT_DATE_FORMATTER = FastDateFormat.getInstance(&quot;yyyyMMddHHmm&quot;);</span>
+<span class="nc" id="L70">    private static final FastDateFormat CONTENT_DATE_DISPLAY_FORMATTER = FastDateFormat.getInstance(&quot;MM/dd/yyyy&quot;);</span>
+<span class="nc" id="L71">    private static final FastDateFormat CONTENT_DATE_DISPLAY_HOURS_FORMATTER = FastDateFormat.getInstance(&quot;h&quot;);</span>
+<span class="nc" id="L72">    private static final FastDateFormat CONTENT_DATE_DISPLAY_MINUTES_FORMATTER = FastDateFormat.getInstance(&quot;mm&quot;);</span>
+<span class="nc" id="L73">    private static final FastDateFormat CONTENT_DATE_PARSE_FORMAT = FastDateFormat.getInstance(&quot;MM/dd/yyyy hh:mm aa&quot;);</span>
+<span class="nc" id="L74">    private static String SANDBOX_DATE_TIME_RIBBON_OVERRIDE_PARAM = &quot;blSandboxDateTimeRibbonOverride&quot;;</span>
+    private static final String SANDBOX_DISPLAY_DATE_TIME_DATE_PARAM = &quot;blSandboxDisplayDateTimeDate&quot;;
+    private static final String SANDBOX_DISPLAY_DATE_TIME_HOURS_PARAM = &quot;blSandboxDisplayDateTimeHours&quot;;
+    private static final String SANDBOX_DISPLAY_DATE_TIME_MINUTES_PARAM = &quot;blSandboxDisplayDateTimeMinutes&quot;;
+    private static final String SANDBOX_DISPLAY_DATE_TIME_AMPM_PARAM = &quot;blSandboxDisplayDateTimeAMPM&quot;;
+
+    
+    /**
+     * Request attribute to store the current sandbox
+     */
+<span class="nc" id="L84">    public static String SANDBOX_VAR = &quot;blSandbox&quot;;</span>
+
+    @Resource(name = &quot;blSandBoxDao&quot;)
+    private SandBoxDao sandBoxDao;
+
+    @Autowired(required = false)
+    @Qualifier(&quot;blCrossAppAuthService&quot;)
+    protected CrossAppAuthService crossAppAuthService;
+    
+    /**
+     * Determines the current sandbox based on other parameters on the request such as
+     * the blSandBoxId parameters.    
+     * 
+     * If the {@link #getSandBoxPreviewEnabled()}, then this method will not return a user
+     * SandBox. 
+     * 
+     */
+    @Override
+    public SandBox resolveSandBox(HttpServletRequest request, Site site) {
+<span class="nc" id="L103">        return resolveSandBox(new ServletWebRequest(request), site);</span>
+    }
+    
+    @Override
+    public SandBox resolveSandBox(WebRequest request, Site site) {
+<span class="nc" id="L108">        Long previousSandBoxId = null;</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L110">            previousSandBoxId = (Long) request.getAttribute(SANDBOX_ID_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+        }
+<span class="nc" id="L112">        SandBox currentSandbox = null;</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (!sandBoxPreviewEnabled) {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L115">                LOG.trace(&quot;Sandbox preview disabled. Setting sandbox to production&quot;);</span>
+            }
+<span class="nc" id="L117">            request.setAttribute(SANDBOX_VAR, currentSandbox, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc bnc" id="L118" title="All 4 branches missed.">        } else if (crossAppAuthService != null &amp;&amp; !crossAppAuthService.isAuthedFromAdmin()) {</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">            if (LOG.isInfoEnabled()) {</span>
+<span class="nc" id="L120">                LOG.info(&quot;Sandbox preview attempted without authentication&quot;);</span>
+            }
+<span class="nc" id="L122">            request.setAttribute(SANDBOX_VAR, currentSandbox, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc bnc" id="L123" title="All 4 branches missed.">        } else if (crossAppAuthService != null &amp;&amp; crossAppAuthService.hasCsrPermission()) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">            if (LOG.isInfoEnabled()) {</span>
+<span class="nc" id="L125">                LOG.info(&quot;Sandbox preview attempted in CSR mode&quot;);</span>
+            }
+<span class="nc" id="L127">            request.setAttribute(SANDBOX_VAR, currentSandbox, WebRequest.SCOPE_REQUEST);</span>
+        } else {
+<span class="nc" id="L129">            Long sandboxId = null;</span>
+            // Clear the sandBox - second parameter is to support legacy implementations.
+<span class="nc bnc" id="L131" title="All 4 branches missed.">            if ((request.getParameter(&quot;blClearSandBox&quot;) == null) &amp;&amp; (request.getParameter(&quot;blSandboxDateTimeRibbonProduction&quot;) == null)) {</span>
+<span class="nc" id="L132">                sandboxId = lookupSandboxId(request);</span>
+            } else {
+<span class="nc bnc" id="L134" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L135">                    LOG.trace(&quot;Removing sandbox from session.&quot;);</span>
+                }
+<span class="nc bnc" id="L137" title="All 2 branches missed.">                if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L138">                    request.removeAttribute(SANDBOX_DATE_TIME_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+<span class="nc" id="L139">                    request.removeAttribute(SANDBOX_ID_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+                }
+<span class="nc" id="L141">                SystemTime.resetLocalTimeSource();</span>
+            }
+<span class="nc bnc" id="L143" title="All 2 branches missed.">            if (sandboxId != null) {</span>
+<span class="nc bnc" id="L144" title="All 4 branches missed.">                if (previousSandBoxId != null &amp;&amp; !previousSandBoxId.equals(sandboxId)) {</span>
+<span class="nc" id="L145">                    request.setAttribute(BroadleafRequestProcessor.REPROCESS_PARAM_NAME, true, WebRequest.SCOPE_REQUEST);</span>
+                }
+
+<span class="nc" id="L148">                currentSandbox = sandBoxDao.retrieve(sandboxId);</span>
+<span class="nc" id="L149">                request.setAttribute(SANDBOX_VAR, currentSandbox, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc bnc" id="L150" title="All 4 branches missed.">                if (currentSandbox != null &amp;&amp; !SandBoxType.PRODUCTION.equals(currentSandbox.getSandBoxType())) {</span>
+<span class="nc" id="L151">                    setContentTime(request);</span>
+                }
+            }
+
+//            if (currentSandbox == null &amp;&amp; site != null) {
+//                currentSandbox = site.getProductionSandbox();
+//            }
+        }
+
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        if (LOG.isTraceEnabled()) {</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">            if (currentSandbox != null) {</span>
+<span class="nc" id="L162">                LOG.trace(&quot;Serving request using sandbox: &quot; + currentSandbox);</span>
+            } else {
+<span class="nc" id="L164">                LOG.trace(&quot;Serving request without a sandbox.&quot;);</span>
+            }
+        }
+
+<span class="nc" id="L168">        Date currentSystemDateTime = SystemTime.asDate(true);</span>
+<span class="nc" id="L169">        Calendar sandboxDateTimeCalendar = Calendar.getInstance();</span>
+<span class="nc" id="L170">        sandboxDateTimeCalendar.setTime(currentSystemDateTime);</span>
+<span class="nc" id="L171">        request.setAttribute(SANDBOX_DISPLAY_DATE_TIME_DATE_PARAM, CONTENT_DATE_DISPLAY_FORMATTER.format(currentSystemDateTime), WebRequest.SCOPE_REQUEST);</span>
+<span class="nc" id="L172">        request.setAttribute(SANDBOX_DISPLAY_DATE_TIME_HOURS_PARAM, CONTENT_DATE_DISPLAY_HOURS_FORMATTER.format(currentSystemDateTime), WebRequest.SCOPE_REQUEST);</span>
+<span class="nc" id="L173">        request.setAttribute(SANDBOX_DISPLAY_DATE_TIME_MINUTES_PARAM, CONTENT_DATE_DISPLAY_MINUTES_FORMATTER.format(currentSystemDateTime), WebRequest.SCOPE_REQUEST);</span>
+<span class="nc" id="L174">        request.setAttribute(SANDBOX_DISPLAY_DATE_TIME_AMPM_PARAM, sandboxDateTimeCalendar.get(Calendar.AM_PM), WebRequest.SCOPE_REQUEST);</span>
+<span class="nc" id="L175">        return currentSandbox;</span>
+    }
+
+    /**
+     * If another filter has already set the language as a request attribute, that will be honored.
+     * Otherwise, the request parameter is checked followed by the session attribute.
+     *
+     * @param request
+     * @return
+     */
+    private Long lookupSandboxId(WebRequest request) {
+<span class="nc" id="L186">        String sandboxIdStr = request.getParameter(SANDBOX_ID_VAR);</span>
+<span class="nc" id="L187">        Long sandboxId = null;</span>
+
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        if (sandboxIdStr != null) {</span>
+            try {
+<span class="nc" id="L191">                sandboxId = Long.valueOf(sandboxIdStr);</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L193">                    LOG.trace(&quot;SandboxId found on request &quot; + sandboxId);</span>
+                }
+<span class="nc" id="L195">            } catch (NumberFormatException nfe) {</span>
+<span class="nc" id="L196">                LOG.warn(&quot;blcSandboxId parameter could not be converted into a Long&quot;, nfe);</span>
+<span class="nc" id="L197">            }</span>
+        }
+
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">            if (sandboxId == null) {</span>
+                // check the session            
+<span class="nc" id="L203">                sandboxId = (Long) request.getAttribute(SANDBOX_ID_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+
+<span class="nc bnc" id="L205" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">                    if (sandboxId != null) {</span>
+<span class="nc" id="L207">                        LOG.trace(&quot;SandboxId found in session &quot; + sandboxId);</span>
+                    }
+                }
+            } else {
+<span class="nc" id="L211">                request.setAttribute(SANDBOX_ID_VAR, sandboxId, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+            }
+        }
+<span class="nc" id="L214">        return sandboxId;</span>
+    }
+
+    /**
+     * Allows a user in SandBox mode to override the current time and date being used by the system.
+     * 
+     * @param request
+     */
+    private void setContentTime(WebRequest request) {
+<span class="nc" id="L223">        String sandboxDateTimeParam = request.getParameter(SANDBOX_DATE_TIME_VAR);</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (!sandBoxPreviewEnabled) {</span>
+<span class="nc" id="L225">            sandboxDateTimeParam = null;</span>
+        }
+<span class="nc" id="L227">        Date overrideTime = null;</span>
+
+        try {
+<span class="nc bnc" id="L230" title="All 2 branches missed.">            if (request.getParameter(SANDBOX_DATE_TIME_RIBBON_OVERRIDE_PARAM) != null) {</span>
+<span class="nc" id="L231">                overrideTime = readDateFromRequest(request);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">            } else if (sandboxDateTimeParam != null) {</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">                if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L234">                    LOG.debug(&quot;Setting date/time using &quot; + sandboxDateTimeParam);</span>
+                }
+<span class="nc" id="L236">                overrideTime = CONTENT_DATE_FORMATTER.parse(sandboxDateTimeParam);</span>
+            }
+<span class="nc" id="L238">        } catch (ParseException e) {</span>
+<span class="nc" id="L239">            LOG.debug(e);</span>
+<span class="nc" id="L240">        }</span>
+
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">            if (overrideTime == null) {</span>
+<span class="nc" id="L244">                overrideTime = (Date) request.getAttribute(SANDBOX_DATE_TIME_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+            } else {
+<span class="nc bnc" id="L246" title="All 2 branches missed.">                if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L247">                    LOG.debug(&quot;Setting date-time for sandbox mode to &quot; + overrideTime + &quot; for sandboxDateTimeParam = &quot; + sandboxDateTimeParam);</span>
+                }
+<span class="nc" id="L249">                request.setAttribute(SANDBOX_DATE_TIME_VAR, overrideTime, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+            }
+        }
+
+<span class="nc bnc" id="L253" title="All 2 branches missed.">        if (overrideTime != null) {</span>
+<span class="nc" id="L254">            FixedTimeSource ft = new FixedTimeSource(overrideTime.getTime());</span>
+<span class="nc" id="L255">            SystemTime.setLocalTimeSource(ft);</span>
+<span class="nc" id="L256">        } else {</span>
+<span class="nc" id="L257">            SystemTime.resetLocalTimeSource();</span>
+        }
+<span class="nc" id="L259">    }</span>
+
+    private Date readDateFromRequest(WebRequest request) throws ParseException {
+<span class="nc" id="L262">        String date = request.getParameter(SANDBOX_DISPLAY_DATE_TIME_DATE_PARAM);</span>
+<span class="nc" id="L263">        String minutes = request.getParameter(SANDBOX_DISPLAY_DATE_TIME_MINUTES_PARAM);</span>
+<span class="nc" id="L264">        String hours = request.getParameter(SANDBOX_DISPLAY_DATE_TIME_HOURS_PARAM);</span>
+<span class="nc" id="L265">        String ampm = request.getParameter(SANDBOX_DISPLAY_DATE_TIME_AMPM_PARAM);</span>
+
+<span class="nc bnc" id="L267" title="All 2 branches missed.">        if (StringUtils.isEmpty(minutes)) {</span>
+<span class="nc" id="L268">            minutes = Integer.toString(SystemTime.asCalendar().get(Calendar.MINUTE));</span>
+        }
+
+<span class="nc bnc" id="L271" title="All 2 branches missed.">        if (StringUtils.isEmpty(hours)) {</span>
+<span class="nc" id="L272">            hours = Integer.toString(SystemTime.asCalendar().get(Calendar.HOUR_OF_DAY));</span>
+        }
+
+<span class="nc" id="L275">        String dateString = date + &quot; &quot; + hours + &quot;:&quot; + minutes + &quot; &quot; + ampm;</span>
+
+<span class="nc bnc" id="L277" title="All 2 branches missed.">        if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L278">            LOG.debug(&quot;Setting date/time using &quot; + dateString);</span>
+        }
+
+<span class="nc" id="L281">        Date parsedDate = CONTENT_DATE_PARSE_FORMAT.parse(dateString);</span>
+<span class="nc" id="L282">        return parsedDate;</span>
+    }
+    
+
+    /**
+     * Sets whether or not the site can be viewed in preview mode.  
+     * @return
+     */
+    public Boolean getSandBoxPreviewEnabled() {
+<span class="nc" id="L291">        return sandBoxPreviewEnabled;</span>
+    }
+
+    public void setSandBoxPreviewEnabled(Boolean sandBoxPreviewEnabled) {
+<span class="nc" id="L295">        this.sandBoxPreviewEnabled = sandBoxPreviewEnabled;</span>
+<span class="nc" id="L296">    }</span>
+ 
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

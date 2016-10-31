@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CacheAwareGeneralTemplateWriter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.thymeleaf.templatewriter</a> &gt; <span class="el_source">CacheAwareGeneralTemplateWriter.java</span></div><h1>CacheAwareGeneralTemplateWriter.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.thymeleaf.templatewriter;
+
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Element;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.thymeleaf.Arguments;
+import org.thymeleaf.dom.Node;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
+
+/**
+ * Wrapper for Thymeleaf's {@link AbstractGeneralTemplateWriter} that provides content caching
+ * on the node level.
+ * 
+ * @author Andre Azzolini (apazzolini), Brian Polster (bpolster)
+ */
+public class CacheAwareGeneralTemplateWriter extends AbstractGeneralTemplateWriter {
+
+<span class="nc" id="L45">    protected static final Log LOG = LogFactory.getLog(CacheAwareGeneralTemplateWriter.class);</span>
+
+    protected Cache cache;
+    protected AbstractGeneralTemplateWriter delegateWriter;
+
+<span class="nc" id="L50">    public CacheAwareGeneralTemplateWriter(AbstractGeneralTemplateWriter delegateWriter) {</span>
+<span class="nc" id="L51">        this.delegateWriter = delegateWriter;</span>
+<span class="nc" id="L52">    }</span>
+    
+    @Override
+    public void writeNode(final Arguments arguments, final Writer writer, final Node node) 
+            throws IOException {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        if (!(node instanceof org.thymeleaf.dom.Element)) {</span>
+<span class="nc" id="L58">            super.writeNode(arguments, writer, node);</span>
+<span class="nc" id="L59">            return;</span>
+        }
+        
+<span class="nc" id="L62">        org.thymeleaf.dom.Element e = (org.thymeleaf.dom.Element) node;</span>
+        
+<span class="nc" id="L64">        String cacheKey = (String) e.getNodeProperty(&quot;cacheKey&quot;);</span>
+        
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (StringUtils.isNotBlank(cacheKey)) {</span>
+<span class="nc" id="L67">            String valueToWrite = (String) e.getNodeProperty(&quot;blCacheResponse&quot;);</span>
+            
+<span class="nc bnc" id="L69" title="All 2 branches missed.">            if (valueToWrite != null) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">                if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L71">                    LOG.trace(&quot;Read template from cache - &quot; + cacheKey);</span>
+                }
+            } else {
+<span class="nc" id="L74">                Boolean outputParentNode = (Boolean) e.getNodeProperty(&quot;blcOutputParentNode&quot;);</span>
+<span class="nc" id="L75">                StringWriter w2 = new StringWriter();</span>
+
+<span class="nc bnc" id="L77" title="All 2 branches missed.">                if (Boolean.TRUE.equals(outputParentNode)) {</span>
+<span class="nc" id="L78">                    super.writeNode(arguments, w2, e);</span>
+                } else {
+<span class="nc" id="L80">                    final Node[] children = e.unsafeGetChildrenNodeArray();</span>
+<span class="nc" id="L81">                    final int childrenLen = e.numChildren();</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">                    for (int i = 0; i &lt; childrenLen; i++) {</span>
+<span class="nc" id="L83">                        super.writeNode(arguments, w2, children[i]);</span>
+                    }
+                }
+
+<span class="nc" id="L87">                valueToWrite = w2.toString();</span>
+
+<span class="nc" id="L89">                Element element = new Element(cacheKey, valueToWrite);</span>
+<span class="nc" id="L90">                getCache().put(element);</span>
+            }
+            
+<span class="nc" id="L93">            writer.write(valueToWrite);</span>
+<span class="nc" id="L94">        } else {</span>
+<span class="nc" id="L95">            super.writeNode(arguments, writer, node);</span>
+        }
+<span class="nc" id="L97">    }</span>
+
+    @Override
+    protected boolean shouldWriteXmlDeclaration() {
+<span class="nc" id="L101">        return delegateWriter.shouldWriteXmlDeclaration();</span>
+    }
+
+    @Override
+    protected boolean useXhtmlTagMinimizationRules() {
+<span class="nc" id="L106">        return delegateWriter.useXhtmlTagMinimizationRules();</span>
+    }
+
+    public void setCache(Cache cache) {
+<span class="nc" id="L110">        this.cache = cache;</span>
+<span class="nc" id="L111">    }</span>
+
+    public Cache getCache() {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (cache == null) {</span>
+<span class="nc" id="L115">            cache = CacheManager.getInstance().getCache(&quot;blTemplateElements&quot;);</span>
+        }
+<span class="nc" id="L117">        return cache;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

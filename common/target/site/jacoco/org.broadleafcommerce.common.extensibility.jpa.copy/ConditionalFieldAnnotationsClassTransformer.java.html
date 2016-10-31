@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ConditionalFieldAnnotationsClassTransformer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa.copy</a> &gt; <span class="el_source">ConditionalFieldAnnotationsClassTransformer.java</span></div><h1>ConditionalFieldAnnotationsClassTransformer.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa.copy;
+
+import org.broadleafcommerce.common.extensibility.jpa.convert.BroadleafClassTransformer;
+import org.broadleafcommerce.common.logging.SupportLogManager;
+import org.broadleafcommerce.common.logging.SupportLogger;
+import org.broadleafcommerce.common.weave.ConditionalFieldAnnotationCopyTransformMemberDTO;
+import org.broadleafcommerce.common.weave.ConditionalFieldAnnotationCopyTransformersManager;
+
+import java.io.ByteArrayInputStream;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.Properties;
+
+import javax.annotation.Resource;
+
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtField;
+import javassist.LoaderClassPath;
+import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.ConstPool;
+import javassist.bytecode.annotation.Annotation;
+
+/**
+ * The purpose of this class is to allow the conditional addition or removal of annotations to a target entity based on template class.
+ * 
+ * This does not add new fields or methods, nor does it remove fields or methods.  Rather, this class copies annotations from a 
+ * template class' field(s) to a target class' fields.  It removes annotations from the target that are not on the template.
+ * 
+ * As a result, this class takes the annotations from fields of a template class and adds them to fields in a target class. 
+ * If the template contains fields that are not on the target, then unexpected behavior such as NullPointerExceptions may occur.
+ * 
+ * @author Kelly Tisdell
+ *
+ */
+public class ConditionalFieldAnnotationsClassTransformer extends AbstractClassTransformer implements BroadleafClassTransformer {
+
+    @Resource(name = &quot;blConditionalFieldAnnotationsTransformersManager&quot;)
+    protected ConditionalFieldAnnotationCopyTransformersManager manager;
+
+    protected SupportLogger logger;
+    protected String moduleName;
+
+<span class="nc" id="L64">    public ConditionalFieldAnnotationsClassTransformer(String moduleName) {</span>
+<span class="nc" id="L65">        this.moduleName = moduleName;</span>
+<span class="nc" id="L66">        logger = SupportLogManager.getLogger(moduleName, this.getClass());</span>
+<span class="nc" id="L67">    }</span>
+
+    /**
+     * Will return null if the Spring property value defined in {@link #propertyName} resolves to false, or if
+     * an exception occurs while trying to determine the value for the property.
+     *
+     * @param loader
+     * @param className
+     * @param classBeingRedefined
+     * @param protectionDomain
+     * @param classfileBuffer
+     * @return
+     * @throws IllegalClassFormatException
+     */
+    @Override
+    public byte[] transform(ClassLoader loader, String className, Class&lt;?&gt; classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+
+        // Lambdas and anonymous methods in Java 8 do not have a class name defined and so no transformation should be done
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (className == null) {</span>
+<span class="nc" id="L86">            return null;</span>
+        }
+
+<span class="nc" id="L89">        String convertedClassName = className.replace('/', '.');</span>
+
+<span class="nc" id="L91">        ConditionalFieldAnnotationCopyTransformMemberDTO dto = manager.getTransformMember(convertedClassName);</span>
+<span class="nc bnc" id="L92" title="All 6 branches missed.">        if (dto == null || dto.getTemplateNames() == null || dto.getTemplateNames().length &lt; 1) {</span>
+<span class="nc" id="L93">            return null;</span>
+        }
+
+        //Be careful with Apache library usage in this class (e.g. ArrayUtils). Usage will likely cause a ClassCircularityError
+        //under JRebel. Favor not including outside libraries and unnecessary classes.
+<span class="nc" id="L98">        CtClass clazz = null;</span>
+        try {
+<span class="nc" id="L100">            String[] xformVals = dto.getTemplateNames();</span>
+
+            // Load the destination class and defrost it so it is eligible for modifications
+<span class="nc" id="L103">            ClassPool classPool = ClassPool.getDefault();</span>
+<span class="nc" id="L104">            clazz = classPool.makeClass(new ByteArrayInputStream(classfileBuffer), false);</span>
+<span class="nc" id="L105">            clazz.defrost();</span>
+
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            for (String xformVal : xformVals) {</span>
+                // Load the source class
+<span class="nc" id="L109">                String trimmed = xformVal.trim();</span>
+<span class="nc" id="L110">                classPool.appendClassPath(new LoaderClassPath(Class.forName(trimmed).getClassLoader()));</span>
+<span class="nc" id="L111">                CtClass template = classPool.get(trimmed);</span>
+
+<span class="nc" id="L113">                CtField[] fieldsToCopy = template.getDeclaredFields();</span>
+                //Iterate over all of the fields in the template.
+                //If the template field contains annotations, replace the target's annotations with the 
+                //template annotations.  Otherwise, remove all annotations from the target.
+<span class="nc bnc" id="L117" title="All 2 branches missed.">                for (CtField field : fieldsToCopy) {</span>
+<span class="nc" id="L118">                    ConstPool constPool = clazz.getClassFile().getConstPool();</span>
+<span class="nc" id="L119">                    CtField fieldFromMainClass = clazz.getField(field.getName());</span>
+
+<span class="nc" id="L121">                    AnnotationsAttribute copied = null;</span>
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">                    for (Object o : field.getFieldInfo().getAttributes()) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">                        if (o instanceof AnnotationsAttribute) {</span>
+<span class="nc" id="L125">                            AnnotationsAttribute templateAnnotations = (AnnotationsAttribute) o;</span>
+                            //have to make a copy of the annotations from the target
+<span class="nc" id="L127">                            copied = (AnnotationsAttribute) templateAnnotations.copy(constPool, null);</span>
+<span class="nc" id="L128">                            break;</span>
+                        }
+<span class="nc" id="L130">                    }</span>
+
+                    //add all the copied annotations into the target class's field.
+<span class="nc bnc" id="L133" title="All 2 branches missed.">                    for (Object attribute : fieldFromMainClass.getFieldInfo().getAttributes()) {</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">                        if (attribute instanceof AnnotationsAttribute) {</span>
+<span class="nc" id="L135">                            Annotation[] annotations = null;</span>
+
+<span class="nc bnc" id="L137" title="All 2 branches missed.">                            if (copied != null) {</span>
+                                //If we found annotations to copy, then use all of them
+<span class="nc" id="L139">                                ArrayList&lt;Annotation&gt; annotationsList = new ArrayList&lt;Annotation&gt;();</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">                                for (Annotation annotation : copied.getAnnotations()) {</span>
+<span class="nc" id="L141">                                    annotationsList.add(annotation);</span>
+                                }
+
+<span class="nc" id="L144">                                annotations = new Annotation[annotationsList.size()];</span>
+<span class="nc" id="L145">                                int count = 0;</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                                for (Annotation annotation : annotationsList) {</span>
+<span class="nc" id="L147">                                    annotations[count] = annotation;</span>
+<span class="nc" id="L148">                                    count++;</span>
+<span class="nc" id="L149">                                }</span>
+
+<span class="nc" id="L151">                                ((AnnotationsAttribute) attribute).setAnnotations(annotations);</span>
+<span class="nc" id="L152">                            } else {</span>
+                                //If no annotations were found on the template, then remove them entirely from the target.
+<span class="nc" id="L154">                                ((AnnotationsAttribute) attribute).setAnnotations(new Annotation[] {});</span>
+                            }
+
+<span class="nc" id="L157">                            break;</span>
+                        }
+<span class="nc" id="L159">                    }</span>
+
+                }
+            }
+
+<span class="nc" id="L164">            return clazz.toBytecode();</span>
+<span class="nc" id="L165">        } catch (ClassCircularityError error) {</span>
+<span class="nc" id="L166">            error.printStackTrace();</span>
+<span class="nc" id="L167">            throw error;</span>
+<span class="nc" id="L168">        } catch (Exception e) {</span>
+<span class="nc" id="L169">            throw new RuntimeException(&quot;Unable to transform class&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L171" title="All 4 branches missed.">            if (clazz != null) {</span>
+                try {
+<span class="nc" id="L173">                    clazz.detach();</span>
+<span class="nc" id="L174">                } catch (Exception e) {</span>
+                    //do nothing
+<span class="nc" id="L176">                }</span>
+            }
+        }
+    }
+
+    @Override
+    public void compileJPAProperties(Properties props, Object key) throws Exception {
+        //Nothing to do here...
+<span class="nc" id="L184">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

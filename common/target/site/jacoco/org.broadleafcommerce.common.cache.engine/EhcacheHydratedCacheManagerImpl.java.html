@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EhcacheHydratedCacheManagerImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.cache.engine</a> &gt; <span class="el_source">EhcacheHydratedCacheManagerImpl.java</span></div><h1>EhcacheHydratedCacheManagerImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.cache.engine;
+
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheException;
+import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Ehcache;
+import net.sf.ehcache.Element;
+import net.sf.ehcache.config.CacheConfiguration;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hibernate.cache.spi.CacheKey;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 
+ * @author jfischer
+ *
+ */
+public class EhcacheHydratedCacheManagerImpl extends AbstractHydratedCacheManager {
+
+<span class="nc" id="L46">    private static final Log LOG = LogFactory.getLog(EhcacheHydratedCacheManagerImpl.class);</span>
+<span class="nc" id="L47">    private static final EhcacheHydratedCacheManagerImpl MANAGER = new EhcacheHydratedCacheManagerImpl();</span>
+
+    public static EhcacheHydratedCacheManagerImpl getInstance() {
+<span class="nc" id="L50">        return MANAGER;</span>
+    }
+
+<span class="nc" id="L53">    private Map&lt;String, List&lt;String&gt;&gt; cacheMembersByEntity = Collections.synchronizedMap(new HashMap&lt;String, List&lt;String&gt;&gt;(100));</span>
+<span class="nc" id="L54">    private Cache heap = null;</span>
+
+<span class="nc" id="L56">    private EhcacheHydratedCacheManagerImpl()  {</span>
+        //CacheManager.getInstance() and CacheManager.create() cannot be called in this constructor because it will create two cache manager instances
+<span class="nc" id="L58">    }</span>
+    
+    private synchronized Cache getHeap() {
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        if (heap == null) {</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">            if (CacheManager.getInstance().cacheExists(&quot;hydrated-cache&quot;)) {</span>
+<span class="nc" id="L63">                heap = CacheManager.getInstance().getCache(&quot;hydrated-cache&quot;);</span>
+            } else {
+<span class="nc" id="L65">                CacheConfiguration config = new CacheConfiguration(&quot;hydrated-cache&quot;, 0).eternal(true).overflowToDisk(false).maxElementsInMemory(100000);</span>
+<span class="nc" id="L66">                Cache cache = new Cache(config);</span>
+<span class="nc" id="L67">                CacheManager.create().addCache(cache);</span>
+<span class="nc" id="L68">                heap = cache;</span>
+            }
+        }
+<span class="nc" id="L71">        return heap;</span>
+    }
+
+    @Override
+    public Object getHydratedCacheElementItem(String cacheRegion, String cacheName, Serializable elementKey, String elementItemName) {
+<span class="nc" id="L76">        Object response = null;</span>
+        Element element;
+<span class="nc" id="L78">        String myKey = cacheRegion + '_' + cacheName + '_' + elementItemName + '_' + elementKey;</span>
+<span class="nc" id="L79">        element = getHeap().get(myKey);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (element != null) {</span>
+<span class="nc" id="L81">            response = element.getObjectValue();</span>
+        }
+<span class="nc" id="L83">        return response;</span>
+    }
+
+    @Override
+    public void addHydratedCacheElementItem(String cacheRegion, String cacheName, Serializable elementKey, String elementItemName, Object elementValue) {
+<span class="nc" id="L88">        String heapKey = cacheRegion + '_' + cacheName + '_' + elementItemName + '_' + elementKey;</span>
+<span class="nc" id="L89">        String nameKey = cacheRegion + '_' + cacheName + '_' + elementKey;</span>
+<span class="nc" id="L90">        Element element = new Element(heapKey, elementValue);</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (!cacheMembersByEntity.containsKey(nameKey)) {</span>
+<span class="nc" id="L92">            List&lt;String&gt; myMembers = new ArrayList&lt;String&gt;(50);</span>
+<span class="nc" id="L93">            myMembers.add(elementItemName);</span>
+<span class="nc" id="L94">            cacheMembersByEntity.put(nameKey, myMembers);</span>
+<span class="nc" id="L95">        } else {</span>
+<span class="nc" id="L96">            List&lt;String&gt; myMembers = cacheMembersByEntity.get(nameKey);</span>
+<span class="nc" id="L97">            myMembers.add(elementItemName);</span>
+        }
+<span class="nc" id="L99">        getHeap().put(element);</span>
+<span class="nc" id="L100">    }</span>
+
+    protected void removeCache(String cacheRegion, Serializable key) {
+<span class="nc" id="L103">        String cacheName = cacheRegion;</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (key instanceof CacheKey) {</span>
+<span class="nc" id="L105">            cacheName = ((CacheKey) key).getEntityOrRoleName();</span>
+<span class="nc" id="L106">            key = ((CacheKey) key).getKey();</span>
+        }
+<span class="nc" id="L108">        String nameKey = cacheRegion + '_' + cacheName + '_' + key;</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (cacheMembersByEntity.containsKey(nameKey)) {</span>
+<span class="nc" id="L110">            String[] members = new String[cacheMembersByEntity.get(nameKey).size()];</span>
+<span class="nc" id="L111">            members = cacheMembersByEntity.get(nameKey).toArray(members);</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">            for (String myMember : members) {</span>
+<span class="nc" id="L113">                String itemKey = cacheRegion + '_' + cacheName + '_' + myMember + '_' + key;</span>
+<span class="nc" id="L114">                getHeap().remove(itemKey);</span>
+            }
+<span class="nc" id="L116">            cacheMembersByEntity.remove(nameKey);</span>
+        }
+<span class="nc" id="L118">    }</span>
+    
+    protected void removeAll(String cacheName) {
+        //do nothing
+<span class="nc" id="L122">    }</span>
+
+    @Override
+    public void notifyElementEvicted(Ehcache arg0, Element arg1) {
+<span class="nc" id="L126">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L127">    }</span>
+
+    @Override
+    public void notifyElementExpired(Ehcache arg0, Element arg1) {
+<span class="nc" id="L131">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L132">    }</span>
+
+    @Override
+    public void notifyElementPut(Ehcache arg0, Element arg1) throws CacheException {
+        //do nothing
+<span class="nc" id="L137">    }</span>
+
+    @Override
+    public void notifyElementRemoved(Ehcache arg0, Element arg1) throws CacheException {
+<span class="nc" id="L141">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L142">    }</span>
+
+    @Override
+    public void notifyElementUpdated(Ehcache arg0, Element arg1) throws CacheException {
+<span class="nc" id="L146">        removeCache(arg0.getName(), arg1.getKey());</span>
+<span class="nc" id="L147">    }</span>
+
+    @Override
+    public void notifyRemoveAll(Ehcache arg0) {
+<span class="nc" id="L151">        removeAll(arg0.getName());</span>
+<span class="nc" id="L152">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

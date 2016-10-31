@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractModuleConfiguration.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.config.domain</a> &gt; <span class="el_source">AbstractModuleConfiguration.java</span></div><h1>AbstractModuleConfiguration.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.config.domain;
+
+import org.broadleafcommerce.common.audit.Auditable;
+import org.broadleafcommerce.common.audit.AuditableListener;
+import org.broadleafcommerce.common.config.service.type.ModuleConfigurationType;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.persistence.ArchiveStatus;
+import org.broadleafcommerce.common.persistence.Status;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.broadleafcommerce.common.presentation.RequiredOverride;
+import org.broadleafcommerce.common.presentation.client.SupportedFieldType;
+import org.broadleafcommerce.common.presentation.client.VisibilityEnum;
+import org.broadleafcommerce.common.util.DateUtil;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+
+import java.util.Date;
+
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.EntityListeners;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.Table;
+
+/**
+ * Modules that need to be configured via the database should extend this.  Classes that
+ * extend this MUST call setModuleConfigurationType(ModuleConfigurationType type) in their
+ * constructor.
+ *
+ * @author Kelly Tisdell
+ */
+
+@Entity
+@Table(name = &quot;BLC_MODULE_CONFIGURATION&quot;)
+@EntityListeners(value = {AuditableListener.class})
+@Inheritance(strategy = InheritanceType.JOINED)
+@Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = &quot;blConfigurationModuleElements&quot;)
+@AdminPresentationClass(excludeFromPolymorphism = true, friendlyName = &quot;AbstractModuleConfiguration&quot;)
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_SITE)
+})
+<span class="fc" id="L70">public abstract class AbstractModuleConfiguration implements ModuleConfiguration, Status {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator = &quot;ModuleConfigurationId&quot;)
+    @GenericGenerator(
+            name = &quot;ModuleConfigurationId&quot;,
+            strategy = &quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+            parameters = {
+                    @Parameter(name = &quot;segment_value&quot;, value = &quot;ModuleConfigurationImpl&quot;),
+                    @Parameter(name = &quot;entity_name&quot;, value = &quot;org.broadleafcommerce.common.config.domain&quot; +
+                            &quot;.AbstractModuleConfiguration&quot;)
+            }
+    )
+    @Column(name = &quot;MODULE_CONFIG_ID&quot;)
+    protected Long id;
+
+    @Column(name = &quot;MODULE_NAME&quot;, nullable = false)
+    @AdminPresentation(friendlyName = &quot;AbstractModuleConfiguration_Module_Name&quot;, order = 2000, gridOrder = 2,
+            prominent = true, requiredOverride = RequiredOverride.REQUIRED)
+    protected String moduleName;
+
+    @Column(name = &quot;ACTIVE_START_DATE&quot;, nullable = true)
+    @AdminPresentation(friendlyName = &quot;AbstractModuleConfiguration_Active_Start_Date&quot;, order = 3000, gridOrder = 3,
+            prominent = true, fieldType = SupportedFieldType.DATE)
+    protected Date activeStartDate;
+
+    @Column(name = &quot;ACTIVE_END_DATE&quot;, nullable = true)
+    @AdminPresentation(friendlyName = &quot;AbstractModuleConfiguration_Active_End_Date&quot;, order = 4000, gridOrder = 4,
+            prominent = true, fieldType = SupportedFieldType.DATE)
+    protected Date activeEndDate;
+
+<span class="fc" id="L103">    @Column(name = &quot;IS_DEFAULT&quot;, nullable = false)</span>
+    @AdminPresentation(friendlyName = &quot;AbstractModuleConfiguration_Is_Default&quot;, order = 5000, gridOrder = 5,
+            prominent = true, requiredOverride = RequiredOverride.REQUIRED)
+    protected Boolean isDefault = false;
+
+    /*
+     * This should be set via the constructor of the child class with a call to setModuleConfigurationType
+     * (ModuleConfigurationType).
+     * It will not be set via the admin. The reason is that the type is know by the subclass.  The reason for this
+     * field is to allow us to search for various types.
+     * But this field must be set via the constructor on the subclass.
+     */
+    @Column(name = &quot;CONFIG_TYPE&quot;, nullable = false)
+    @AdminPresentation(friendlyName = &quot;AbstractModuleConfiguration_Config_Type&quot;, order = 1000, gridOrder = 1,
+            prominent = true, fieldType = SupportedFieldType.BROADLEAF_ENUMERATION,
+            broadleafEnumeration = &quot;org.broadleafcommerce.common.config.service.type.ModuleConfigurationType&quot;,
+            requiredOverride = RequiredOverride.NOT_REQUIRED, readOnly = true, visibility = VisibilityEnum.FORM_HIDDEN)
+    protected String configType;
+
+<span class="fc" id="L122">    @Column(name = &quot;MODULE_PRIORITY&quot;, nullable = false)</span>
+    @AdminPresentation(friendlyName = &quot;AbstractModuleConfiguration_Priority&quot;,
+            order = 6000, gridOrder = 6, prominent = true, requiredOverride = RequiredOverride.REQUIRED,
+            tooltip = &quot;AbstractModuleConfiguration_Priority_Tooltip&quot;)
+    protected Integer priority = 100;
+
+<span class="fc" id="L128">    @Embedded</span>
+    protected Auditable auditable = new Auditable();
+
+<span class="fc" id="L131">    @Embedded</span>
+    protected ArchiveStatus archiveStatus = new ArchiveStatus();
+
+    @Override
+    public Long getId() {
+<span class="nc" id="L136">        return this.id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L141">        this.id = id;</span>
+<span class="nc" id="L142">    }</span>
+
+    @Override
+    public String getModuleName() {
+<span class="nc" id="L146">        return moduleName;</span>
+    }
+
+    @Override
+    public void setModuleName(String name) {
+<span class="nc" id="L151">        this.moduleName = name;</span>
+<span class="nc" id="L152">    }</span>
+
+    @Override
+    public Boolean getIsDefault() {
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">        if (this.isDefault == null) {</span>
+<span class="nc" id="L157">            this.isDefault = Boolean.FALSE;</span>
+        }
+<span class="fc" id="L159">        return this.isDefault;</span>
+    }
+    
+    @Override
+    public boolean isDefault() {
+<span class="nc bnc" id="L164" title="All 2 branches missed.">    	if (getIsDefault() != null) {</span>
+<span class="nc" id="L165">    		return getIsDefault();</span>
+    	}
+<span class="nc" id="L167">    	return false;</span>
+    }
+
+    @Override
+    public void setIsDefault(Boolean isDefault) {
+<span class="nc" id="L172">        this.isDefault = isDefault;</span>
+<span class="nc" id="L173">    }</span>
+
+    /**
+     * Subclasses of this must set the ModuleConfigType in their constructor.
+     */
+    protected void setModuleConfigurationType(ModuleConfigurationType moduleConfigurationType) {
+<span class="fc" id="L179">        this.configType = moduleConfigurationType.getType();</span>
+<span class="fc" id="L180">    }</span>
+
+    @Override
+    public ModuleConfigurationType getModuleConfigurationType() {
+<span class="nc" id="L184">        return ModuleConfigurationType.getInstance(this.configType);</span>
+    }
+
+    @Override
+    public void setAuditable(Auditable auditable) {
+<span class="nc" id="L189">        this.auditable = auditable;</span>
+<span class="nc" id="L190">    }</span>
+
+    @Override
+    public Auditable getAuditable() {
+<span class="nc" id="L194">        return this.auditable;</span>
+    }
+
+    @Override
+    public void setArchived(Character archived) {
+<span class="nc" id="L199">        archiveStatus.setArchived(archived);</span>
+<span class="nc" id="L200">    }</span>
+
+    @Override
+    public Character getArchived() {
+        ArchiveStatus temp;
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        if (archiveStatus == null) {</span>
+<span class="nc" id="L206">            temp = new ArchiveStatus();</span>
+        } else {
+<span class="nc" id="L208">            temp = archiveStatus;</span>
+        }
+<span class="nc" id="L210">        return temp.getArchived();</span>
+    }
+
+    @Override
+    public boolean isActive() {
+<span class="nc bnc" id="L215" title="All 4 branches missed.">        return DateUtil.isActive(activeStartDate, activeEndDate, true) &amp;&amp; 'Y' != getArchived();</span>
+    }
+
+    @Override
+    public void setActiveStartDate(Date startDate) {
+<span class="nc" id="L220">        this.activeStartDate = startDate;</span>
+<span class="nc" id="L221">    }</span>
+
+    @Override
+    public Date getActiveStartDate() {
+<span class="nc" id="L225">        return this.activeStartDate;</span>
+    }
+
+    @Override
+    public void setActiveEndDate(Date endDate) {
+<span class="nc" id="L230">        this.activeEndDate = endDate;</span>
+<span class="nc" id="L231">    }</span>
+
+    @Override
+    public Date getActiveEndDate() {
+<span class="nc" id="L235">        return this.activeEndDate;</span>
+    }
+
+    @Override
+    public Integer getPriority() {
+<span class="nc" id="L240">        return priority;</span>
+    }
+
+    @Override
+    public void setPriority(Integer priority) {
+<span class="nc" id="L245">        this.priority = priority;</span>
+<span class="nc" id="L246">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

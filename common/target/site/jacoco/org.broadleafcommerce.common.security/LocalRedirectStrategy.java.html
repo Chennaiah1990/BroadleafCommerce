@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LocalRedirectStrategy.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.security</a> &gt; <span class="el_source">LocalRedirectStrategy.java</span></div><h1>LocalRedirectStrategy.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.security;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.security.web.RedirectStrategy;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * This class insures that if using the successUrl or failureUrl request
+ * parameter, then the urls are valid and are local to the application
+ * (preventing a user modifying to go somewhere else on login success/failure)
+ */
+<span class="nc" id="L39">public class LocalRedirectStrategy implements RedirectStrategy {</span>
+
+<span class="nc" id="L41">    private boolean contextRelative = false;</span>
+<span class="nc" id="L42">    private static final Log LOG = LogFactory.getLog(LocalRedirectStrategy.class);</span>
+<span class="nc" id="L43">    private boolean enforcePortMatch = false;</span>
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * org.springframework.security.web.RedirectStrategy#sendRedirect(javax.
+     * servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse,
+     * java.lang.String)
+     */
+    @Override
+    public void sendRedirect(HttpServletRequest request, HttpServletResponse response, String url) throws IOException {
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (!url.startsWith(&quot;/&quot;)) {</span>
+<span class="nc bnc" id="L56" title="All 4 branches missed.">            if (StringUtils.equals(request.getParameter(&quot;successUrl&quot;), url) || StringUtils.equals(request.getParameter(&quot;failureUrl&quot;), url)) {</span>
+<span class="nc" id="L57">                validateRedirectUrl(request.getContextPath(), url, request.getServerName(), request.getServerPort());</span>
+            }
+        }
+<span class="nc" id="L60">        String redirectUrl = calculateRedirectUrl(request.getContextPath(), url);</span>
+<span class="nc" id="L61">        redirectUrl = response.encodeRedirectURL(redirectUrl);</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L63">            LOG.debug(&quot;Redirecting to '&quot; + url + &quot;'&quot;);</span>
+        }
+
+<span class="nc" id="L66">        response.sendRedirect(redirectUrl);</span>
+<span class="nc" id="L67">    }</span>
+
+    /**
+     * Create the redirect url
+     *
+     * @param contextPath
+     * @param url
+     * @return
+     */
+    protected String calculateRedirectUrl(String contextPath, String url) {
+<span class="nc bnc" id="L77" title="All 4 branches missed.">        if ((!(url.startsWith(&quot;http://&quot;))) &amp;&amp; (!(url.startsWith(&quot;https://&quot;)))) {</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">            if (this.contextRelative) {</span>
+<span class="nc" id="L79">                return url;</span>
+            }
+<span class="nc" id="L81">            return contextPath + url;</span>
+        }
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (!(this.contextRelative)) {</span>
+<span class="nc" id="L85">            return url;</span>
+        }
+
+<span class="nc" id="L88">        url = url.substring(url.indexOf(&quot;://&quot;) + 3);</span>
+<span class="nc" id="L89">        url = url.substring(url.indexOf(contextPath) + contextPath.length());</span>
+
+<span class="nc bnc" id="L91" title="All 4 branches missed.">        if ((url.length() &gt; 1) &amp;&amp; (url.charAt(0) == '/')) {</span>
+<span class="nc" id="L92">            url = url.substring(1);</span>
+        }
+
+<span class="nc" id="L95">        return url;</span>
+    }
+
+    /**
+     * Insure the url is valid (must begin with http or https) and local to the
+     * application
+     *
+     * @param contextPath
+     *            the application context path
+     * @param url
+     *            the url to validate
+     * @param requestServerName
+     *            the server name of the request
+     * @param requestServerPort
+     *            the port of the request
+     * @throws MalformedURLException
+     *             if the url is invalid
+     */
+    private void validateRedirectUrl(String contextPath, String url, String requestServerName, int requestServerPort) throws MalformedURLException {
+<span class="nc" id="L114">        URL urlObject = new URL(url);</span>
+<span class="nc bnc" id="L115" title="All 4 branches missed.">        if (urlObject.getProtocol().equals(&quot;http&quot;) || urlObject.getProtocol().equals(&quot;https&quot;)) {</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            if (StringUtils.equals(requestServerName, urlObject.getHost())) {</span>
+<span class="nc bnc" id="L117" title="All 4 branches missed.">                if (!enforcePortMatch || requestServerPort == urlObject.getPort()) {</span>
+<span class="nc bnc" id="L118" title="All 4 branches missed.">                    if (StringUtils.isEmpty(contextPath) || urlObject.getPath().startsWith(&quot;/&quot; + contextPath)) {</span>
+<span class="nc" id="L119">                        return;</span>
+                    }
+                }
+            }
+        }
+<span class="nc" id="L124">        String errorMessage = &quot;Invalid redirect url specified.  Must be of the form /&lt;relative view&gt; or http[s]://&lt;server name&gt;[:&lt;server port&gt;][/&lt;context path&gt;]/...&quot;;</span>
+<span class="nc" id="L125">        LOG.warn(errorMessage + &quot;:  &quot; + url);</span>
+<span class="nc" id="L126">        throw new MalformedURLException(errorMessage + &quot;:  &quot; + url);</span>
+    }
+
+    /**
+     * This forces the redirect url port to match the request port. This could
+     * be problematic when switching between secure and non-secure (e.g.
+     * http://localhost:8080 to https://localhost:8443)
+     *
+     * @param enforcePortMatch
+     */
+    public void setEnforcePortMatch(boolean enforcePortMatch) {
+<span class="nc" id="L137">        this.enforcePortMatch = enforcePortMatch;</span>
+<span class="nc" id="L138">    }</span>
+
+    /**
+     * Set whether or not the context should be included in the redirect path. If true, the context
+     * is excluded from the generated path, otherwise it is included.
+     *
+     * @param contextRelative
+     */
+    public void setContextRelative(boolean contextRelative) {
+<span class="nc" id="L147">        this.contextRelative = contextRelative;</span>
+<span class="nc" id="L148">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

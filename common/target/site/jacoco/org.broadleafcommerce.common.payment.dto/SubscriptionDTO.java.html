@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SubscriptionDTO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment.dto</a> &gt; <span class="el_source">SubscriptionDTO.java</span></div><h1>SubscriptionDTO.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.payment.dto;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author Chad Harchar (charchar)
+ *
+ * Many payment solutions allow you to set up subscriptions (recurring payments)
+ * with payment transactions.
+ *
+ * The following DTO represent the usual parameters that you may wish to pass:
+ *
+ * recurringAmount: the amount that you charge for every recurring payment
+ * frequency: the frequency of the recurring payment
+ * numberOfInstallments: the number of payments for this subscription
+ * startDate: the start date for this subscription
+ *
+ */
+public class SubscriptionDTO&lt;T&gt; {
+
+    protected T parent;
+
+    protected Map&lt;String, Object&gt; additionalFields;
+    protected String recurringAmount;
+    protected String frequency;
+    protected String numberOfInstallments;
+    protected String startDate;
+
+<span class="nc" id="L49">    public SubscriptionDTO() {</span>
+<span class="nc" id="L50">        this.additionalFields = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L51">    }</span>
+
+<span class="nc" id="L53">    public SubscriptionDTO(T parent) {</span>
+<span class="nc" id="L54">        this.additionalFields = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L55">        this.parent = parent;</span>
+<span class="nc" id="L56">    }</span>
+
+    public T done() {
+<span class="nc" id="L59">        return parent;</span>
+    }
+
+    public SubscriptionDTO&lt;T&gt; additionalFields(String key, Object value) {
+<span class="nc" id="L63">        additionalFields.put(key, value);</span>
+<span class="nc" id="L64">        return this;</span>
+    }
+
+    public SubscriptionDTO&lt;T&gt; recurringAmount(String recurringAmount) {
+<span class="nc" id="L68">        this.recurringAmount = recurringAmount;</span>
+<span class="nc" id="L69">        return this;</span>
+    }
+
+    public SubscriptionDTO&lt;T&gt; frequency(String frequency) {
+<span class="nc" id="L73">        this.frequency = frequency;</span>
+<span class="nc" id="L74">        return this;</span>
+    }
+
+    public SubscriptionDTO&lt;T&gt; numberOfInstallments(String numberOfInstallments) {
+<span class="nc" id="L78">        this.numberOfInstallments = numberOfInstallments;</span>
+<span class="nc" id="L79">        return this;</span>
+    }
+
+    public SubscriptionDTO&lt;T&gt; startDate(String startDate) {
+<span class="nc" id="L83">        this.startDate = startDate;</span>
+<span class="nc" id="L84">        return this;</span>
+    }
+
+    public Map&lt;String, Object&gt; getAdditionalFields() {
+<span class="nc" id="L88">        return additionalFields;</span>
+    }
+
+    public String getRecurringAmount() {
+<span class="nc" id="L92">        return recurringAmount;</span>
+    }
+
+    public String getFrequency() {
+<span class="nc" id="L96">        return frequency;</span>
+    }
+
+    public String getNumberOfInstallments() {
+<span class="nc" id="L100">        return numberOfInstallments;</span>
+    }
+
+    public String getStartDate() {
+<span class="nc" id="L104">        return startDate;</span>
+    }
+
+    public boolean subscriptionPopulated() {
+<span class="nc bnc" id="L108" title="All 12 branches missed.">        return ((getAdditionalFields() != null &amp;&amp; !getAdditionalFields().isEmpty()) ||</span>
+                getRecurringAmount() != null ||
+                getFrequency() != null ||
+                getNumberOfInstallments() != null ||
+                getStartDate() != null);
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

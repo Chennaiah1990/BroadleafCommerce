@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MergeEhCacheManagerFactoryBean.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.cache.ehcache</a> &gt; <span class="el_source">MergeEhCacheManagerFactoryBean.java</span></div><h1>MergeEhCacheManagerFactoryBean.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.cache.ehcache;
+
+import net.sf.ehcache.CacheManager;
+import org.broadleafcommerce.common.extensibility.context.ResourceInputStream;
+import org.broadleafcommerce.common.extensibility.context.merge.MergeXmlConfigResource;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.FatalBeanException;
+import org.springframework.cache.ehcache.EhCacheManagerFactoryBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.io.Resource;
+
+import javax.annotation.PostConstruct;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+<span class="nc" id="L38">public class MergeEhCacheManagerFactoryBean extends EhCacheManagerFactoryBean implements ApplicationContextAware {</span>
+
+    private ApplicationContext applicationContext;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+<span class="nc" id="L44">        this.applicationContext = applicationContext;</span>
+<span class="nc" id="L45">    }</span>
+
+    @javax.annotation.Resource(name=&quot;blMergedCacheConfigLocations&quot;)
+    protected Set&lt;String&gt; mergedCacheConfigLocations;
+
+    protected List&lt;Resource&gt; configLocations;
+
+    @Override
+    public void destroy() {
+<span class="nc" id="L54">        super.destroy();</span>
+        try {
+<span class="nc" id="L56">            CacheManager cacheManager = getObject();</span>
+<span class="nc" id="L57">            Field cacheManagerTimer = CacheManager.class.getDeclaredField(&quot;cacheManagerTimer&quot;);</span>
+<span class="nc" id="L58">            cacheManagerTimer.setAccessible(true);</span>
+<span class="nc" id="L59">            Object failSafeTimer = cacheManagerTimer.get(cacheManager);</span>
+<span class="nc" id="L60">            Field timer = failSafeTimer.getClass().getDeclaredField(&quot;timer&quot;);</span>
+<span class="nc" id="L61">            timer.setAccessible(true);</span>
+<span class="nc" id="L62">            Object time = timer.get(failSafeTimer);</span>
+<span class="nc" id="L63">            Field thread = time.getClass().getDeclaredField(&quot;thread&quot;);</span>
+<span class="nc" id="L64">            thread.setAccessible(true);</span>
+<span class="nc" id="L65">            Thread item = (Thread) thread.get(time);</span>
+<span class="nc" id="L66">            item.setContextClassLoader(Thread.currentThread().getContextClassLoader().getParent());</span>
+<span class="nc" id="L67">        } catch (NoSuchFieldException e) {</span>
+<span class="nc" id="L68">            throw new RuntimeException(e);</span>
+<span class="nc" id="L69">        } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L70">            throw new RuntimeException(e);</span>
+<span class="nc" id="L71">        }</span>
+<span class="nc" id="L72">    }</span>
+
+    @PostConstruct
+    public void configureMergedItems() {
+<span class="nc" id="L76">        List&lt;Resource&gt; temp = new ArrayList&lt;Resource&gt;();</span>
+<span class="nc bnc" id="L77" title="All 4 branches missed.">        if (mergedCacheConfigLocations != null &amp;&amp; !mergedCacheConfigLocations.isEmpty()) {</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">            for (String location : mergedCacheConfigLocations) {</span>
+<span class="nc" id="L79">                temp.add(applicationContext.getResource(location));</span>
+<span class="nc" id="L80">            }</span>
+        }
+<span class="nc bnc" id="L82" title="All 4 branches missed.">        if (configLocations != null &amp;&amp; !configLocations.isEmpty()) {</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">            for (Resource resource : configLocations) {</span>
+<span class="nc" id="L84">                temp.add(resource);</span>
+<span class="nc" id="L85">            }</span>
+        }
+        try {
+<span class="nc" id="L88">            MergeXmlConfigResource merge = new MergeXmlConfigResource();</span>
+<span class="nc" id="L89">            ResourceInputStream[] sources = new ResourceInputStream[temp.size()];</span>
+<span class="nc" id="L90">            int j=0;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">            for (Resource resource : temp) {</span>
+<span class="nc" id="L92">                sources[j] = new ResourceInputStream(resource.getInputStream(), resource.getURL().toString());</span>
+<span class="nc" id="L93">                j++;</span>
+<span class="nc" id="L94">            }</span>
+<span class="nc" id="L95">            setConfigLocation(merge.getMergedConfigResource(sources));</span>
+<span class="nc" id="L96">        } catch (Exception e) {</span>
+<span class="nc" id="L97">            throw new FatalBeanException(&quot;Unable to merge cache locations&quot;, e);</span>
+<span class="nc" id="L98">        }</span>
+<span class="nc" id="L99">    }</span>
+
+    public void setConfigLocations(List&lt;Resource&gt; configLocations) throws BeansException {
+<span class="nc" id="L102">        this.configLocations = configLocations;</span>
+<span class="nc" id="L103">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

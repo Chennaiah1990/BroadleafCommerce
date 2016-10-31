@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafRequestInterceptor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafRequestInterceptor.java</span></div><h1>BroadleafRequestInterceptor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.springframework.ui.ModelMap;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.context.request.WebRequestInterceptor;
+
+import javax.annotation.Resource;
+
+
+/**
+ * &lt;p&gt;Interceptor responsible for setting up the BroadleafRequestContext for the life of the request. This interceptor
+ * should be the very first one in the list, as other interceptors might also use {@link BroadleafRequestContext}.&lt;/p&gt;
+ * 
+ * &lt;p&gt;Note that in Servlet applications you should be using the {@link BroadleafRequestFilter}.&lt;/p&gt;
+ * 
+ * @author Phillip Verheyden
+ * @see {@link BroadleafRequestProcessor}
+ * @see {@link BroadleafRequestContext}
+ */
+<span class="nc" id="L39">public class BroadleafRequestInterceptor implements WebRequestInterceptor {</span>
+
+    @Resource(name = &quot;blRequestProcessor&quot;)
+    protected BroadleafRequestProcessor requestProcessor;
+
+    @Override
+    public void preHandle(WebRequest request) throws Exception {
+<span class="nc" id="L46">        requestProcessor.process(request);</span>
+<span class="nc" id="L47">    }</span>
+
+    @Override
+    public void postHandle(WebRequest request, ModelMap model) throws Exception {
+        //unimplemented
+<span class="nc" id="L52">    }</span>
+
+    @Override
+    public void afterCompletion(WebRequest request, Exception ex) throws Exception {
+<span class="nc" id="L56">        requestProcessor.postProcess(request);</span>
+<span class="nc" id="L57">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StaticAssetPathServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.file.service</a> &gt; <span class="el_source">StaticAssetPathServiceImpl.java</span></div><h1>StaticAssetPathServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.file.service;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.velocity.tools.view.ImportSupport;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.io.File;
+
+@Service(&quot;blStaticAssetPathService&quot;)
+<span class="nc" id="L30">public class StaticAssetPathServiceImpl implements StaticAssetPathService {</span>
+
+    @Value(&quot;${asset.server.url.prefix.internal}&quot;)
+    protected String staticAssetUrlPrefix;
+
+    @Value(&quot;${asset.server.url.prefix}&quot;)
+    protected String staticAssetEnvironmentUrlPrefix;
+
+    @Value(&quot;${asset.server.url.prefix.secure}&quot;)
+    protected String staticAssetEnvironmentSecureUrlPrefix;
+
+    /**
+     * This method will take in a content string (e.g. StructuredContentDTO or PageDTO HTML/ASSET_LOOKUP/STRING field value)
+     * and replace any instances of &quot;staticAssetUrlPrefix&quot; in the string with the &quot;staticAssetEnvironmentUrlPrefix&quot;
+     * or the &quot;staticAssetEnvironmentSecureUrlPrefix&quot; depending on if the request was secure and if it was configured.
+     *
+     * Given asset.server.url.prefix.internal=cmsstatic
+     * Given asset.server.url.prefix=http://static.mydomain.com/cmsstatic
+     * Given asset.server.url.prefix.secure=https://static.mydomain.com/cmsstatic
+     *
+     * Example 1:
+     * Given content = &quot;&lt;p&gt;&lt;img src=&quot;/cmsstatic/my_image.jpg&quot;/&gt;&lt;/p&gt;&quot;
+     *
+     * The result should yield: &quot;&lt;p&gt;&lt;img src=&quot;http://static.mydomain.com/cmsstatic/my_image.jpg&quot;/&gt;&lt;/p&gt;&quot;
+     *
+     * Example 2:
+     * Given content = &quot;&lt;p&gt;&lt;img src=&quot;cmsstatic/my_image_2.jpg&quot;/&gt;&lt;/p&gt;&quot;
+     *
+     * The result should yield: &quot;&lt;p&gt;&lt;img src=&quot;http://static.mydomain.com/cmsstatic/my_image_2.jpg&quot;/&gt;&lt;/p&gt;&quot;
+     *
+     * @param content       - The content string to rewrite if it contains a cms managed asset
+     * @param secureRequest - True if the request is being served over https
+     * @return
+     * @see org.broadleafcommerce.common.file.service.StaticAssetService#getStaticAssetUrlPrefix()
+     * @see org.broadleafcommerce.common.file.service.StaticAssetService#getStaticAssetEnvironmentUrlPrefix()
+     */
+    @Override
+    public String convertAllAssetPathsInContent(String content, boolean secureRequest) {
+<span class="nc" id="L68">        String returnValue = content;</span>
+
+<span class="nc bnc" id="L70" title="All 8 branches missed.">        if (StringUtils.isNotBlank(content) &amp;&amp;</span>
+                StringUtils.isNotBlank(getStaticAssetUrlPrefix()) &amp;&amp;
+                StringUtils.isNotBlank(getStaticAssetEnvironmentUrlPrefix()) &amp;&amp;
+                content.contains(getStaticAssetUrlPrefix())) {
+
+            final String envPrefix;
+<span class="nc bnc" id="L76" title="All 2 branches missed.">            if (secureRequest) {</span>
+<span class="nc" id="L77">                envPrefix = getStaticAssetEnvironmentSecureUrlPrefix();</span>
+            } else {
+<span class="nc" id="L79">                envPrefix = getStaticAssetEnvironmentUrlPrefix();</span>
+            }
+
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if (envPrefix != null) {</span>
+<span class="nc" id="L83">                String trailing = &quot;&quot;;</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">                if (envPrefix.endsWith(File.separator)) {</span>
+<span class="nc" id="L85">                    trailing = File.separator;</span>
+                }
+<span class="nc" id="L87">                returnValue = returnValue.replaceAll(getStaticAssetUrlPrefix()+trailing, envPrefix);</span>
+                //Catch any scenario where there is a leading &quot;/&quot; after the replacement
+<span class="nc" id="L89">                returnValue = returnValue.replaceAll(File.separator + envPrefix, envPrefix);</span>
+            }
+
+        }
+
+<span class="nc" id="L94">        return returnValue;</span>
+    }
+
+    /**
+     * This method will take in an assetPath (think image url) and prepend the
+     * staticAssetUrlPrefix if one exists.
+     * 
+     * Will append any contextPath onto the request.    If the incoming assetPath contains
+     * the internalStaticAssetPrefix and the image is being prepended, the prepend will be
+     * removed.
+     *
+     * Example 1:
+     * Given asset.server.url.prefix.internal=cmsstatic
+     * Given asset.server.url.prefix=http://static.mydomain.com/cmsstatic
+     * Given asset.server.url.prefix.secure=https://static.mydomain.com/cmsstatic
+     * Given assetPath = &quot;/cmsstatic/my_image.jpg&quot;
+     *
+     * The result should yield: &quot;http://static.mydomain.com/cmsstatic/my_image.jpg&quot;
+     *
+     * Example 2:
+     * Given asset.server.url.prefix.internal=cmsstatic
+     * Given asset.server.url.prefix=
+     * Given asset.server.url.prefix.secure=
+     * Given assetPath = &quot;/cmsstatic/my_image.jpg&quot;
+     * Given contextPath = &quot;myApp&quot;
+     *
+     * The result should yield: &quot;/myApp/cmsstatic/my_image.jpg&quot;
+     * 
+     * Also, since all paths are intended to be URLs, there should be no system-specific separator characters like '\' for
+     * Windows. All paths should be unix file paths as URLs.
+     *
+     * @param assetPath     - The path to rewrite if it is a cms managed asset
+     * @param contextPath   - The context path of the web application (if applicable)
+     * @param secureRequest - True if the request is being served over https
+     * @return
+     * @see org.broadleafcommerce.common.file.service.StaticAssetService#getStaticAssetUrlPrefix()
+     * @see org.broadleafcommerce.common.file.service.StaticAssetService#getStaticAssetEnvironmentUrlPrefix()
+     */
+    @Override
+    public String convertAssetPath(String assetPath, String contextPath, boolean secureRequest) {
+<span class="nc" id="L134">        String returnValue = assetPath;</span>
+        
+<span class="nc bnc" id="L136" title="All 6 branches missed.">        if (assetPath != null &amp;&amp; getStaticAssetEnvironmentUrlPrefix() != null &amp;&amp; ! &quot;&quot;.equals(getStaticAssetEnvironmentUrlPrefix())) {</span>
+            String envPrefix;
+<span class="nc bnc" id="L138" title="All 2 branches missed.">            if (secureRequest) {</span>
+<span class="nc" id="L139">                envPrefix = getStaticAssetEnvironmentSecureUrlPrefix();</span>
+            } else {
+<span class="nc" id="L141">                envPrefix = getStaticAssetEnvironmentUrlPrefix();</span>
+            }
+<span class="nc bnc" id="L143" title="All 2 branches missed.">            if (envPrefix != null) {</span>
+                // remove the starting &quot;/&quot; if it exists.
+<span class="nc bnc" id="L145" title="All 2 branches missed.">                if (returnValue.startsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L146">                    returnValue = returnValue.substring(1);</span>
+                }
+
+                // Also, remove the &quot;cmsstatic&quot; from the URL before prepending the staticAssetUrlPrefix.
+<span class="nc bnc" id="L150" title="All 2 branches missed.">                if (returnValue.startsWith(getStaticAssetUrlPrefix())) {</span>
+<span class="nc" id="L151">                    returnValue = returnValue.substring(getStaticAssetUrlPrefix().trim().length());</span>
+
+                    // remove the starting &quot;/&quot; if it exists.
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                    if (returnValue.startsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L155">                        returnValue = returnValue.substring(1);</span>
+                    }
+<span class="nc bnc" id="L157" title="All 2 branches missed.">                } else if (envPrefix.endsWith(getStaticAssetUrlPrefix() + &quot;/&quot;)) {</span>
+<span class="nc" id="L158">                    envPrefix = envPrefix.substring(0, envPrefix.length() - getStaticAssetUrlPrefix().length() - 1);</span>
+                }
+<span class="nc" id="L160">                returnValue = envPrefix + returnValue;</span>
+            }
+<span class="nc" id="L162">        } else {</span>
+<span class="nc bnc" id="L163" title="All 4 branches missed.">            if (returnValue != null &amp;&amp; ! ImportSupport.isAbsoluteUrl(returnValue)) {</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">                if (! returnValue.startsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L165">                    returnValue = &quot;/&quot; + returnValue;</span>
+                }
+
+                // Add context path
+<span class="nc bnc" id="L169" title="All 4 branches missed.">                if (contextPath != null &amp;&amp; ! contextPath.equals(&quot;&quot;)) {</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">                    if (! contextPath.equals(&quot;/&quot;)) {</span>
+                        // Shouldn't be the case, but let's handle it anyway
+<span class="nc bnc" id="L172" title="All 2 branches missed.">                        if (contextPath.endsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L173">                            returnValue = returnValue.substring(1);</span>
+                        }
+<span class="nc bnc" id="L175" title="All 2 branches missed.">                        if (contextPath.startsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L176">                            returnValue = contextPath + returnValue;  // normal case</span>
+                        } else {
+<span class="nc" id="L178">                            returnValue = &quot;/&quot; + contextPath + returnValue;</span>
+                        }
+                    }
+                }
+            }
+        }
+
+<span class="nc" id="L185">        return returnValue;</span>
+    }
+
+    @Override
+    public String getStaticAssetUrlPrefix() {
+<span class="nc" id="L190">        return staticAssetUrlPrefix;</span>
+    }
+
+    @Override
+    public void setStaticAssetUrlPrefix(String staticAssetUrlPrefix) {
+<span class="nc" id="L195">        this.staticAssetUrlPrefix = staticAssetUrlPrefix;</span>
+<span class="nc" id="L196">    }</span>
+
+    @Override
+    public String getStaticAssetEnvironmentUrlPrefix() {
+<span class="nc" id="L200">        return fixEnvironmentUrlPrefix(staticAssetEnvironmentUrlPrefix);</span>
+    }
+
+    @Override
+    public void setStaticAssetEnvironmentUrlPrefix(String staticAssetEnvironmentUrlPrefix) {
+<span class="nc" id="L205">        this.staticAssetEnvironmentUrlPrefix = staticAssetEnvironmentUrlPrefix;</span>
+<span class="nc" id="L206">    }</span>
+
+    @Override
+    public String getStaticAssetEnvironmentSecureUrlPrefix() {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">        if (StringUtils.isEmpty(staticAssetEnvironmentSecureUrlPrefix)) {</span>
+<span class="nc bnc" id="L211" title="All 4 branches missed.">            if (!StringUtils.isEmpty(staticAssetEnvironmentUrlPrefix) &amp;&amp; staticAssetEnvironmentUrlPrefix.indexOf(&quot;http:&quot;) &gt;= 0) {</span>
+<span class="nc" id="L212">                staticAssetEnvironmentSecureUrlPrefix = staticAssetEnvironmentUrlPrefix.replace(&quot;http:&quot;, &quot;https:&quot;);</span>
+            }
+        }
+<span class="nc" id="L215">        return fixEnvironmentUrlPrefix(staticAssetEnvironmentSecureUrlPrefix);</span>
+    }
+
+    public void setStaticAssetEnvironmentSecureUrlPrefix(String staticAssetEnvironmentSecureUrlPrefix) {        
+<span class="nc" id="L219">        this.staticAssetEnvironmentSecureUrlPrefix = staticAssetEnvironmentSecureUrlPrefix;</span>
+<span class="nc" id="L220">    }</span>
+
+    /**
+     * Trims whitespace.   If the value is the same as the internal url prefix, then return
+     * null.
+     *
+     * @param urlPrefix
+     * @return
+     */
+    private String fixEnvironmentUrlPrefix(String urlPrefix) {
+<span class="nc bnc" id="L230" title="All 2 branches missed.">        if (urlPrefix != null) {</span>
+<span class="nc" id="L231">            urlPrefix = urlPrefix.trim();</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">            if (&quot;&quot;.equals(urlPrefix)) {</span>
+                // The value was not set.
+<span class="nc" id="L234">                urlPrefix = null;</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">            } else if (urlPrefix.equals(staticAssetUrlPrefix)) {</span>
+                // The value is the same as the default, so no processing needed.
+<span class="nc" id="L237">                urlPrefix = null;</span>
+            }
+        }
+
+<span class="nc bnc" id="L241" title="All 4 branches missed.">        if (urlPrefix != null &amp;&amp; !urlPrefix.endsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L242">            urlPrefix = urlPrefix + &quot;/&quot;;</span>
+        }
+<span class="nc" id="L244">        return urlPrefix;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

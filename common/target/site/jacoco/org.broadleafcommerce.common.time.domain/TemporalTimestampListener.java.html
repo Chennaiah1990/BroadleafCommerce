@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TemporalTimestampListener.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.time.domain</a> &gt; <span class="el_source">TemporalTimestampListener.java</span></div><h1>TemporalTimestampListener.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.time.domain;
+
+import org.broadleafcommerce.common.time.SystemTime;
+
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+import java.lang.reflect.Field;
+import java.util.Calendar;
+import java.util.Date;
+
+<span class="nc" id="L35">public class TemporalTimestampListener {</span>
+
+    @PrePersist
+    @PreUpdate
+    public void setTimestamps(Object entity) throws Exception {
+<span class="nc bnc" id="L40" title="All 2 branches missed.">        if (entity.getClass().isAnnotationPresent(Entity.class)) {</span>
+<span class="nc" id="L41">            Field[] fields = entity.getClass().getDeclaredFields();</span>
+<span class="nc" id="L42">            setTimestamps(fields, entity);</span>
+        }
+<span class="nc" id="L44">    }</span>
+
+    private void setTimestamps(Field[] fields, Object entity) throws Exception {
+<span class="nc" id="L47">        Calendar cal = null;</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">        for (Field field : fields) {</span>
+<span class="nc" id="L49">            Class&lt;?&gt; type = field.getType();</span>
+<span class="nc" id="L50">            Temporal temporalAnnotation = field.getAnnotation(Temporal.class);</span>
+
+<span class="nc bnc" id="L52" title="All 2 branches missed.">            if (temporalAnnotation != null) {</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">                if (field.isAnnotationPresent(Column.class)) {</span>
+<span class="nc" id="L54">                    field.setAccessible(true);</span>
+                    try {
+<span class="nc bnc" id="L56" title="All 4 branches missed.">                        if (TemporalType.TIMESTAMP.equals(temporalAnnotation.value()) &amp;&amp; (field.isAnnotationPresent(AutoPopulate.class))) {</span>
+<span class="nc bnc" id="L57" title="All 4 branches missed.">                            if (field.get(entity) == null || field.getAnnotation(AutoPopulate.class).autoUpdateValue()) {</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">                                if (type.isAssignableFrom(Date.class)) {</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">                                    if (cal == null) {</span>
+<span class="nc" id="L60">                                        cal = SystemTime.asCalendar();</span>
+                                    }
+<span class="nc" id="L62">                                    field.set(entity, cal.getTime());</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">                                } else if (type.isAssignableFrom(Calendar.class)) {</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">                                    if (cal == null) {</span>
+<span class="nc" id="L65">                                        cal = SystemTime.asCalendar();</span>
+                                    }
+<span class="nc" id="L67">                                    field.set(entity, cal);</span>
+                                }
+                            }
+                        }
+                    } finally {
+<span class="nc" id="L72">                        field.setAccessible(false);</span>
+<span class="nc" id="L73">                    }</span>
+                }
+<span class="nc bnc" id="L75" title="All 2 branches missed.">            } else if (field.isAnnotationPresent(Embedded.class)) {</span>
+<span class="nc" id="L76">                field.setAccessible(true);</span>
+                try {
+                    // Call recursively
+<span class="nc" id="L79">                    setTimestamps(field.getType().getDeclaredFields(), field.get(entity));</span>
+                } finally {
+<span class="nc" id="L81">                    field.setAccessible(false);</span>
+<span class="nc" id="L82">                }</span>
+            }
+        }
+<span class="nc" id="L85">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

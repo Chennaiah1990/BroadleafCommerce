@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BLCArrayUtils.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">BLCArrayUtils.java</span></div><h1>BLCArrayUtils.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+
+
+
+/**
+ * Convenience methods for interacting with arrays
+ * 
+ * @author Andre Azzolini (apazzolini)
+ */
+<span class="nc" id="L32">public class BLCArrayUtils {</span>
+    
+    /**
+     * Given an array and a typed predicate, determines if the array has an object that matches the condition of the
+     * predicate. The predicate should evaluate to true when a match occurs.
+     * 
+     * @param array
+     * @param predicate
+     * @return whether or not the array contains an element that matches the predicate
+     */
+    public static &lt;T&gt; boolean contains(T[] array, TypedPredicate&lt;T&gt; predicate) {
+<span class="nc bnc" id="L43" title="All 2 branches missed.">        for (T o : array) {</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">            if (predicate.evaluate(o)) {</span>
+<span class="nc" id="L45">                return true;</span>
+            }
+        }
+<span class="nc" id="L48">        return false;</span>
+    }
+    
+    /**
+     * Given an input array, will return an ArrayList representation of the array.
+     * 
+     * @param array
+     * @return the ArrayList corresponding to the input array. If the input is null, this also returns null. If it is empty
+     * then this will return an empty list
+     */
+    public static &lt;T&gt; ArrayList&lt;T&gt; asList(T[] array) {
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (array == null) {</span>
+<span class="nc" id="L60">            return null;</span>
+        }
+<span class="nc" id="L62">        ArrayList&lt;T&gt; list = new ArrayList&lt;T&gt;(array.length);</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        for (T e : array) {</span>
+<span class="nc" id="L64">            list.add(e);</span>
+        }
+<span class="nc" id="L66">        return list;</span>
+    }
+    
+    /**
+     * Similar to the CollectionUtils collect except that it works on an array instead of a Java Collection
+     * 
+     * @param array
+     * @param transformer
+     * @return the transformed collection
+     */
+    public static &lt;T, O&gt; ArrayList&lt;T&gt; collect(Object[] array, TypedTransformer&lt;T&gt; transformer) {
+<span class="nc" id="L77">        ArrayList&lt;T&gt; list = new ArrayList&lt;T&gt;(array.length);</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        for (Object o : array) {</span>
+<span class="nc" id="L79">            list.add(transformer.transform(o));</span>
+        }
+<span class="nc" id="L81">        return list;</span>
+    }
+
+    /**
+     * The same as {@link #collect(Object[], TypedTransformer)} but returns a set.
+     * 
+     * @param array
+     * @param transformer
+     * @return the transformed set
+     */
+    public static &lt;T, O&gt; HashSet&lt;T&gt; collectSet(Object[] array, TypedTransformer&lt;T&gt; transformer) {
+<span class="nc" id="L92">        HashSet&lt;T&gt; set = new HashSet&lt;T&gt;(array.length);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        for (Object o : array) {</span>
+<span class="nc" id="L94">            set.add(transformer.transform(o));</span>
+        }
+<span class="nc" id="L96">        return set;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

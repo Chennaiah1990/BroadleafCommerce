@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ExtensionManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extension</a> &gt; <span class="el_source">ExtensionManager.java</span></div><h1>ExtensionManager.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extension;
+
+import org.apache.commons.beanutils.BeanComparator;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * The ExtensionManager pattern is intended for out of box components to be extended by Broadleaf modules.
+ * 
+ * Each component that needs an extension should define an interface which is a descendant of ExtensionHandler.
+ * The concrete ExtensionManager class will utilize that interface as a parameter (e.g. T below).   
+ * 
+ * The default extension manager pattern loops through all handlers and examines their {@link ExtensionResultStatusType} 
+ * to determine whether or not to continue with other handlers.
+ * 
+ * @author bpolster
+ *
+ * @param &lt;T&gt;
+ */
+public abstract class ExtensionManager&lt;T extends ExtensionHandler&gt; implements InvocationHandler {
+
+<span class="nc" id="L48">    protected boolean handlersSorted = false;</span>
+<span class="nc" id="L49">    protected static String LOCK_OBJECT = new String(&quot;EM_LOCK&quot;);</span>
+    
+    protected T extensionHandler;
+<span class="nc" id="L52">    protected List&lt;T&gt; handlers = new ArrayList&lt;T&gt;();</span>
+
+    /**
+     * Should take in a className that matches the ExtensionHandler interface being managed.
+     * @param className
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L59">    public ExtensionManager(Class&lt;T&gt; _clazz) {</span>
+<span class="nc" id="L60">        extensionHandler = (T) Proxy.newProxyInstance(_clazz.getClassLoader(),</span>
+                new Class[] { _clazz },
+                this);
+<span class="nc" id="L63">    }</span>
+    
+    public T getProxy() {
+<span class="nc" id="L66">        return extensionHandler;</span>
+    }
+
+    /**
+     * If you are attempting to register a handler with this manager and are invoking this outside of an {@link ExtensionManager}
+     * subclass, consider using {@link #registerHandler(ExtensionHandler)} instead.
+     * 
+     * While the sorting of the handlers prior to their return is thread safe, adding directly to this list is not.
+     * 
+     * @return a list of handlers sorted by their priority
+     * @see {@link #registerHandler(ExtensionHandler)}
+     */
+    public List&lt;T&gt; getHandlers() {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (!handlersSorted) {</span>
+<span class="nc" id="L80">            synchronized (LOCK_OBJECT) {</span>
+<span class="nc" id="L81">                sortHandlers();</span>
+<span class="nc" id="L82">            }</span>
+        }
+<span class="nc" id="L84">        return handlers;</span>
+    }
+
+    @SuppressWarnings({ &quot;unchecked&quot;, &quot;rawtypes&quot; })
+    protected void sortHandlers() {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (!handlersSorted) {</span>
+<span class="nc" id="L90">            Comparator fieldCompare = new BeanComparator(&quot;priority&quot;);</span>
+<span class="nc" id="L91">            Collections.sort(handlers, fieldCompare);</span>
+<span class="nc" id="L92">            handlersSorted = true;</span>
+        }
+<span class="nc" id="L94">    }</span>
+    
+    /**
+     * Intended to be invoked from the extension handlers themselves. This will add the given handler to this manager's list of
+     * handlers. This also checks to ensure that the handler has not been already registered with this {@link ExtensionManager}
+     * by checking the class names of the already-added handlers.
+     * 
+     * This method is thread safe.
+     * 
+     * @param handler the handler to register with this extension manager
+     * @return true if the handler was successfully registered, false if this handler was already contained in the list of
+     * handlers for this manager
+     */
+    public boolean registerHandler(T handler) {
+<span class="nc" id="L108">        synchronized (LOCK_OBJECT) {</span>
+<span class="nc" id="L109">            boolean add = true;</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">            for (T item : this.handlers) {</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">                if (item.getClass().equals(handler.getClass())) {</span>
+<span class="nc" id="L112">                    add = false;</span>
+                }
+<span class="nc" id="L114">            }</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            if (add) {</span>
+<span class="nc" id="L116">                this.handlers.add(handler);</span>
+<span class="nc" id="L117">                handlersSorted = false;</span>
+            }
+            
+<span class="nc" id="L120">            return add;</span>
+<span class="nc" id="L121">        }</span>
+    }
+
+    public void setHandlers(List&lt;T&gt; handlers) {
+<span class="nc" id="L125">        this.handlers = handlers;</span>
+<span class="nc" id="L126">    }</span>
+    
+    /**
+     * Utility method that is useful for determining whether or not an ExtensionManager implementation
+     * should continue after processing a ExtensionHandler call.
+     * 
+     * By default, returns true for CONTINUE
+     * 
+     * @return
+     */
+    public boolean shouldContinue(ExtensionResultStatusType result, ExtensionHandler handler,
+            Method method, Object[] args) {
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (result != null) {</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">            if (ExtensionResultStatusType.HANDLED_STOP.equals(result)) {</span>
+<span class="nc" id="L140">                return false;</span>
+            }
+            
+<span class="nc bnc" id="L143" title="All 4 branches missed.">            if (ExtensionResultStatusType.HANDLED.equals(result) &amp;&amp; ! continueOnHandled()) {</span>
+<span class="nc" id="L144">                return false;</span>
+            }
+        }
+<span class="nc" id="L147">        return true;</span>
+    }
+    
+    /**
+     * Returns whether or not this extension manager continues on {@link ExtensionResultStatusType}.HANDLED.   
+     * 
+     * @return
+     */
+    public boolean continueOnHandled() {
+<span class="nc" id="L156">        return false;</span>
+    }
+
+    /**
+     * {@link ExtensionManager}s don't really need a priority but they pick up this property due to the 
+     * fact that we want them to implement the same interface &lt;T&gt; as the handlers they are managing.   
+     * 
+     * @return
+     */
+    public int getPriority() {
+<span class="nc" id="L166">        throw new UnsupportedOperationException();</span>
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+<span class="nc" id="L171">        boolean notHandled = true;</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        for (ExtensionHandler handler : getHandlers()) {</span>
+            try {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">                if (handler.isEnabled()) {</span>
+<span class="nc" id="L175">                    ExtensionResultStatusType result = (ExtensionResultStatusType) method.invoke(handler, args);</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">                    if (!ExtensionResultStatusType.NOT_HANDLED.equals(result)) {</span>
+<span class="nc" id="L177">                        notHandled = false;</span>
+                    }
+<span class="nc bnc" id="L179" title="All 2 branches missed.">                    if (!shouldContinue(result, handler, method, args)) {</span>
+<span class="nc" id="L180">                        break;</span>
+                    }
+                }
+<span class="nc" id="L183">            } catch (InvocationTargetException e) {</span>
+<span class="nc" id="L184">                throw e.getCause();</span>
+<span class="nc" id="L185">            }</span>
+<span class="nc" id="L186">        }</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">        if (notHandled) {</span>
+<span class="nc" id="L188">            return ExtensionResultStatusType.NOT_HANDLED;</span>
+        } else {
+<span class="nc" id="L190">            return ExtensionResultStatusType.HANDLED;</span>
+        }
+    }
+       
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

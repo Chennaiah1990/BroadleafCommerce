@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityInformationServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.entity.service</a> &gt; <span class="el_source">EntityInformationServiceImpl.java</span></div><h1>EntityInformationServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.entity.service;
+
+import org.broadleafcommerce.common.entity.dto.EntityInformationDto;
+import org.broadleafcommerce.common.extension.ExtensionResultHolder;
+import org.broadleafcommerce.common.site.domain.Catalog;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+/**
+ * 
+ * @author bpolster
+ *
+ */
+@Service(&quot;blEntityInformationService&quot;)
+<span class="nc" id="L38">public class EntityInformationServiceImpl implements EntityInformationService {</span>
+
+    @Resource(name = &quot;blEntityInformationServiceExtensionManager&quot;)
+    protected EntityInformationServiceExtensionManager extensionManager;
+
+    public EntityInformationDto buildEntityInformationForObject(Object o) {
+<span class="nc" id="L44">        EntityInformationDto dto = createEntityInformationDto(o);</span>
+<span class="nc" id="L45">        extensionManager.getProxy().updateEntityInformationDto(dto, o);</span>
+<span class="nc" id="L46">        return dto;</span>
+    }
+
+    @Override
+    public Long getBaseProfileIdForSite(Site site) {
+<span class="nc" id="L51">        ExtensionResultHolder&lt;Long&gt; erh = new ExtensionResultHolder&lt;Long&gt;();</span>
+<span class="nc" id="L52">        extensionManager.getProxy().getBaseProfileIdForSite(site, erh);</span>
+<span class="nc" id="L53">        return erh.getResult();</span>
+    }
+
+    @Override
+    public boolean getOkayToUseSiteDiscriminator(Object o) {
+<span class="nc" id="L58">        ExtensionResultHolder&lt;Boolean&gt; erh = new ExtensionResultHolder&lt;Boolean&gt;();</span>
+<span class="nc" id="L59">        erh.setResult(Boolean.FALSE);</span>
+<span class="nc" id="L60">        extensionManager.getProxy().getOkayToUseSiteDiscriminator(o, erh);</span>
+<span class="nc" id="L61">        return erh.getResult();</span>
+    }
+
+    /**
+     * Factory method for instantiating the {@link EntityInformationDto}
+     * @return
+     */
+    protected EntityInformationDto createEntityInformationDto(Object o) {
+<span class="nc" id="L69">        return new EntityInformationDto();</span>
+    }
+
+    @Override
+    public List&lt;Catalog&gt; findAllCatalogs() {
+<span class="nc" id="L74">        ExtensionResultHolder&lt;List&lt;Catalog&gt;&gt; erh = new ExtensionResultHolder&lt;List&lt;Catalog&gt;&gt;();</span>
+<span class="nc" id="L75">        extensionManager.getProxy().findAllCatalogs(erh);</span>
+<span class="nc" id="L76">        return erh.getResult();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

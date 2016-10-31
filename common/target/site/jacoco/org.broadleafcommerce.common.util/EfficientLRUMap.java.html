@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EfficientLRUMap.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">EfficientLRUMap.java</span></div><h1>EfficientLRUMap.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import org.apache.commons.collections4.map.LRUMap;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * This class provides an LRUMap structure that defaults to a more efficient ConcurrentHashMap if the
+ * size has not yet been reached.
+ * 
+ * In Broadleaf, there are many instances where an LRUMap could be used to guard against implementations
+ * where Map sizes grow in unexpected ways.    However, the large majority of cases would fit well within the
+ * max bounds of the LRUMap.
+ * 
+ * This class provides an approach that provides the benefits of a LRUMap for memory protection while
+ * allowing concurrent access under normal circumstances.
+ * 
+ * For the first [n] entries, the underlying implementation will be a ConcurrentHashMap.   On the &quot;n+1&quot;th 
+ * entry, this implementation will switch its underlying implementation to a synchronized LRUMap. 
+ * 
+ * @author bpolster
+ * 
+ */
+public class EfficientLRUMap&lt;K, V&gt; implements Map&lt;K, V&gt; {
+
+    private Map&lt;K, V&gt; concurrentMap;
+    private Map&lt;K, V&gt; lruMap;
+    private int maxEntries;
+<span class="fc" id="L52">    private boolean usingLRUMap = false;</span>
+    
+<span class="fc" id="L54">    public EfficientLRUMap(int maxEntries) {</span>
+<span class="fc" id="L55">        this.maxEntries = maxEntries;</span>
+<span class="fc" id="L56">        concurrentMap = new ConcurrentHashMap&lt;K, V&gt;();</span>
+<span class="fc" id="L57">    }</span>
+
+    @Override
+    public int size() {
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        if (usingLRUMap) {</span>
+<span class="fc" id="L62">            return lruMap.size();</span>
+        } else {
+<span class="fc" id="L64">            return concurrentMap.size();</span>
+        }
+    }
+
+    @Override
+    public boolean isEmpty() {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L71">            return lruMap.isEmpty();</span>
+        } else {
+<span class="nc" id="L73">            return concurrentMap.isEmpty();</span>
+        }
+    }
+
+    @Override
+    public boolean containsKey(Object key) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L80">            return lruMap.containsKey(key);</span>
+        } else {
+<span class="nc" id="L82">            return concurrentMap.containsKey(key);</span>
+        }
+    }
+
+    @Override
+    public boolean containsValue(Object value) {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L89">            return lruMap.containsValue(value);</span>
+        } else {
+<span class="nc" id="L91">            return concurrentMap.containsValue(value);</span>
+        }
+    }
+
+    @Override
+    public V get(Object key) {
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        if (usingLRUMap) {</span>
+<span class="fc" id="L98">            return lruMap.get(key);</span>
+        } else {
+<span class="fc" id="L100">            return concurrentMap.get(key);</span>
+        }
+    }
+
+    @Override
+    public V put(K key, V value) {
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L107">            return lruMap.put(key, value);</span>
+        } else {
+<span class="fc" id="L109">            V returnVal = concurrentMap.put(key, value);</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">            if (switchToLRUMap()) {</span>
+                // The switch could have happened on another thread.
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">                if (!lruMap.containsKey(key)) {</span>
+<span class="fc" id="L113">                    lruMap.put(key, value);</span>
+                }
+            }
+<span class="fc" id="L116">            return returnVal;</span>
+        }
+    }
+
+    protected synchronized boolean switchToLRUMap() {
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if (!usingLRUMap) {</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">            if (size() &gt; maxEntries) {</span>
+<span class="fc" id="L123">                lruMap = Collections.synchronizedMap(new LRUMap&lt;K, V&gt;(maxEntries));</span>
+<span class="fc" id="L124">                lruMap.putAll(concurrentMap);</span>
+<span class="fc" id="L125">                usingLRUMap = true;</span>
+<span class="fc" id="L126">                concurrentMap.clear();</span>
+            }
+        }
+<span class="fc" id="L129">        return usingLRUMap; // this could be set by another thread        </span>
+    }
+
+    @Override
+    public V remove(Object key) {
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+            // This could put us back below the threshold for LRU vs. Concurrent but we won't optimize to that
+            // level as we are likely to thrash going back and forth.    Once an LRU, always an LRU unless clear
+            // is called.
+<span class="nc" id="L138">            return lruMap.remove(key);</span>
+        } else {
+<span class="nc" id="L140">            return concurrentMap.remove(key);</span>
+        }
+    }
+
+    @Override
+    public void putAll(Map&lt;? extends K, ? extends V&gt; m) {
+<span class="nc bnc" id="L146" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L147">            lruMap.putAll(m);</span>
+        } else {
+<span class="nc" id="L149">            concurrentMap.putAll(m);</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            if (switchToLRUMap()) {</span>
+                // The switch could have happened on another thread.                
+<span class="nc" id="L152">                lruMap.putAll(m);</span>
+            }
+        }
+<span class="nc" id="L155">    }</span>
+
+    @Override
+    public void clear() {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L160">            resetInternalMap();</span>
+        } else {
+<span class="nc" id="L162">            concurrentMap.clear();</span>
+        }
+<span class="nc" id="L164">    }</span>
+
+    /**
+     * We are clearing the map, so we can switch back to a {@link ConcurrentHashMap}
+     */
+    protected synchronized void resetInternalMap() {
+<span class="nc" id="L170">        usingLRUMap = false;</span>
+<span class="nc" id="L171">        lruMap.clear();</span>
+<span class="nc" id="L172">    }</span>
+
+    @Override
+    public Set&lt;K&gt; keySet() {
+<span class="nc bnc" id="L176" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L177">            return lruMap.keySet();</span>
+        } else {
+<span class="nc" id="L179">            return concurrentMap.keySet();</span>
+        }
+    }
+
+    @Override
+    public Collection&lt;V&gt; values() {
+<span class="nc bnc" id="L185" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L186">            return lruMap.values();</span>
+        } else {
+<span class="nc" id="L188">            return concurrentMap.values();</span>
+        }
+    }
+
+    @Override
+    public Set&lt;java.util.Map.Entry&lt;K, V&gt;&gt; entrySet() {
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (usingLRUMap) {</span>
+<span class="nc" id="L195">            return lruMap.entrySet();</span>
+        } else {
+<span class="nc" id="L197">            return concurrentMap.entrySet();</span>
+        }
+    }
+    
+    protected Class getUnderlyingMapClass() {
+<span class="fc bfc" id="L202" title="All 2 branches covered.">        if (usingLRUMap) {</span>
+<span class="fc" id="L203">            return lruMap.getClass();</span>
+        } else {
+<span class="fc" id="L205">            return concurrentMap.getClass();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

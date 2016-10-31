@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SystemPropertyImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.config.domain</a> &gt; <span class="el_source">SystemPropertyImpl.java</span></div><h1>SystemPropertyImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.config.domain;
+
+import org.broadleafcommerce.common.admin.domain.AdminMainEntity;
+import org.broadleafcommerce.common.config.service.type.SystemPropertyFieldType;
+import org.broadleafcommerce.common.copy.CreateResponse;
+import org.broadleafcommerce.common.copy.MultiTenantCopyContext;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.broadleafcommerce.common.presentation.RequiredOverride;
+import org.broadleafcommerce.common.presentation.client.SupportedFieldType;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.Table;
+
+/**
+ * Allows the storage and retrieval of System Properties in the database
+ * &lt;p/&gt;
+ * User: Kelly Tisdell
+ * Date: 6/20/12
+ */
+@Entity
+@Table(name=&quot;BLC_SYSTEM_PROPERTY&quot;)
+@Inheritance(strategy = InheritanceType.JOINED)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region=&quot;blStandardElements&quot;)
+@AdminPresentationClass(friendlyName = &quot;SystemPropertyImpl&quot;)
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_SITE),
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.SANDBOX)
+})
+<span class="nc" id="L61">public class SystemPropertyImpl implements SystemProperty, AdminMainEntity {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator = &quot;SystemPropertyId&quot;)
+    @GenericGenerator(
+        name=&quot;SystemPropertyId&quot;,
+        strategy=&quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+        parameters = {
+            @Parameter(name=&quot;segment_value&quot;, value=&quot;SystemPropertyImpl&quot;),
+            @Parameter(name=&quot;entity_name&quot;, value=&quot;org.broadleafcommerce.common.config.domain.SystemPropertyImpl&quot;)
+        }
+    )
+    @Column(name = &quot;BLC_SYSTEM_PROPERTY_ID&quot;)
+    protected Long id;
+
+    @Column(name = &quot;PROPERTY_NAME&quot;, nullable = false)
+    @AdminPresentation(friendlyName = &quot;SystemPropertyImpl_name&quot;, order = 1000,
+            requiredOverride = RequiredOverride.REQUIRED,
+        group = &quot;SystemPropertyImpl_general&quot;, groupOrder = 1000, prominent = true, gridOrder = 1000)
+    protected String name;
+
+    @Column(name= &quot;PROPERTY_VALUE&quot;)
+    @AdminPresentation(friendlyName = &quot;SystemPropertyImpl_value&quot;, order = 3000,
+            requiredOverride = RequiredOverride.REQUIRED,
+        group = &quot;SystemPropertyImpl_general&quot;, groupOrder = 1000, prominent = true, gridOrder = 3000)
+    protected String value;
+
+    @Column(name = &quot;PROPERTY_TYPE&quot;)
+    @AdminPresentation(friendlyName = &quot;SystemPropertyImpl_propertyType&quot;, order = 2000, 
+        group = &quot;SystemPropertyImpl_general&quot;, groupOrder = 1000, prominent = true, gridOrder = 2000,
+        fieldType = SupportedFieldType.BROADLEAF_ENUMERATION, 
+        broadleafEnumeration = &quot;org.broadleafcommerce.common.config.service.type.SystemPropertyFieldType&quot;,
+        requiredOverride = RequiredOverride.REQUIRED)
+    protected String propertyType;
+
+    @Column(name = &quot;FRIENDLY_NAME&quot;)
+    @AdminPresentation(friendlyName = &quot;SystemPropertyImpl_friendlyName&quot;, order = 4000, 
+        group = &quot;SystemPropertyImpl_general&quot;, groupOrder = 1000)
+    protected String friendlyName;
+
+    @Column(name = &quot;FRIENDLY_GROUP&quot;)
+    @AdminPresentation(friendlyName = &quot;SystemPropertyImpl_friendlyGroup&quot;, order = 5000, 
+        group = &quot;SystemPropertyImpl_general&quot;, groupOrder = 1000)
+    protected String friendlyGroup;
+
+    @Column(name = &quot;FRIENDLY_TAB&quot;)
+    @AdminPresentation(friendlyName = &quot;SystemPropertyImpl_friendlyTab&quot;, order = 5000, 
+        group = &quot;SystemPropertyImpl_general&quot;, groupOrder = 1000)
+    protected String friendlyTab;
+
+    @Override
+    public Long getId() {
+<span class="nc" id="L115">        return id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L120">        this.id = id;</span>
+<span class="nc" id="L121">    }</span>
+
+    @Override
+    public String getName() {
+<span class="nc" id="L125">        return name;</span>
+    }
+
+    @Override
+    public void setName(String name) {
+<span class="nc" id="L130">        this.name = name;</span>
+<span class="nc" id="L131">    }</span>
+
+    @Override
+    public String getValue() {
+<span class="nc" id="L135">        return value;</span>
+    }
+
+    @Override
+    public void setValue(String value) {
+<span class="nc" id="L140">        this.value = value;</span>
+<span class="nc" id="L141">    }</span>
+    
+    @Override
+    public String getFriendlyName() {
+<span class="nc" id="L145">        return friendlyName;</span>
+    }
+
+    @Override
+    public void setFriendlyName(String friendlyName) {
+<span class="nc" id="L150">        this.friendlyName = friendlyName;</span>
+<span class="nc" id="L151">    }</span>
+
+    @Override
+    public String getFriendlyGroup() {
+<span class="nc" id="L155">        return friendlyGroup;</span>
+    }
+
+    @Override
+    public void setFriendlyGroup(String friendlyGroup) {
+<span class="nc" id="L160">        this.friendlyGroup = friendlyGroup;</span>
+<span class="nc" id="L161">    }</span>
+    
+    @Override
+    public String getFriendlyTab() {
+<span class="nc" id="L165">        return friendlyTab;</span>
+    }
+
+    @Override
+    public void setFriendlyTab(String friendlyTab) {
+<span class="nc" id="L170">        this.friendlyTab = friendlyTab;</span>
+<span class="nc" id="L171">    }</span>
+
+    public SystemPropertyFieldType getPropertyType() {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (propertyType != null) {</span>
+<span class="nc" id="L175">            SystemPropertyFieldType returnType = SystemPropertyFieldType.getInstance(propertyType);</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">            if (returnType != null) {</span>
+<span class="nc" id="L177">                return returnType;</span>
+            }
+        }
+<span class="nc" id="L180">        return SystemPropertyFieldType.STRING_TYPE;</span>
+    }
+
+    public void setPropertyType(SystemPropertyFieldType propertyType) {
+<span class="nc" id="L184">        this.propertyType = propertyType.getType();</span>
+<span class="nc" id="L185">    }</span>
+
+    @Override
+    public String getMainEntityName() {
+<span class="nc" id="L189">        return getName();</span>
+    }
+
+    @Override
+    public &lt;G extends SystemProperty&gt; CreateResponse&lt;G&gt; createOrRetrieveCopyInstance(MultiTenantCopyContext context) throws CloneNotSupportedException {
+<span class="nc" id="L194">        CreateResponse&lt;G&gt; createResponse = context.createOrRetrieveCopyInstance(this);</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if (createResponse.isAlreadyPopulated()) {</span>
+<span class="nc" id="L196">            return createResponse;</span>
+        }
+<span class="nc" id="L198">        SystemProperty cloned = createResponse.getClone();</span>
+<span class="nc" id="L199">        cloned.setFriendlyGroup(friendlyGroup);</span>
+<span class="nc" id="L200">        cloned.setFriendlyName(friendlyName);</span>
+<span class="nc" id="L201">        cloned.setFriendlyTab(friendlyTab);</span>
+<span class="nc" id="L202">        cloned.setName(name);</span>
+<span class="nc" id="L203">        cloned.setValue(value);</span>
+<span class="nc" id="L204">        cloned.setPropertyType(getPropertyType());</span>
+<span class="nc" id="L205">        return createResponse;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

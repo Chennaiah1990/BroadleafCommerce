@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MvelHelper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.rule</a> &gt; <span class="el_source">MvelHelper.java</span></div><h1>MvelHelper.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.rule;
+
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.RequestDTO;
+import org.broadleafcommerce.common.TimeDTO;
+import org.broadleafcommerce.common.presentation.client.SupportedFieldType;
+import org.broadleafcommerce.common.time.SystemTime;
+import org.broadleafcommerce.common.util.EfficientLRUMap;
+import org.broadleafcommerce.common.util.FormatUtil;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.mvel2.MVEL;
+import org.mvel2.ParserContext;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.text.ParseException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * Helper class for some common rule functions that can be called from mvel as well as utility functions
+ * to make calling MVEL rules within Broadleaf easier.  
+ * 
+ * An instance of this class is available to the mvel runtime under the variable name MvelHelper with the 
+ * following functions:
+ * 
+ *    convertField(type, fieldValue)
+ *    toUpperCase(value)
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L56">public class MvelHelper {</span>
+
+<span class="fc" id="L58">    private static final Map&lt;String, Serializable&gt; DEFAULT_EXPRESSION_CACHE = new EfficientLRUMap&lt;String, Serializable&gt;(5000);</span>
+<span class="fc" id="L59">    private static final Log LOG = LogFactory.getLog(MvelHelper.class);</span>
+
+<span class="fc" id="L61">    private static boolean TEST_MODE = false;</span>
+    
+    public static final String BLC_RULE_MAP_PARAM = &quot;blRuleMap&quot;;
+
+    // The following attribute is set in BroadleafProcessURLFilter
+    public static final String REQUEST_DTO = &quot;blRequestDTO&quot;;    
+    
+    /**
+     * Converts a field to the specified type.    Useful when 
+     * @param type
+     * @param fieldValue
+     * @return
+     */
+    public static Object convertField(String type, String fieldValue) {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (fieldValue == null) {</span>
+<span class="nc" id="L76">            return null;</span>
+        }
+        try {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            if (type.equals(SupportedFieldType.BOOLEAN.toString())) {</span>
+<span class="nc" id="L80">                return Boolean.parseBoolean(fieldValue);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">            } else if (type.equals(SupportedFieldType.DATE.toString())) {</span>
+<span class="nc" id="L82">                return FormatUtil.getTimeZoneFormat().parse(fieldValue);</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">            } else if (type.equals(SupportedFieldType.INTEGER.toString())) {</span>
+<span class="nc" id="L84">                return Integer.parseInt(fieldValue);</span>
+<span class="nc bnc" id="L85" title="All 4 branches missed.">            } else if (type.equals(SupportedFieldType.MONEY.toString()) || type.equals(SupportedFieldType.DECIMAL.toString())) {</span>
+<span class="nc" id="L86">                return new BigDecimal(fieldValue);</span>
+            }
+<span class="nc" id="L88">        } catch (ParseException e) {</span>
+<span class="nc" id="L89">            throw new RuntimeException(e);</span>
+<span class="nc" id="L90">        }</span>
+<span class="nc" id="L91">        throw new IllegalArgumentException(&quot;Unrecognized type(&quot; + type + &quot;) for map field conversion.&quot;);</span>
+    }
+
+    public static Object toUpperCase(String value) {
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L96">            return null;</span>
+        }
+<span class="nc" id="L98">        return value.toUpperCase();</span>
+    }
+    
+    /**
+     * Returns true if the passed in rule passes based on the passed in ruleParameters.   
+     * 
+     * Also returns true if the rule is blank or null.
+     * 
+     * Calls the {@link #evaluateRule(String, Map, Map)} method passing in the DEFAULT_EXPRESSION_CACHE.
+     * For systems that need to cache a large number of rule expressions, an alternate cache can be passed in.   The
+     * default cache is able to cache up to 1,000 rule expressions which should suffice for most systems.
+     * 
+     * @param rule
+     * @param ruleParameters
+     * @return
+     */
+    public static boolean evaluateRule(String rule, Map&lt;String, Object&gt; ruleParameters) {
+<span class="fc" id="L115">        return evaluateRule(rule, ruleParameters, DEFAULT_EXPRESSION_CACHE);</span>
+    }
+
+    /**
+     * Evaluates the passed in rule given the passed in parameters.   
+     * 
+     * @param rule
+     * @param ruleParameters
+     * @return
+     */
+    public static boolean evaluateRule(String rule, Map&lt;String, Object&gt; ruleParameters,
+            Map&lt;String, Serializable&gt; expressionCache) {
+<span class="fc" id="L127">        return evaluateRule(rule, ruleParameters, expressionCache, null);</span>
+    }
+    
+    /**
+     * @param rule
+     * @param ruleParameters
+     * @param expressionCache
+     * @param additionalContextImports additional imports to give to the {@link ParserContext} besides &quot;MVEL&quot; ({@link MVEL} and
+     * &quot;MvelHelper&quot; ({@link MvelHelper}) since they are automatically added 
+     * @return
+     */
+    public static boolean evaluateRule(String rule, Map&lt;String, Object&gt; ruleParameters,
+        Map&lt;String, Serializable&gt; expressionCache, Map&lt;String, Class&lt;?&gt;&gt; additionalContextImports) {
+        
+        // Null or empty is a match
+<span class="fc bfc" id="L142" title="All 4 branches covered.">        if (rule == null || &quot;&quot;.equals(rule)) {</span>
+<span class="fc" id="L143">            return true;</span>
+        } else {
+            // MVEL expression compiling can be expensive so let's cache the expression
+<span class="fc" id="L146">            Serializable exp = expressionCache.get(rule);</span>
+<span class="fc bfc" id="L147" title="All 2 branches covered.">            if (exp == null) {</span>
+<span class="fc" id="L148">                ParserContext context = new ParserContext();</span>
+<span class="fc" id="L149">                context.addImport(&quot;MVEL&quot;, MVEL.class);</span>
+<span class="fc" id="L150">                context.addImport(&quot;MvelHelper&quot;, MvelHelper.class);</span>
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">                if (MapUtils.isNotEmpty(additionalContextImports)) {</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                    for (Entry&lt;String, Class&lt;?&gt;&gt; entry : additionalContextImports.entrySet()) {</span>
+<span class="nc" id="L153">                        context.addImport(entry.getKey(), entry.getValue());</span>
+<span class="nc" id="L154">                    }</span>
+                }
+                
+<span class="fc" id="L157">                rule = modifyExpression(rule, ruleParameters, context);</span>
+                
+<span class="fc" id="L159">                exp = MVEL.compileExpression(rule, context);</span>
+<span class="fc" id="L160">                expressionCache.put(rule, exp);</span>
+            }
+
+<span class="fc" id="L163">            Map&lt;String, Object&gt; mvelParameters = new HashMap&lt;String, Object&gt;();</span>
+
+<span class="fc bfc" id="L165" title="All 2 branches covered.">            if (ruleParameters != null) {</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">                for (String parameter : ruleParameters.keySet()) {</span>
+<span class="fc" id="L167">                    mvelParameters.put(parameter, ruleParameters.get(parameter));</span>
+<span class="fc" id="L168">                }</span>
+            }
+
+            try {
+<span class="fc" id="L172">                Object test = MVEL.executeExpression(exp, mvelParameters);</span>
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">                if (test == null) {</span>
+                    // This can occur if there is no actual rule
+<span class="nc" id="L175">                    return true;</span>
+                }
+<span class="fc" id="L177">                return (Boolean) test;</span>
+<span class="fc" id="L178">            } catch (Exception e) {</span>
+                //Unable to execute the MVEL expression for some reason
+                //Return false, but notify about the bad expression through logs
+<span class="pc bpc" id="L181" title="1 of 2 branches missed.">                if (!TEST_MODE) {</span>
+<span class="nc" id="L182">                    LOG.info(&quot;Unable to parse and/or execute the mvel expression (&quot; + rule + &quot;). Reporting to the logs and returning false for the match expression&quot;, e);</span>
+                }
+<span class="fc" id="L184">                return false;</span>
+            }
+        }
+    }
+    
+    /**
+     * &lt;p&gt;
+     * Provides a hook point to modify the final expression before it's built. By default, this looks for attribute
+     * maps and replaces them such that it does string comparison.
+     * 
+     * &lt;p&gt;
+     * For example, given an expression like getProductAttributes()['somekey'] == 'someval', getProductAttributes()['somekey']
+     * actually returns a ProductAttribute object, not a String, so the comparison is wrong. Instead, we actually want
+     * to do this: getProductAttributes().?get('somekey').?value == 'someval'. This function performs that replacement
+     *
+     * &lt;p&gt;
+     * The modification regex will support both simple and complex expressions like:
+     * &quot;(MvelHelper.convertField(&quot;INTEGER&quot;,orderItem.?product.?getProductAttributes()[&quot;myinteger&quot;])&gt;0&amp;&amp;MvelHelper.convertField(&quot;INTEGER&quot;,orderItem.?product.?getProductAttributes()[&quot;myinteger&quot;])&lt;10)&quot;
+     *
+     * @param rule the rule to replace
+     * @return a modified version of &lt;b&gt;rule&lt;/b&gt;
+     * @see {@link #getRuleAttributeMaps()}
+     */
+    protected static String modifyExpression(String rule, Map&lt;String, Object&gt; ruleParameters, ParserContext context) {
+<span class="fc" id="L208">        String modifiedExpression = rule;</span>
+<span class="fc bfc" id="L209" title="All 2 branches covered.">        for (String attributeMap : getRuleAttributeMaps()) {</span>
+<span class="fc" id="L210">            modifiedExpression = modifiedExpression.replaceAll(attributeMap + &quot;\\(\\)\\[(.*?)\\](?!\\.\\?value)&quot;, attributeMap + &quot;().?get($1).?value&quot;);</span>
+        }
+<span class="fc" id="L212">        return modifiedExpression;</span>
+    }
+
+    /**
+     * Returns an array of attribute map field names that we need to do replacements for in
+     * {@link #modifyExpression(String, Map, ParserContext)}
+     */
+    protected static String[] getRuleAttributeMaps() {
+        // intentionally left out pricing context getPricingContextAttributes because that's a Map&lt;String, String&gt;
+<span class="fc" id="L221">        return new String[]{ &quot;getProductAttributes&quot;,</span>
+            &quot;getCategoryAttributesMap&quot;,
+            &quot;getSkuAttributes&quot;,
+            &quot;getOrderItemAttributes&quot;,
+            &quot;getCustomerAttributes&quot;,
+            // Map&lt;String, PageAttribute&gt;
+            &quot;getAdditionalAttributes&quot;,
+            // Map&lt;String, AdminUserAttribute&gt;
+            &quot;getAdditionalFields&quot;}; 
+    }
+
+    /**
+     * When true, LOG.info statement will be suppressed.   Should only be set from within MvelHelperTest.
+     * Prevents an error from displaying during unit test runs.
+     * @param testMode
+     */
+    public static void setTestMode(boolean testMode) {
+<span class="fc" id="L238">        TEST_MODE = testMode;</span>
+<span class="fc" id="L239">    }</span>
+    
+    /**
+     * Builds parameters using time, request, customer, and cart.
+     * 
+     * Should be called from within a valid web request.
+     *
+     * @param request
+     * @return
+     */
+    public static Map&lt;String, Object&gt; buildMvelParameters() {
+<span class="nc" id="L250">        Map&lt;String, Object&gt; mvelParameters = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L251">       BroadleafRequestContext brc = BroadleafRequestContext.getBroadleafRequestContext();</span>
+<span class="nc bnc" id="L252" title="All 4 branches missed.">        if (brc != null &amp;&amp; brc.getRequest() != null) {</span>
+<span class="nc" id="L253">           TimeDTO timeDto = new TimeDTO(SystemTime.asCalendar());</span>
+<span class="nc" id="L254">            HttpServletRequest request = brc.getRequest();</span>
+<span class="nc" id="L255">            RequestDTO requestDto = brc.getRequestDTO();</span>
+<span class="nc" id="L256">            mvelParameters.put(&quot;time&quot;, timeDto);</span>
+<span class="nc" id="L257">            mvelParameters.put(&quot;request&quot;, requestDto);</span>
+
+<span class="nc" id="L259">            Map&lt;String, Object&gt; blcRuleMap = (Map&lt;String, Object&gt;) request.getAttribute(BLC_RULE_MAP_PARAM);</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">            if (blcRuleMap != null) {</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">                for (String mapKey : blcRuleMap.keySet()) {</span>
+<span class="nc" id="L262">                    mvelParameters.put(mapKey, blcRuleMap.get(mapKey));</span>
+<span class="nc" id="L263">                }</span>
+           }
+       }
+
+<span class="nc" id="L267">       return mvelParameters;</span>
+   }    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

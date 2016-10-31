@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Auditable.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.audit</a> &gt; <span class="el_source">Auditable.java</span></div><h1>Auditable.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.audit;
+
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+
+import java.io.Serializable;
+import java.util.Date;
+
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+
+@Embeddable
+<span class="fc" id="L33">public class Auditable implements Serializable {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    @Column(name = &quot;DATE_CREATED&quot;, updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    @AdminPresentation(friendlyName = &quot;Auditable_Date_Created&quot;, order = 1000,
+            tab = Presentation.Tab.Name.Audit, tabOrder = Presentation.Tab.Order.Audit,
+            group = &quot;Auditable_Audit&quot;, groupOrder = 1000,
+            readOnly = true)
+    protected Date dateCreated;
+
+    @Column(name = &quot;CREATED_BY&quot;, updatable = false)
+    @AdminPresentation(friendlyName = &quot;Auditable_Created_By&quot;, order = 2000,
+            tab = Presentation.Tab.Name.Audit, tabOrder = Presentation.Tab.Order.Audit,
+            group = &quot;Auditable_Audit&quot;,
+            readOnly = true)
+    protected Long createdBy;
+
+    @Column(name = &quot;DATE_UPDATED&quot;)
+    @Temporal(TemporalType.TIMESTAMP)
+    @AdminPresentation(friendlyName = &quot;Auditable_Date_Updated&quot;, order = 3000,
+            tab = Presentation.Tab.Name.Audit, tabOrder = Presentation.Tab.Order.Audit,
+            group = &quot;Auditable_Audit&quot;,
+            readOnly = true)
+    protected Date dateUpdated;
+
+    @Column(name = &quot;UPDATED_BY&quot;)
+    @AdminPresentation(friendlyName = &quot;Auditable_Updated_By&quot;, order = 4000,
+            tab = Presentation.Tab.Name.Audit, tabOrder = Presentation.Tab.Order.Audit,
+            group = &quot;Auditable_Audit&quot;,
+            readOnly = true)
+    protected Long updatedBy;
+
+    public Date getDateCreated() {
+<span class="nc" id="L68">        return dateCreated;</span>
+    }
+
+    public Long getCreatedBy() {
+<span class="nc" id="L72">        return createdBy;</span>
+    }
+
+    public Date getDateUpdated() {
+<span class="nc" id="L76">        return dateUpdated;</span>
+    }
+
+    public Long getUpdatedBy() {
+<span class="nc" id="L80">        return updatedBy;</span>
+    }
+
+    public void setDateCreated(Date dateCreated) {
+<span class="nc" id="L84">        this.dateCreated = dateCreated;</span>
+<span class="nc" id="L85">    }</span>
+
+    public void setCreatedBy(Long createdBy) {
+<span class="nc" id="L88">        this.createdBy = createdBy;</span>
+<span class="nc" id="L89">    }</span>
+
+    public void setDateUpdated(Date dateUpdated) {
+<span class="nc" id="L92">        this.dateUpdated = dateUpdated;</span>
+<span class="nc" id="L93">    }</span>
+
+    public void setUpdatedBy(Long updatedBy) {
+<span class="nc" id="L96">        this.updatedBy = updatedBy;</span>
+<span class="nc" id="L97">    }</span>
+
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (this == o) return true;</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (o == null) return false;</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(o.getClass())) return false;</span>
+
+<span class="nc" id="L105">        Auditable auditable = (Auditable) o;</span>
+
+<span class="nc bnc" id="L107" title="All 6 branches missed.">        if (createdBy != null ? !createdBy.equals(auditable.createdBy) : auditable.createdBy != null) return false;</span>
+<span class="nc bnc" id="L108" title="All 6 branches missed.">        if (dateCreated != null ? !dateCreated.equals(auditable.dateCreated) : auditable.dateCreated != null)</span>
+<span class="nc" id="L109">            return false;</span>
+<span class="nc bnc" id="L110" title="All 6 branches missed.">        if (dateUpdated != null ? !dateUpdated.equals(auditable.dateUpdated) : auditable.dateUpdated != null)</span>
+<span class="nc" id="L111">            return false;</span>
+<span class="nc bnc" id="L112" title="All 6 branches missed.">        if (updatedBy != null ? !updatedBy.equals(auditable.updatedBy) : auditable.updatedBy != null) return false;</span>
+
+<span class="nc" id="L114">        return true;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        int result = dateCreated != null ? dateCreated.hashCode() : 0;</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        result = 31 * result + (createdBy != null ? createdBy.hashCode() : 0);</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        result = 31 * result + (dateUpdated != null ? dateUpdated.hashCode() : 0);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        result = 31 * result + (updatedBy != null ? updatedBy.hashCode() : 0);</span>
+<span class="nc" id="L123">        return result;</span>
+    }
+
+<span class="pc" id="L126">    public static class Presentation {</span>
+
+<span class="nc" id="L128">        public static class Tab {</span>
+<span class="nc" id="L129">            public static class Name {</span>
+                public static final String Audit = &quot;Auditable_Tab&quot;;
+            }
+<span class="nc" id="L132">            public static class Order {</span>
+                public static final int Audit = 99000;
+            }
+        }
+
+<span class="nc" id="L137">        public static class Group {</span>
+<span class="nc" id="L138">            public static class Name {</span>
+
+                public static final String Audit = &quot;Auditable_Audit&quot;;
+            }
+<span class="nc" id="L142">            public static class Order {</span>
+
+                public static final int Audit = 1000;
+            }
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

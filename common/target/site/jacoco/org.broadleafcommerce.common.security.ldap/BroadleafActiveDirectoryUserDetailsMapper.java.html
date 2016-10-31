@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafActiveDirectoryUserDetailsMapper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.security.ldap</a> &gt; <span class="el_source">BroadleafActiveDirectoryUserDetailsMapper.java</span></div><h1>BroadleafActiveDirectoryUserDetailsMapper.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.security.ldap;
+
+import org.broadleafcommerce.common.security.BroadleafExternalAuthenticationUserDetails;
+import org.springframework.ldap.core.DirContextOperations;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.ldap.userdetails.LdapUserDetailsMapper;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+
+/**
+ * This class allows Spring to do it's thing with respect to mapping user details from
+ * LDAP to the Spring's security framework. However, this class allows us to specify whether
+ * to use the user's user name from LDAP, or to use their email address to map them to a Broadleaf
+ * user.  It also allows us to override the role names (GrantedAuthorities) that come from LDAP with
+ * names that may be more suitable for Broadleaf.
+ *
+ * @deprecated NO LONGER REQUIRED AND SHOULD NOT BE USED. SEE BroadleafAdminLdapUserDetailsMapper.
+ *
+ * @author Kelly Tisdell
+ *
+ */
+@Deprecated
+<span class="nc" id="L46">public class BroadleafActiveDirectoryUserDetailsMapper extends LdapUserDetailsMapper {</span>
+
+<span class="nc" id="L48">    protected boolean useEmailAddressAsUsername = true;</span>
+
+<span class="nc" id="L50">    protected boolean additiveRoleNameSubstitutions = false;</span>
+
+    protected Map&lt;String, String[]&gt; roleNameSubstitutions;
+
+    @Override
+    public UserDetails mapUserFromContext(DirContextOperations ctx, String username, Collection&lt;? extends GrantedAuthority&gt; authorities) {
+<span class="nc" id="L56">        Collection&lt;GrantedAuthority&gt; newAuthorities = new HashSet&lt;GrantedAuthority&gt;();</span>
+
+<span class="nc bnc" id="L58" title="All 4 branches missed.">        if (roleNameSubstitutions != null &amp;&amp; ! roleNameSubstitutions.isEmpty()) {</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">            for (GrantedAuthority authority : authorities) {</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">                if (roleNameSubstitutions.containsKey(authority.getAuthority())) {</span>
+<span class="nc" id="L61">                    String[] roles = roleNameSubstitutions.get(authority.getAuthority());</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">                    for (String role : roles) {</span>
+<span class="nc" id="L63">                        newAuthorities.add(new SimpleGrantedAuthority(role.trim()));</span>
+                    }
+<span class="nc bnc" id="L65" title="All 2 branches missed.">                    if (additiveRoleNameSubstitutions) {</span>
+<span class="nc" id="L66">                        newAuthorities.add(authority);</span>
+                    }
+<span class="nc" id="L68">                } else {</span>
+<span class="nc" id="L69">                    newAuthorities.add(authority);</span>
+                }
+<span class="nc" id="L71">            }</span>
+        } else {
+<span class="nc" id="L73">            newAuthorities.addAll(authorities);</span>
+        }
+
+<span class="nc" id="L76">        String email = (String)ctx.getObjectAttribute(&quot;mail&quot;);</span>
+<span class="nc" id="L77">        UserDetails userDetails = null;</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if (useEmailAddressAsUsername) {</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            if (email != null) {</span>
+<span class="nc" id="L80">                userDetails = super.mapUserFromContext(ctx, email, newAuthorities);</span>
+            }
+        }
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (userDetails == null) {</span>
+<span class="nc" id="L85">            userDetails = super.mapUserFromContext(ctx, username, newAuthorities);</span>
+        }
+        
+<span class="nc" id="L88">        String password = userDetails.getPassword();</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (password == null) {</span>
+<span class="nc" id="L90">            password = userDetails.getUsername();</span>
+        }
+
+<span class="nc" id="L93">        BroadleafExternalAuthenticationUserDetails broadleafUser = new BroadleafExternalAuthenticationUserDetails(userDetails.getUsername(), password, userDetails.getAuthorities());</span>
+<span class="nc" id="L94">        broadleafUser.setFirstName((String)ctx.getObjectAttribute(&quot;givenName&quot;));</span>
+<span class="nc" id="L95">        broadleafUser.setLastName((String)ctx.getObjectAttribute(&quot;sn&quot;));</span>
+<span class="nc" id="L96">        broadleafUser.setEmail(email);</span>
+
+<span class="nc" id="L98">        return broadleafUser;</span>
+    }
+
+    /**
+     * The LDAP server may contain a user name other than an email address.  If the email address should be used to map to a Broadleaf user, then
+     * set this to true.  The principal will be set to the user's email address returned from the LDAP server.
+     * @param value
+     */
+    public void setUseEmailAddressAsUsername(boolean value) {
+<span class="nc" id="L107">        this.useEmailAddressAsUsername = value;</span>
+<span class="nc" id="L108">    }</span>
+
+    /**
+     * This allows you to declaratively set a map containing values that will substitute role names from LDAP to Broadleaf roles names in cases that they might be different.
+     * For example, if you have a role specified in LDAP under &quot;memberOf&quot; with a DN of &quot;Marketing Administrator&quot;, you might want to
+     * map that to the role &quot;ADMIN&quot;.  By default the prefix &quot;ROLE_&quot; will be pre-pended to this name. So to configure this, you would specify:
+     *
+     * &lt;bean class=&quot;org.broadleaf.loadtest.web.security.ActiveDirectoryUserDetailsContextMapper&quot;&gt;
+     *     &lt;property name=&quot;roleMappings&quot;&gt;
+     *         &lt;map&gt;
+     *             &lt;entry key=&quot;Marketing_Administrator&quot; value=&quot;CATALOG_ADMIN&quot;/&gt;
+     *         &lt;/map&gt;
+     *     &lt;/property&gt;
+     * &lt;/bean&gt;
+     *
+     * With this configuration, all roles returned by LDAP that have a DN of &quot;Marketing Administrator&quot; will be converted to &quot;ADMIN&quot;
+     * @param roleNameSubstitutions
+     */
+    public void setRoleNameSubstitutions(Map&lt;String, String[]&gt; roleNameSubstitutions) {
+<span class="nc" id="L127">        this.roleNameSubstitutions = roleNameSubstitutions;</span>
+<span class="nc" id="L128">    }</span>
+
+    /**
+     * This should be used in conjunction with the roleNameSubstitutions property.
+     * If this is set to true, this will add the mapped roles to the list of original granted authorities.  If set to false, this will replace the original granted
+     * authorities with the mapped ones. Defaults to false.
+     *
+     * @param additiveRoleNameSubstitutions
+     */
+    public void setAdditiveRoleNameSubstitutions(boolean additiveRoleNameSubstitutions) {
+<span class="nc" id="L138">        this.additiveRoleNameSubstitutions = additiveRoleNameSubstitutions;</span>
+<span class="nc" id="L139">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

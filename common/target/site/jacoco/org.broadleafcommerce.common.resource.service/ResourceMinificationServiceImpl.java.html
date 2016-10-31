@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ResourceMinificationServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.resource.service</a> &gt; <span class="el_source">ResourceMinificationServiceImpl.java</span></div><h1>ResourceMinificationServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.resource.service;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.resource.GeneratedResource;
+import org.broadleafcommerce.common.util.BLCSystemProperty;
+import org.mozilla.javascript.ErrorReporter;
+import org.mozilla.javascript.EvaluatorException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Service;
+
+import com.yahoo.platform.yui.compressor.CssCompressor;
+import com.yahoo.platform.yui.compressor.JavaScriptCompressor;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+
+/**
+ * @see ResourceMinificationService 
+ * @author Andre Azzolini (apazzolini)
+ */
+@Service(&quot;blResourceMinificationService&quot;)
+<span class="nc" id="L48">public class ResourceMinificationServiceImpl implements ResourceMinificationService {</span>
+<span class="nc" id="L49">    protected static final Log LOG = LogFactory.getLog(ResourceMinificationServiceImpl.class);</span>
+
+<span class="nc" id="L51">    public static String CSS_TYPE = &quot;css&quot;;</span>
+<span class="nc" id="L52">    public static String JS_TYPE = &quot;js&quot;;</span>
+    
+    @Value(&quot;${minify.linebreak}&quot;)
+    protected int linebreak;
+    
+    @Value(&quot;${minify.munge}&quot;)
+    protected boolean munge;
+    
+    @Value(&quot;${minify.verbose}&quot;)
+    protected boolean verbose;
+    
+    @Value(&quot;${minify.preserveAllSemiColons}&quot;)
+    protected boolean preserveAllSemiColons;
+    
+    @Value(&quot;${minify.disableOptimizations}&quot;)
+    protected boolean disableOptimizations;
+
+    @Override
+    public boolean getEnabled() {
+<span class="nc" id="L71">        return BLCSystemProperty.resolveBooleanSystemProperty(&quot;minify.enabled&quot;);</span>
+    }
+
+    @Override
+    public boolean getAllowSingleMinification() {
+<span class="nc" id="L76">        return BLCSystemProperty.resolveBooleanSystemProperty(&quot;minify.allowSingleMinification&quot;);</span>
+    }
+    
+    @Override
+    public byte[] minify(String filename, byte[] bytes) {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (!getEnabled()) {</span>
+<span class="nc" id="L82">            LOG.trace(&quot;Minification is disabled, returning original resource&quot;);</span>
+<span class="nc" id="L83">            return bytes;</span>
+        }
+        
+<span class="nc" id="L86">        Resource modifiedResource = minify(new ByteArrayResource(bytes), filename);</span>
+         
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (modifiedResource instanceof GeneratedResource) {</span>
+<span class="nc" id="L89">            return ((GeneratedResource) modifiedResource).getBytes();</span>
+        } else {
+<span class="nc" id="L91">            return bytes;</span>
+        }
+    }
+
+    @Override
+    public Resource minify(Resource originalResource) {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (!getEnabled()) {</span>
+<span class="nc" id="L98">            LOG.trace(&quot;Minification is disabled, returning original resource&quot;);</span>
+<span class="nc" id="L99">            return originalResource;</span>
+        }
+        
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (originalResource.getFilename() == null) {</span>
+<span class="nc" id="L103">            LOG.warn(&quot;Attempted to modify resource without a filename, returning non-minified resource&quot;);</span>
+<span class="nc" id="L104">            return originalResource;</span>
+        }
+<span class="nc" id="L106">        return minify(originalResource, originalResource.getFilename());</span>
+    }
+
+    @Override
+    public Resource minify(Resource originalResource, String filename) {
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (!getEnabled()) {</span>
+<span class="nc" id="L112">            LOG.trace(&quot;Minification is disabled, returning original resource&quot;);</span>
+<span class="nc" id="L113">            return originalResource;</span>
+        }
+        
+<span class="nc" id="L116">        String type = getFileType(originalResource, filename);</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc" id="L118">            LOG.info(&quot;Unsupported minification resource: &quot; + filename);</span>
+<span class="nc" id="L119">            return originalResource;</span>
+        }
+        
+<span class="nc" id="L122">        byte[] minifiedBytes = null;</span>
+<span class="nc" id="L123">        try (BufferedReader in =</span>
+                new BufferedReader(new InputStreamReader(originalResource.getInputStream(), &quot;utf-8&quot;));
+<span class="nc" id="L125">                ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L126">                BufferedWriter out =</span>
+                        new BufferedWriter(new OutputStreamWriter(baos, &quot;utf-8&quot;));) {
+
+<span class="nc" id="L129">            minify(in, out, filename, type);</span>
+            
+<span class="nc" id="L131">            out.flush();</span>
+<span class="nc" id="L132">            minifiedBytes = baos.toByteArray();</span>
+<span class="nc bnc" id="L133" title="All 24 branches missed.">        } catch (Exception e) {</span>
+<span class="nc" id="L134">            LOG.warn(&quot;Could not minify resources, returned unminified bytes&quot;, e);</span>
+<span class="nc" id="L135">            return originalResource;</span>
+<span class="nc" id="L136">        }</span>
+        
+<span class="nc" id="L138">        return new GeneratedResource(minifiedBytes, filename);</span>
+    }
+    
+    protected void minify(BufferedReader in, BufferedWriter out, String filename, String type) throws IOException {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (JS_TYPE.equals(type)) {</span>
+<span class="nc" id="L143">            JavaScriptCompressor jsc = new JavaScriptCompressor(in, getLogBasedErrorReporter());</span>
+<span class="nc" id="L144">            jsc.compress(out, linebreak, munge, verbose, preserveAllSemiColons, disableOptimizations);</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        } else if (CSS_TYPE.equals(type)) {</span>
+<span class="nc" id="L146">            CssCompressor cssc = new CssCompressor(in);</span>
+<span class="nc" id="L147">            cssc.compress(out, 100);</span>
+        }
+<span class="nc" id="L149">    }</span>
+    
+    /**
+     * Return a SupportedFileType
+     * @param originalResource
+     * @param filename
+     * @return
+     */
+    protected String getFileType(Resource originalResource, String filename) {
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        if (filename.contains(&quot;.js&quot;)) {</span>
+<span class="nc" id="L159">            return JS_TYPE;</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        } else if (filename.contains(&quot;.css&quot;)) {</span>
+<span class="nc" id="L161">            return CSS_TYPE;</span>
+        }
+<span class="nc" id="L163">        return null;</span>
+    }
+    
+    protected ErrorReporter getLogBasedErrorReporter() {
+<span class="nc" id="L167">        return new ErrorReporter() {</span>
+            @Override
+            public void warning(String message, String sourceName, int line, String lineSource, int lineOffset) {
+<span class="nc bnc" id="L170" title="All 2 branches missed.">                if (line &lt; 0) {</span>
+<span class="nc" id="L171">                    LOG.warn(message);</span>
+                } else {
+<span class="nc" id="L173">                    LOG.warn(line + ':' + lineOffset + ':' + message);</span>
+                }
+<span class="nc" id="L175">            }</span>
+
+            @Override
+            public void error(String message, String sourceName, int line, String lineSource, int lineOffset) {
+<span class="nc bnc" id="L179" title="All 2 branches missed.">                if (line &lt; 0) {</span>
+<span class="nc" id="L180">                    LOG.error(message);</span>
+                } else {
+<span class="nc" id="L182">                    LOG.error(line + ':' + lineOffset + ':' + message);</span>
+                }
+<span class="nc" id="L184">            }</span>
+
+            @Override
+            public EvaluatorException runtimeError(String message, String sourceName, int line, String lineSource, 
+                    int lineOffset) {
+<span class="nc" id="L189">                error(message, sourceName, line, lineSource, lineOffset);</span>
+<span class="nc" id="L190">                return new EvaluatorException(message);</span>
+            }
+            
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

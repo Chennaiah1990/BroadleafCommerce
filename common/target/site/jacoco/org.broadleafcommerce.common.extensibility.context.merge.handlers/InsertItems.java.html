@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>InsertItems.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.context.merge.handlers</a> &gt; <span class="el_source">InsertItems.java</span></div><h1>InsertItems.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.context.merge.handlers;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.w3c.dom.Node;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * This handler implementation provides behavior where a list of elements from the
+ * patch document are appended to the same parent element in the source document.
+ * 
+ * @author jfischer
+ *
+ */
+<span class="nc" id="L37">public class InsertItems extends BaseHandler {</span>
+
+<span class="nc" id="L39">    private static final Log LOG = LogFactory.getLog(InsertItems.class);</span>
+
+    public Node[] merge(List&lt;Node&gt; nodeList1, List&lt;Node&gt; nodeList2, List&lt;Node&gt; exhaustedNodes) {
+<span class="nc bnc" id="L42" title="All 4 branches missed.">        if (CollectionUtils.isEmpty(nodeList1) || CollectionUtils.isEmpty(nodeList2)) {</span>
+<span class="nc" id="L43">            return null;</span>
+        }
+<span class="nc" id="L45">        List&lt;Node&gt; usedNodes = new ArrayList&lt;Node&gt;();</span>
+<span class="nc" id="L46">        Node node1Parent = nodeList1.get(0).getParentNode();</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">        for (Node aNodeList2 : nodeList2) {</span>
+<span class="nc" id="L48">            Node tempNode = node1Parent.getOwnerDocument().importNode(aNodeList2.cloneNode(true), true);</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L50">                StringBuffer sb = new StringBuffer();</span>
+<span class="nc" id="L51">                sb.append(&quot;matching node for insertion: &quot;);</span>
+<span class="nc" id="L52">                sb.append(tempNode.getNodeName());</span>
+<span class="nc" id="L53">                int attrLength = tempNode.getAttributes().getLength();</span>
+<span class="nc bnc" id="L54" title="All 2 branches missed.">                for (int x = 0; x &lt; attrLength; x++) {</span>
+<span class="nc" id="L55">                    sb.append(&quot; : (&quot;);</span>
+<span class="nc" id="L56">                    sb.append(tempNode.getAttributes().item(x).getNodeName());</span>
+<span class="nc" id="L57">                    sb.append(&quot;/&quot;);</span>
+<span class="nc" id="L58">                    sb.append(tempNode.getAttributes().item(x).getNodeValue());</span>
+<span class="nc" id="L59">                    sb.append(&quot;)&quot;);</span>
+                }
+<span class="nc" id="L61">                LOG.debug(sb.toString());</span>
+            }
+<span class="nc bnc" id="L63" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L64">                StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L65">                sb.append(&quot;inserting into parent: &quot;);</span>
+<span class="nc" id="L66">                sb.append(node1Parent.getNodeName());</span>
+<span class="nc" id="L67">                int attrLength = node1Parent.getAttributes().getLength();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">                for (int x = 0; x &lt; attrLength; x++) {</span>
+<span class="nc" id="L69">                    sb.append(&quot; : (&quot;);</span>
+<span class="nc" id="L70">                    sb.append(node1Parent.getAttributes().item(x).getNodeName());</span>
+<span class="nc" id="L71">                    sb.append(&quot;/&quot;);</span>
+<span class="nc" id="L72">                    sb.append(node1Parent.getAttributes().item(x).getNodeValue());</span>
+<span class="nc" id="L73">                    sb.append(&quot;)&quot;);</span>
+                }
+<span class="nc" id="L75">                LOG.debug(sb.toString());</span>
+            }
+<span class="nc" id="L77">            node1Parent.appendChild(tempNode);</span>
+<span class="nc" id="L78">            usedNodes.add(tempNode);</span>
+<span class="nc" id="L79">        }</span>
+
+<span class="nc" id="L81">        Node[] response = {nodeList2.get(0).getParentNode()};</span>
+<span class="nc" id="L82">        return response;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

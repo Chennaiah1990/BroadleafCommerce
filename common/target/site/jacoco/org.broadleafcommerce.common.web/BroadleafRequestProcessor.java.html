@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafRequestProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafRequestProcessor.java</span></div><h1>BroadleafRequestProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.RequestDTO;
+import org.broadleafcommerce.common.RequestDTOImpl;
+import org.broadleafcommerce.common.classloader.release.ThreadLocalManager;
+import org.broadleafcommerce.common.currency.domain.BroadleafRequestedCurrencyDto;
+import org.broadleafcommerce.common.extension.ExtensionManager;
+import org.broadleafcommerce.common.locale.domain.Locale;
+import org.broadleafcommerce.common.sandbox.domain.SandBox;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.broadleafcommerce.common.site.domain.Theme;
+import org.broadleafcommerce.common.util.BLCRequestUtils;
+import org.broadleafcommerce.common.util.DeployBehaviorUtil;
+import org.broadleafcommerce.common.web.exception.HaltFilterChainException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TimeZone;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+
+/**
+ * 
+ * @author Phillip Verheyden
+ * @see {@link BroadleafRequestFilter}
+ */
+@Component(&quot;blRequestProcessor&quot;)
+<span class="nc" id="L58">public class BroadleafRequestProcessor extends AbstractBroadleafWebRequestProcessor {</span>
+
+<span class="nc" id="L60">    protected final Log LOG = LogFactory.getLog(getClass());</span>
+
+<span class="nc" id="L62">    private static String REQUEST_DTO_PARAM_NAME = BroadleafRequestFilter.REQUEST_DTO_PARAM_NAME;</span>
+<span class="nc" id="L63">    public static String REPROCESS_PARAM_NAME = &quot;REPROCESS_BLC_REQUEST&quot;;</span>
+    
+    private static final String SITE_STRICT_VALIDATE_PRODUCTION_CHANGES_KEY = &quot;site.strict.validate.production.changes&quot;;
+
+    @Resource(name = &quot;blSiteResolver&quot;)
+    protected BroadleafSiteResolver siteResolver;
+
+    @Resource(name = &quot;blLocaleResolver&quot;)
+    protected BroadleafLocaleResolver localeResolver;
+
+    @Resource(name = &quot;blCurrencyResolver&quot;)
+    protected BroadleafCurrencyResolver currencyResolver;
+
+    @Resource(name = &quot;blSandBoxResolver&quot;)
+    protected BroadleafSandBoxResolver sandboxResolver;
+
+    @Resource(name = &quot;blThemeResolver&quot;)
+    protected BroadleafThemeResolver themeResolver;
+
+    @Resource(name = &quot;messageSource&quot;)
+    protected MessageSource messageSource;
+
+    @Resource(name = &quot;blTimeZoneResolver&quot;)
+    protected BroadleafTimeZoneResolver broadleafTimeZoneResolver;
+    
+<span class="nc" id="L88">    @Value(&quot;${thymeleaf.threadLocalCleanup.enabled}&quot;)</span>
+    protected boolean thymeleafThreadLocalCleanupEnabled = true;
+
+<span class="nc" id="L91">    @Value(&quot;${&quot; + SITE_STRICT_VALIDATE_PRODUCTION_CHANGES_KEY + &quot;:false}&quot;)</span>
+    protected boolean siteStrictValidateProductionChanges = false;
+
+    @Resource(name = &quot;blDeployBehaviorUtil&quot;)
+    protected DeployBehaviorUtil deployBehaviorUtil;
+    
+    @Resource(name=&quot;blEntityExtensionManagers&quot;)
+    protected Map&lt;String, ExtensionManager&gt; entityExtensionManagers;
+    
+    @Override
+    public void process(WebRequest request) {
+<span class="nc" id="L102">        BroadleafRequestContext brc = new BroadleafRequestContext();</span>
+<span class="nc" id="L103">        brc.getAdditionalProperties().putAll(entityExtensionManagers);</span>
+        
+<span class="nc" id="L105">        Site site = siteResolver.resolveSite(request);</span>
+        
+<span class="nc" id="L107">        brc.setSite(site);</span>
+<span class="nc" id="L108">        brc.setWebRequest(request);</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (site == null) {</span>
+<span class="nc" id="L110">            brc.setIgnoreSite(true);</span>
+        }
+<span class="nc" id="L112">        brc.setAdmin(false);</span>
+
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (siteStrictValidateProductionChanges) {</span>
+<span class="nc" id="L115">            brc.setValidateProductionChangesState(ValidateProductionChangesState.SITE);</span>
+        } else {
+<span class="nc" id="L117">            brc.setValidateProductionChangesState(ValidateProductionChangesState.UNDEFINED);</span>
+        }
+
+<span class="nc" id="L120">        BroadleafRequestContext.setBroadleafRequestContext(brc);</span>
+
+<span class="nc" id="L122">        Locale locale = localeResolver.resolveLocale(request);</span>
+<span class="nc" id="L123">        brc.setLocale(locale);</span>
+<span class="nc" id="L124">        TimeZone timeZone = broadleafTimeZoneResolver.resolveTimeZone(request);</span>
+<span class="nc" id="L125">        BroadleafRequestedCurrencyDto currencyDto = currencyResolver.resolveCurrency(request);</span>
+        // Assumes BroadleafProcess
+<span class="nc" id="L127">        RequestDTO requestDTO = (RequestDTO) request.getAttribute(REQUEST_DTO_PARAM_NAME, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        if (requestDTO == null) {</span>
+<span class="nc" id="L129">            requestDTO = new RequestDTOImpl(request);</span>
+        }
+
+<span class="nc" id="L132">        SandBox currentSandbox = sandboxResolver.resolveSandBox(request, site);</span>
+        
+        // When a user elects to switch his sandbox, we want to invalidate the current session. We'll then redirect the 
+        // user to the current URL so that the configured filters trigger again appropriately.
+<span class="nc" id="L136">        Boolean reprocessRequest = (Boolean) request.getAttribute(BroadleafRequestProcessor.REPROCESS_PARAM_NAME, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc bnc" id="L137" title="All 4 branches missed.">        if (reprocessRequest != null &amp;&amp; reprocessRequest) {</span>
+<span class="nc" id="L138">            LOG.debug(&quot;Reprocessing request&quot;);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">            if (request instanceof ServletWebRequest) {</span>
+<span class="nc" id="L140">                HttpServletRequest hsr = ((ServletWebRequest) request).getRequest();</span>
+                
+<span class="nc" id="L142">                clearBroadleafSessionAttrs(request);</span>
+                
+<span class="nc" id="L144">                StringBuffer url = hsr.getRequestURL();</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">                if (hsr.getQueryString() != null) {</span>
+<span class="nc" id="L146">                    url.append('?').append(hsr.getQueryString());</span>
+                }
+                try {
+<span class="nc" id="L149">                    ((ServletWebRequest) request).getResponse().sendRedirect(url.toString());</span>
+<span class="nc" id="L150">                } catch (IOException e) {</span>
+<span class="nc" id="L151">                    throw new RuntimeException(e);</span>
+<span class="nc" id="L152">                }</span>
+<span class="nc" id="L153">                throw new HaltFilterChainException(&quot;Reprocess required, redirecting user&quot;);</span>
+            }
+        }
+        
+        
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        if (currentSandbox != null) {</span>
+<span class="nc" id="L159">            SandBoxContext previewSandBoxContext = new SandBoxContext();</span>
+<span class="nc" id="L160">            previewSandBoxContext.setSandBoxId(currentSandbox.getId());</span>
+<span class="nc" id="L161">            previewSandBoxContext.setPreviewMode(true);</span>
+<span class="nc" id="L162">            SandBoxContext.setSandBoxContext(previewSandBoxContext);</span>
+        }
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        if (currencyDto != null) {</span>
+<span class="nc" id="L165">            brc.setBroadleafCurrency(currencyDto.getCurrencyToUse());</span>
+<span class="nc" id="L166">            brc.setRequestedBroadleafCurrency(currencyDto.getRequestedCurrency());</span>
+        }
+
+<span class="nc" id="L169">        brc.setSandBox(currentSandbox);</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        brc.setDeployBehavior(deployBehaviorUtil.isProductionSandBoxMode() ? DeployBehavior.CLONE_PARENT : DeployBehavior.OVERWRITE_PARENT);</span>
+
+        // Note that this must happen after the request context is set up as resolving a theme is dependent on site
+<span class="nc" id="L173">        Theme theme = themeResolver.resolveTheme(request);</span>
+<span class="nc" id="L174">        brc.setTheme(theme);</span>
+
+<span class="nc" id="L176">        brc.setMessageSource(messageSource);</span>
+<span class="nc" id="L177">        brc.setTimeZone(timeZone);</span>
+<span class="nc" id="L178">        brc.setRequestDTO(requestDTO);</span>
+<span class="nc" id="L179">        Map&lt;String, Object&gt; ruleMap = (Map&lt;String, Object&gt;) request.getAttribute(&quot;blRuleMap&quot;, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">        if (ruleMap == null) {</span>
+<span class="nc" id="L181">            LOG.trace(&quot;Creating ruleMap and adding in Locale.&quot;);</span>
+<span class="nc" id="L182">            ruleMap = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L183">            request.setAttribute(&quot;blRuleMap&quot;, ruleMap, WebRequest.SCOPE_REQUEST);</span>
+        } else {
+<span class="nc" id="L185">            LOG.trace(&quot;Using pre-existing ruleMap - added by non standard BLC process.&quot;);</span>
+        }
+<span class="nc" id="L187">        ruleMap.put(&quot;locale&quot;, locale);</span>
+
+<span class="nc" id="L189">        String adminUserId = request.getParameter(BroadleafRequestFilter.ADMIN_USER_ID_PARAM_NAME);</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if (StringUtils.isNotBlank(adminUserId)) {</span>
+            //TODO: Add token logic to secure the admin user id
+<span class="nc" id="L192">            brc.setAdminUserId(Long.parseLong(adminUserId));</span>
+        }
+
+<span class="nc" id="L195">    }</span>
+
+    @Override
+    public void postProcess(WebRequest request) {
+<span class="nc" id="L199">        ThreadLocalManager.remove();</span>
+<span class="nc" id="L200">    }</span>
+    
+    protected void clearBroadleafSessionAttrs(WebRequest request) {
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L204">            request.removeAttribute(BroadleafLocaleResolverImpl.LOCALE_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+<span class="nc" id="L205">            request.removeAttribute(BroadleafCurrencyResolverImpl.CURRENCY_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+<span class="nc" id="L206">            request.removeAttribute(BroadleafTimeZoneResolverImpl.TIMEZONE_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+<span class="nc" id="L207">            request.removeAttribute(BroadleafSandBoxResolver.SANDBOX_ID_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+
+            // From CustomerStateRequestProcessorImpl, using explicit String because it's out of module
+<span class="nc" id="L210">            request.removeAttribute(&quot;_blc_anonymousCustomer&quot;, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+<span class="nc" id="L211">            request.removeAttribute(&quot;_blc_anonymousCustomerId&quot;, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+        }
+<span class="nc" id="L213">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DateUtil.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">DateUtil.java</span></div><h1>DateUtil.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util;
+
+import org.broadleafcommerce.common.time.SystemTime;
+
+import java.util.Date;
+
+<span class="nc" id="L26">public class DateUtil {</span>
+
+    public static final long ONE_HOUR_MILLIS = 60 * 60 * 1000;
+    public static final long ONE_DAY_MILLIS = ONE_HOUR_MILLIS * 24;
+    public static final long ONE_WEEK_MILLIS = ONE_DAY_MILLIS * 7;
+
+    public static final long ONE_HOUR_SECONDS = 60 * 60;
+    public static final long ONE_DAY_SECONDS = ONE_HOUR_SECONDS * 24;
+    public static final long ONE_WEEK_SECONDS = ONE_DAY_SECONDS * 7;
+    public static final long SIX_MONTHS_SECONDS = ONE_DAY_SECONDS * 6 * 30;
+
+    public static boolean isActive(Date startDate, Date endDate, boolean includeTime) {
+<span class="nc" id="L38">        Long date = SystemTime.asMillis(includeTime);</span>
+<span class="nc bnc" id="L39" title="All 8 branches missed.">        return !(startDate == null || startDate.getTime() &gt;= date || (endDate != null &amp;&amp; endDate.getTime() &lt; date));</span>
+    }
+
+    public static Date getCurrentDateAfterFactoringInDateResolution(Date cachedDate, Long currentDateResolution) {
+<span class="nc" id="L43">        Date returnDate = SystemTime.getCurrentDateWithinTimeResolution(cachedDate, currentDateResolution);</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">        if (returnDate != cachedDate) {</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">            if (SystemTime.shouldCacheDate()) {</span>
+<span class="nc" id="L46">                cachedDate.setTime(returnDate.getTime());</span>
+            }
+        }
+<span class="nc" id="L49">        return returnDate;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

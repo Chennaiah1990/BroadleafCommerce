@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafDefaultResourceResolverChain.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.resource</a> &gt; <span class="el_source">BroadleafDefaultResourceResolverChain.java</span></div><h1>BroadleafDefaultResourceResolverChain.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.resource;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.core.io.Resource;
+import org.springframework.util.Assert;
+import org.springframework.web.servlet.resource.ResourceResolver;
+import org.springframework.web.servlet.resource.ResourceResolverChain;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * This is a straight copy of Spring's DefaultResourceResolverChain  (as of 4.1.6).
+ * 
+ * This had to be copied as Spring set the class scope as  &quot;package&quot; scope thus not 
+ * allowing it to be used or extended.
+ *  
+ * @author bpolster
+ *
+ */
+public class BroadleafDefaultResourceResolverChain implements ResourceResolverChain {
+
+<span class="nc" id="L45">    private final List&lt;ResourceResolver&gt; resolvers = new ArrayList&lt;ResourceResolver&gt;();</span>
+
+<span class="nc" id="L47">    protected static final Log LOG = LogFactory.getLog(BroadleafDefaultResourceResolverChain.class);</span>
+
+<span class="nc" id="L49">    private int index = -1;</span>
+
+<span class="nc" id="L51">    public BroadleafDefaultResourceResolverChain(List&lt;? extends ResourceResolver&gt; resolvers) {</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (resolvers != null) {</span>
+<span class="nc" id="L53">            this.resolvers.addAll(resolvers);</span>
+        }
+<span class="nc" id="L55">    }</span>
+
+    @Override
+    public Resource resolveResource(HttpServletRequest request, String requestPath, List&lt;? extends Resource&gt; locations) {
+<span class="nc" id="L59">        ResourceResolver resolver = getNext();</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (resolver == null) {</span>
+<span class="nc" id="L61">            return null;</span>
+        }
+        try {
+<span class="nc" id="L64">            return resolver.resolveResource(request, requestPath, locations, this);</span>
+        } finally {
+<span class="nc" id="L66">            this.index--;</span>
+        }
+    }
+
+    @Override
+    public String resolveUrlPath(String resourcePath, List&lt;? extends Resource&gt; locations) {
+<span class="nc" id="L72">        ResourceResolver resolver = getNext();</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (resolver == null) {          </span>
+<span class="nc" id="L74">            return null;</span>
+        }
+        try {
+<span class="nc" id="L77">            String returnPath = resolver.resolveUrlPath(resourcePath, locations, this);</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L79">                LOG.trace(&quot;The return path for &quot; + resourcePath + &quot; from resolver &quot; + resolver + &quot; is &quot; + returnPath);</span>
+            }            
+<span class="nc" id="L81">            return returnPath;</span>
+        } finally {
+<span class="nc" id="L83">            this.index--;</span>
+        }
+    }
+
+    private ResourceResolver getNext() {
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        Assert.state(this.index &lt;= this.resolvers.size(),</span>
+                &quot;Current index exceeds the number of configured ResourceResolver's&quot;);
+
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (this.index == (this.resolvers.size() - 1)) {</span>
+<span class="nc" id="L93">            return null;</span>
+        }
+
+<span class="nc" id="L96">        this.index++;</span>
+<span class="nc" id="L97">        return this.resolvers.get(this.index);</span>
+    }
+
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

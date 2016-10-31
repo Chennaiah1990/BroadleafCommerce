@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MonthType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.time</a> &gt; <span class="el_source">MonthType.java</span></div><h1>MonthType.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.time;
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * An extendible enumeration of container shape types.
+ * 
+ * @author jfischer
+ */
+public class MonthType implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L37">    private static final Map&lt;String, MonthType&gt; TYPES = new LinkedHashMap&lt;String, MonthType&gt;();</span>
+
+<span class="nc" id="L39">    public static final MonthType JANUARY  = new MonthType(&quot;1&quot;, &quot;January&quot;);</span>
+<span class="nc" id="L40">    public static final MonthType FEBRUARY  = new MonthType(&quot;2&quot;, &quot;February&quot;);</span>
+<span class="nc" id="L41">    public static final MonthType MARCH  = new MonthType(&quot;3&quot;, &quot;March&quot;);</span>
+<span class="nc" id="L42">    public static final MonthType APRIL  = new MonthType(&quot;4&quot;, &quot;April&quot;);</span>
+<span class="nc" id="L43">    public static final MonthType MAY  = new MonthType(&quot;5&quot;, &quot;May&quot;);</span>
+<span class="nc" id="L44">    public static final MonthType JUNE  = new MonthType(&quot;6&quot;, &quot;June&quot;);</span>
+<span class="nc" id="L45">    public static final MonthType JULY  = new MonthType(&quot;7&quot;, &quot;July&quot;);</span>
+<span class="nc" id="L46">    public static final MonthType AUGUST  = new MonthType(&quot;8&quot;, &quot;August&quot;);</span>
+<span class="nc" id="L47">    public static final MonthType SEPTEMBER  = new MonthType(&quot;9&quot;, &quot;September&quot;);</span>
+<span class="nc" id="L48">    public static final MonthType OCTOBER  = new MonthType(&quot;10&quot;, &quot;October&quot;);</span>
+<span class="nc" id="L49">    public static final MonthType NOVEMBER  = new MonthType(&quot;11&quot;, &quot;November&quot;);</span>
+<span class="nc" id="L50">    public static final MonthType DECEMBER  = new MonthType(&quot;12&quot;, &quot;December&quot;);</span>
+
+    public static MonthType getInstance(final String type) {
+<span class="nc" id="L53">        return TYPES.get(type);</span>
+    }
+
+    private String type;
+    private String friendlyType;
+
+<span class="nc" id="L59">    public MonthType() {</span>
+        //do nothing
+<span class="nc" id="L61">    }</span>
+
+<span class="nc" id="L63">    public MonthType(final String type, final String friendlyType) {</span>
+<span class="nc" id="L64">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L65">        setType(type);</span>
+<span class="nc" id="L66">    }</span>
+
+    public String getType() {
+<span class="nc" id="L69">        return type;</span>
+    }
+
+    public String getFriendlyType() {
+<span class="nc" id="L73">        return friendlyType;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L77">        this.type = type;</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if (!TYPES.containsKey(type)) {</span>
+<span class="nc" id="L79">            TYPES.put(type, this);</span>
+        } else {
+<span class="nc" id="L81">            throw new RuntimeException(&quot;Cannot add the type: (&quot; + type + &quot;). It already exists as a type via &quot; + getInstance(type).getClass().getName());</span>
+        }
+<span class="nc" id="L83">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L87">        final int prime = 31;</span>
+<span class="nc" id="L88">        int result = 1;</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L90">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L96">            return true;</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L98">            return false;</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L100">            return false;</span>
+<span class="nc" id="L101">        MonthType other = (MonthType) obj;</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L104">                return false;</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L106">            return false;</span>
+<span class="nc" id="L107">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HourOfDayType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.time</a> &gt; <span class="el_source">HourOfDayType.java</span></div><h1>HourOfDayType.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.time;
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * An extendible enumeration of container shape types.
+ * 
+ * @author jfischer
+ */
+public class HourOfDayType implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L37">    private static final Map&lt;String, HourOfDayType&gt; TYPES = new LinkedHashMap&lt;String, HourOfDayType&gt;();</span>
+
+<span class="nc" id="L39">    public static final HourOfDayType ZERO  = new HourOfDayType(&quot;0&quot;, &quot;00&quot;);</span>
+<span class="nc" id="L40">    public static final HourOfDayType ONE  = new HourOfDayType(&quot;1&quot;, &quot;01&quot;);</span>
+<span class="nc" id="L41">    public static final HourOfDayType TWO  = new HourOfDayType(&quot;2&quot;, &quot;02&quot;);</span>
+<span class="nc" id="L42">    public static final HourOfDayType THREE  = new HourOfDayType(&quot;3&quot;, &quot;03&quot;);</span>
+<span class="nc" id="L43">    public static final HourOfDayType FOUR  = new HourOfDayType(&quot;4&quot;, &quot;04&quot;);</span>
+<span class="nc" id="L44">    public static final HourOfDayType FIVE  = new HourOfDayType(&quot;5&quot;, &quot;05&quot;);</span>
+<span class="nc" id="L45">    public static final HourOfDayType SIX  = new HourOfDayType(&quot;6&quot;, &quot;06&quot;);</span>
+<span class="nc" id="L46">    public static final HourOfDayType SEVEN  = new HourOfDayType(&quot;7&quot;, &quot;07&quot;);</span>
+<span class="nc" id="L47">    public static final HourOfDayType EIGHT  = new HourOfDayType(&quot;8&quot;, &quot;08&quot;);</span>
+<span class="nc" id="L48">    public static final HourOfDayType NINE  = new HourOfDayType(&quot;9&quot;, &quot;09&quot;);</span>
+<span class="nc" id="L49">    public static final HourOfDayType TEN  = new HourOfDayType(&quot;10&quot;, &quot;10&quot;);</span>
+<span class="nc" id="L50">    public static final HourOfDayType ELEVEN  = new HourOfDayType(&quot;11&quot;, &quot;11&quot;);</span>
+<span class="nc" id="L51">    public static final HourOfDayType TWELVE  = new HourOfDayType(&quot;12&quot;, &quot;12&quot;);</span>
+<span class="nc" id="L52">    public static final HourOfDayType THIRTEEN  = new HourOfDayType(&quot;13&quot;, &quot;13&quot;);</span>
+<span class="nc" id="L53">    public static final HourOfDayType FOURTEEN  = new HourOfDayType(&quot;14&quot;, &quot;14&quot;);</span>
+<span class="nc" id="L54">    public static final HourOfDayType FIFTEEN  = new HourOfDayType(&quot;15&quot;, &quot;15&quot;);</span>
+<span class="nc" id="L55">    public static final HourOfDayType SIXTEEN  = new HourOfDayType(&quot;16&quot;, &quot;16&quot;);</span>
+<span class="nc" id="L56">    public static final HourOfDayType SEVENTEEN  = new HourOfDayType(&quot;17&quot;, &quot;17&quot;);</span>
+<span class="nc" id="L57">    public static final HourOfDayType EIGHTEEN  = new HourOfDayType(&quot;18&quot;, &quot;18&quot;);</span>
+<span class="nc" id="L58">    public static final HourOfDayType NINETEEN  = new HourOfDayType(&quot;19&quot;, &quot;19&quot;);</span>
+<span class="nc" id="L59">    public static final HourOfDayType TWENTY  = new HourOfDayType(&quot;20&quot;, &quot;20&quot;);</span>
+<span class="nc" id="L60">    public static final HourOfDayType TWENTYONE  = new HourOfDayType(&quot;21&quot;, &quot;21&quot;);</span>
+<span class="nc" id="L61">    public static final HourOfDayType TWNETYTWO  = new HourOfDayType(&quot;22&quot;, &quot;22&quot;);</span>
+<span class="nc" id="L62">    public static final HourOfDayType TWENTYTHREE  = new HourOfDayType(&quot;23&quot;, &quot;23&quot;);</span>
+    
+    public static HourOfDayType getInstance(final String type) {
+<span class="nc" id="L65">        return TYPES.get(type);</span>
+    }
+
+    private String type;
+    private String friendlyType;
+
+<span class="nc" id="L71">    public HourOfDayType() {</span>
+        //do nothing
+<span class="nc" id="L73">    }</span>
+
+<span class="nc" id="L75">    public HourOfDayType(final String type, final String friendlyType) {</span>
+<span class="nc" id="L76">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L77">        setType(type);</span>
+<span class="nc" id="L78">    }</span>
+
+    public String getType() {
+<span class="nc" id="L81">        return type;</span>
+    }
+
+    public String getFriendlyType() {
+<span class="nc" id="L85">        return friendlyType;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L89">        this.type = type;</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (!TYPES.containsKey(type)) {</span>
+<span class="nc" id="L91">            TYPES.put(type, this);</span>
+        } else {
+<span class="nc" id="L93">            throw new RuntimeException(&quot;Cannot add the type: (&quot; + type + &quot;). It already exists as a type via &quot; + getInstance(type).getClass().getName());</span>
+        }
+<span class="nc" id="L95">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L99">        final int prime = 31;</span>
+<span class="nc" id="L100">        int result = 1;</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L102">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L108">            return true;</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L110">            return false;</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L112">            return false;</span>
+<span class="nc" id="L113">        HourOfDayType other = (HourOfDayType) obj;</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L116">                return false;</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L118">            return false;</span>
+<span class="nc" id="L119">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

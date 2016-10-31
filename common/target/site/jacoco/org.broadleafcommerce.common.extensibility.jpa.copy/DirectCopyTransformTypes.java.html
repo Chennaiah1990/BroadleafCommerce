@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DirectCopyTransformTypes.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa.copy</a> &gt; <span class="el_source">DirectCopyTransformTypes.java</span></div><h1>DirectCopyTransformTypes.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa.copy;
+
+/**
+ * Constants for tagging an entity class to receive byte code transformation upon
+ * being loaded by the classloader
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L28">public class DirectCopyTransformTypes {</span>
+
+    //Class should receive sandbox related fields
+    public static final String SANDBOX = &quot;sandbox&quot;;
+    //Class should receive fields describing the site to which the entity belongs
+    public static final String MULTITENANT_SITE = &quot;multiTenantSite&quot;;
+    //Class should receive fields describing the catalog to which the entity belongs
+    public static final String MULTITENANT_CATALOG = &quot;multiTenantCatalog&quot;;
+    //Class should receive the Discriminatable marker interface alone
+    public static final String MULTITENANT_SITEMARKER = &quot;multiTenantSiteMarker&quot;;
+    //Class should receive fields describing whether or not the entity was created during a site preview
+    public static final String PREVIEW = &quot;preview&quot;;
+    //Class should receive fields describing site context information for the permission
+    public static final String MULTITENANT_ADMINPERMISSION = &quot;multiTenantAdminPermission&quot;;
+    //Class should receive fields describing site context information for the role
+    public static final String MULTITENANT_ADMINROLE = &quot;multiTenantAdminRole&quot;;
+    //Class should receive fields describing site context information for the user
+    public static final String MULTITENANT_ADMINUSER = &quot;multiTenantAdminUser&quot;;
+    //Class should receive fields describing ARCHIVE STATUS
+    public static final String ARCHIVE_ONLY = &quot;archiveOnly&quot;;
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

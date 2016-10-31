@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafLocaleResolverImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafLocaleResolverImpl.java</span></div><h1>BroadleafLocaleResolverImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.locale.domain.Locale;
+import org.broadleafcommerce.common.locale.service.LocaleService;
+import org.broadleafcommerce.common.util.BLCRequestUtils;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.i18n.CookieLocaleResolver;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * Responsible for returning the Locale to use for the current request.
+ *
+ * @author bpolster
+ */
+@Component(&quot;blLocaleResolver&quot;)
+<span class="nc" id="L41">public class BroadleafLocaleResolverImpl implements BroadleafLocaleResolver {</span>
+<span class="nc" id="L42">    private final Log LOG = LogFactory.getLog(BroadleafLocaleResolverImpl.class);</span>
+    
+    /**
+     * Parameter/Attribute name for the current language
+     */
+<span class="nc" id="L47">    public static String LOCALE_VAR = &quot;blLocale&quot;;</span>
+
+    /**
+     * Parameter/Attribute name for the current language
+     */
+<span class="nc" id="L52">    public static String LOCALE_CODE_PARAM = &quot;blLocaleCode&quot;;</span>
+
+    /**
+     * Attribute indicating that the LOCALE was pulled from session.   Other filters may want to 
+     * behave differently if this is the case.
+     */
+<span class="nc" id="L58">    public static String LOCALE_PULLED_FROM_SESSION = &quot;blLocalePulledFromSession&quot;;</span>
+
+    @Resource(name = &quot;blLocaleService&quot;)
+    private LocaleService localeService;
+
+    @Override
+    public Locale resolveLocale(HttpServletRequest request) {
+<span class="nc" id="L65">        return resolveLocale(new ServletWebRequest(request));</span>
+    }
+
+    @Override
+    public Locale resolveLocale(WebRequest request) {
+<span class="nc" id="L70">        Locale locale = null;</span>
+
+        // First check for request attribute
+<span class="nc" id="L73">        locale = (Locale) request.getAttribute(LOCALE_VAR, WebRequest.SCOPE_REQUEST);</span>
+
+        // Second, check for a request parameter
+<span class="nc bnc" id="L76" title="All 4 branches missed.">        if (locale == null &amp;&amp; BLCRequestUtils.getURLorHeaderParameter(request, LOCALE_CODE_PARAM) != null) {</span>
+<span class="nc" id="L77">            String localeCode = BLCRequestUtils.getURLorHeaderParameter(request, LOCALE_CODE_PARAM);</span>
+<span class="nc" id="L78">            locale = localeService.findLocaleByCode(localeCode);</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L80">                request.removeAttribute(BroadleafCurrencyResolverImpl.CURRENCY_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+            }
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L83">                LOG.trace(&quot;Attempt to find locale by param &quot; + localeCode + &quot; resulted in &quot; + locale);</span>
+            }
+        }
+
+        // Third, check the session
+<span class="nc bnc" id="L88" title="All 4 branches missed.">        if (locale == null &amp;&amp; BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L89">            locale = (Locale) request.getAttribute(LOCALE_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L91">                LOG.trace(&quot;Attempt to find locale from session resulted in &quot; + locale);</span>
+            }
+
+<span class="nc bnc" id="L94" title="All 2 branches missed.">            if (locale != null) {</span>
+<span class="nc" id="L95">                request.setAttribute(LOCALE_PULLED_FROM_SESSION, Boolean.TRUE, WebRequest.SCOPE_REQUEST);</span>
+            }
+
+        }
+
+        // Finally, use the default
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (locale == null) {</span>
+<span class="nc" id="L102">            locale = localeService.findDefaultLocale();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L104">                request.removeAttribute(BroadleafCurrencyResolverImpl.CURRENCY_VAR, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+            }
+<span class="nc bnc" id="L106" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L107">                LOG.trace(&quot;Locale set to default locale &quot; + locale);</span>
+            }
+        }
+        
+        // Set the default locale to override Spring's cookie resolver
+<span class="nc" id="L112">        request.setAttribute(LOCALE_VAR, locale, WebRequest.SCOPE_REQUEST);</span>
+<span class="nc" id="L113">        java.util.Locale javaLocale = BroadleafRequestContext.convertLocaleToJavaLocale(locale);</span>
+<span class="nc" id="L114">        request.setAttribute(CookieLocaleResolver.LOCALE_REQUEST_ATTRIBUTE_NAME, javaLocale, WebRequest.SCOPE_REQUEST);</span>
+
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (BLCRequestUtils.isOKtoUseSession(request)) {</span>
+<span class="nc" id="L117">            request.setAttribute(LOCALE_VAR, locale, WebRequest.SCOPE_GLOBAL_SESSION);</span>
+        }
+<span class="nc" id="L119">        return locale;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

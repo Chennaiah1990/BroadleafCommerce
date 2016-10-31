@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafAbstractController.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.controller</a> &gt; <span class="el_source">BroadleafAbstractController.java</span></div><h1>BroadleafAbstractController.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.controller;
+
+import org.apache.commons.lang3.StringUtils;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.broadleafcommerce.common.web.deeplink.DeepLink;
+import org.broadleafcommerce.common.web.deeplink.DeepLinkService;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * An abstract controller that provides convenience methods and resource declarations for its  children
+ * 
+ * Operations that are shared between all controllers belong here.   To use composition rather than
+ * extension, implementors can utilize BroadleafControllerUtility.
+ * 
+ * @see BroadleafControllerUtility
+ * 
+ * @author apazzolini
+ * @author bpolster
+ */
+<span class="nc" id="L50">public abstract class BroadleafAbstractController {</span>
+    
+    
+    /**
+     * A helper method that returns whether or not the given request was invoked via an AJAX call
+     * 
+     * @param request
+     * @return - whether or not it was an AJAX request
+     */
+    protected boolean isAjaxRequest(HttpServletRequest request) {
+<span class="nc" id="L60">        return BroadleafControllerUtility.isAjaxRequest(request);       </span>
+    }
+    
+    /**
+     * Returns the current servlet context path. This will return a &quot;/&quot; if the application is
+     * deployed as root. If it's not deployed as root, it will return the context path BOTH a 
+     * leading slash but without a trailing slash.
+     * 
+     * @param request
+     * @return the context path
+     */
+    protected String getContextPath(HttpServletRequest request) {
+<span class="nc" id="L72">        String ctxPath = request.getContextPath();</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (StringUtils.isBlank(ctxPath)) {</span>
+<span class="nc" id="L74">            return &quot;/&quot;;</span>
+        } else {
+<span class="nc bnc" id="L76" title="All 2 branches missed.">            if (ctxPath.charAt(0) != '/') {</span>
+<span class="nc" id="L77">                ctxPath = '/' + ctxPath;</span>
+            }
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            if (ctxPath.charAt(ctxPath.length() - 1) != '/') {</span>
+<span class="nc" id="L80">                ctxPath = ctxPath + '/';</span>
+            }
+            
+<span class="nc" id="L83">            return ctxPath;</span>
+        }
+        
+    }
+    
+    protected &lt;T&gt; void addDeepLink(ModelAndView model, DeepLinkService&lt;T&gt; service, T item) {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (service == null) {</span>
+<span class="nc" id="L90">            return;</span>
+        }
+
+<span class="nc" id="L93">        BroadleafRequestContext brc = BroadleafRequestContext.getBroadleafRequestContext();</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if (brc.getSandBox() != null) {</span>
+<span class="nc" id="L95">            List&lt;DeepLink&gt; links = service.getLinks(item);</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">            if (links.size() == 1) {</span>
+<span class="nc" id="L97">                model.addObject(&quot;adminDeepLink&quot;, links.get(0));</span>
+            } else {
+<span class="nc" id="L99">                model.addObject(&quot;adminDeepLink&quot;, links);</span>
+            }
+        }
+<span class="nc" id="L102">    }</span>
+    
+    /**
+     * Typically, controller methods are set to return a String that points to the necessary template path.
+     * 
+     * However, there may be occasions where the error state for a controller action should instead return
+     * JSON instead of a fully rendered template. This convenience method will achieve that by setting the
+     * appropriate headers and serializing the given map.
+     * 
+     * @param response
+     * @param responseMap
+     * @throws JsonGenerationException
+     * @throws JsonMappingException
+     * @throws IOException
+     */
+    protected String jsonResponse(HttpServletResponse response, Map&lt;?, ?&gt; responseMap) 
+            throws JsonGenerationException, JsonMappingException, IOException {
+<span class="nc" id="L119">        response.setHeader(&quot;Content-Type&quot;, &quot;application/json&quot;);</span>
+<span class="nc" id="L120">        new ObjectMapper().writeValue(response.getWriter(), responseMap);</span>
+<span class="nc" id="L121">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

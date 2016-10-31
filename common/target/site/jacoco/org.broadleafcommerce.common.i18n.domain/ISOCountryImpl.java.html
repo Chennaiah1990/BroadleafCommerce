@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ISOCountryImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.i18n.domain</a> &gt; <span class="el_source">ISOCountryImpl.java</span></div><h1>ISOCountryImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.i18n.domain;
+
+import org.broadleafcommerce.common.admin.domain.AdminMainEntity;
+import org.broadleafcommerce.common.copy.CreateResponse;
+import org.broadleafcommerce.common.copy.MultiTenantCopyContext;
+import org.broadleafcommerce.common.i18n.service.type.ISOCodeStatusType;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+
+import javax.persistence.Entity;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.Table;
+import javax.persistence.Id;
+import javax.persistence.Column;
+
+
+/**
+ * @author Elbert Bautista (elbertbautista)
+ */
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name = &quot;BLC_ISO_COUNTRY&quot;)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region=&quot;blStandardElements&quot;)
+@AdminPresentationClass(friendlyName = &quot;ISOCountryImpl_baseCountry&quot;)
+<span class="nc" id="L47">public class ISOCountryImpl implements ISOCountry, AdminMainEntity {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Column(name = &quot;ALPHA_2&quot;)
+    @AdminPresentation(friendlyName = &quot;ISOCountryImpl_Alpha2&quot;, order=1, group = &quot;ISOCountryImpl_Details&quot;, prominent = true)
+    protected String alpha2;
+
+    @Column(name = &quot;NAME&quot;)
+    @AdminPresentation(friendlyName = &quot;ISOCountryImpl_Name&quot;, order=2, group = &quot;ISOCountryImpl_Details&quot;, prominent = true)
+    protected String name;
+
+    @Column(name = &quot;ALPHA_3&quot;)
+    protected String alpha3;
+
+    @Column(name = &quot;NUMERIC_CODE&quot;)
+    protected Integer numericCode;
+
+    @Column(name = &quot;STATUS&quot;)
+    protected String status;
+
+    @Override
+    public String getAlpha2() {
+<span class="nc" id="L71">        return alpha2;</span>
+    }
+
+    @Override
+    public void setAlpha2(String alpha2) {
+<span class="nc" id="L76">        this.alpha2 = alpha2;</span>
+<span class="nc" id="L77">    }</span>
+
+    @Override
+    public String getName() {
+<span class="nc" id="L81">        return name;</span>
+    }
+
+    @Override
+    public void setName(String name) {
+<span class="nc" id="L86">        this.name = name;</span>
+<span class="nc" id="L87">    }</span>
+
+    @Override
+    public String getAlpha3() {
+<span class="nc" id="L91">        return alpha3;</span>
+    }
+
+    @Override
+    public void setAlpha3(String alpha3) {
+<span class="nc" id="L96">        this.alpha3 = alpha3;</span>
+<span class="nc" id="L97">    }</span>
+
+    @Override
+    public Integer getNumericCode() {
+<span class="nc" id="L101">        return numericCode;</span>
+    }
+
+    @Override
+    public void setNumericCode(Integer numericCode) {
+<span class="nc" id="L106">        this.numericCode = numericCode;</span>
+<span class="nc" id="L107">    }</span>
+
+    @Override
+    public ISOCodeStatusType getStatus() {
+<span class="nc" id="L111">        return ISOCodeStatusType.getInstance(status);</span>
+    }
+
+    @Override
+    public void setStatus(ISOCodeStatusType status) {
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        this.status = status == null ? null : status.getType();</span>
+<span class="nc" id="L117">    }</span>
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L122">            return true;</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L124">            return false;</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L126">            return false;</span>
+<span class="nc" id="L127">        ISOCountryImpl other = (ISOCountryImpl) obj;</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        if (alpha2 == null) {</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">            if (other.alpha2 != null)</span>
+<span class="nc" id="L130">                return false;</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        } else if (!alpha2.equals(other.alpha2))</span>
+<span class="nc" id="L132">            return false;</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (name == null) {</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">            if (other.name != null)</span>
+<span class="nc" id="L135">                return false;</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        } else if (!name.equals(other.name))</span>
+<span class="nc" id="L137">            return false;</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (alpha3 == null) {</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">            if (other.alpha3 != null)</span>
+<span class="nc" id="L140">                return false;</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        } else if (!alpha3.equals(other.alpha3))</span>
+<span class="nc" id="L142">            return false;</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (numericCode == null) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            if (other.numericCode != null)</span>
+<span class="nc" id="L145">                return false;</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">        } else if (!numericCode.equals(other.numericCode))</span>
+<span class="nc" id="L147">            return false;</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (status == null) {</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">            if (other.status != null)</span>
+<span class="nc" id="L150">                return false;</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        } else if (!status.equals(other.status))</span>
+<span class="nc" id="L152">            return false;</span>
+<span class="nc" id="L153">        return true;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L158">        final int prime = 31;</span>
+<span class="nc" id="L159">        int result = 1;</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        result = prime * result + ((alpha2 == null) ? 0 : alpha2.hashCode());</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        result = prime * result + ((name == null) ? 0 : name.hashCode());</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        result = prime * result + ((alpha3 == null) ? 0 : alpha3.hashCode());</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        result = prime * result + ((numericCode == null) ? 0 : numericCode.hashCode());</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        result = prime * result + ((status == null) ? 0 : status.hashCode());</span>
+<span class="nc" id="L165">        return result;</span>
+    }
+
+    @Override
+    public String getMainEntityName() {
+<span class="nc" id="L170">        return getName();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

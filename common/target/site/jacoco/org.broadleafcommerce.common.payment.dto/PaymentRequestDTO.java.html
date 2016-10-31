@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PaymentRequestDTO.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment.dto</a> &gt; <span class="el_source">PaymentRequestDTO.java</span></div><h1>PaymentRequestDTO.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.payment.dto;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * &lt;p&gt;
+ *     A DTO that is comprised of all the information that is sent to a Payment Gateway
+ *     to complete a transaction. This DTO uses a modified builder pattern in order to
+ *     provide an easy way of constructing the request. You can construct a DTO
+ *     using the following notation:
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ *     IMPORTANT: note that some of the convenience methods generate a new instance of the object.
+ *     (e.g. billTo, shipTo, etc...) So, if you need to modify the shipping or billing information
+ *     after you have invoked requestDTO.shipTo()..., use the getShipTo() method to append more information.
+ *     Otherwise, you will overwrite the shipping information with a new instance.
+ * &lt;/p&gt;
+ *
+ * &lt;pre&gt;&lt;code&gt;
+ *      PaymentRequestDTO requestDTO = new PaymentRequestDTO()
+ *          .orderId(referenceNumber)
+ *          .customer()
+ *              .customerId(&quot;1&quot;)
+ *              .done()
+ *          .shipTo()
+ *              .addressFirstName(&quot;Bill&quot;)
+ *              .addressLastName(&quot;Broadleaf&quot;)
+ *              .addressLine1(&quot;123 Test Dr.&quot;)
+ *              .addressCityLocality(&quot;Austin&quot;)
+ *              .addressStateRegion(&quot;TX&quot;)
+ *              .addressPostalCode(&quot;78759&quot;)
+ *              .done()
+ *          .billTo()
+ *              .addressFirstName(&quot;Bill&quot;)
+ *              .addressLastName(&quot;Broadleaf&quot;)
+ *              .addressLine1(&quot;123 Test Dr.&quot;)
+ *              .addressCityLocality(&quot;Austin&quot;)
+ *              .addressStateRegion(&quot;TX&quot;)
+ *              .addressPostalCode(&quot;78759&quot;)
+ *              .done()
+ *          .shippingTotal(&quot;0&quot;)
+ *          .taxTotal(&quot;0&quot;)
+ *          .orderCurrencyCode(&quot;USD&quot;)
+ *          .orderDescription(&quot;My Order Description&quot;)
+ *          .orderSubtotal(&quot;10.00&quot;)
+ *          .transactionTotal(&quot;10.00&quot;)
+ *          .lineItem()
+ *              .name(&quot;My Product&quot;)
+ *              .description(&quot;My Product Description&quot;)
+ *              .shortDescription(&quot;My Product Short Description&quot;)
+ *              .systemId(&quot;1&quot;)
+ *              .amount(&quot;10.00&quot;)
+ *              .quantity(&quot;1&quot;)
+ *              .itemTotal(&quot;10.00&quot;)
+ *              .tax(&quot;0&quot;)
+ *              .total(&quot;10.00&quot;)
+ *              .done();
+ * &lt;/code&gt;&lt;/pre&gt;
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+public class PaymentRequestDTO {
+
+    protected GatewayCustomerDTO&lt;PaymentRequestDTO&gt; customer;
+    protected AddressDTO&lt;PaymentRequestDTO&gt; shipTo;
+    protected AddressDTO&lt;PaymentRequestDTO&gt; billTo;
+    protected CreditCardDTO&lt;PaymentRequestDTO&gt; creditCard;
+    protected SubscriptionDTO&lt;PaymentRequestDTO&gt; subscription;
+    protected List&lt;GiftCardDTO&lt;PaymentRequestDTO&gt;&gt; giftCards;
+    protected List&lt;CustomerCreditDTO&lt;PaymentRequestDTO&gt;&gt; customerCredits;
+    protected List&lt;LineItemDTO&gt; lineItems;
+    protected Map&lt;String, Object&gt; additionalFields;
+
+    protected String orderId;
+    protected String orderCurrencyCode;
+    protected String orderDescription;
+    protected String orderSubtotal;
+    protected String shippingTotal;
+    protected String taxTotal;
+    protected String transactionTotal;
+
+<span class="nc" id="L105">    protected boolean completeCheckoutOnCallback = true;</span>
+
+<span class="nc" id="L107">    public PaymentRequestDTO() {</span>
+<span class="nc" id="L108">        this.giftCards = new ArrayList&lt;GiftCardDTO&lt;PaymentRequestDTO&gt;&gt;();</span>
+<span class="nc" id="L109">        this.customerCredits = new ArrayList&lt;CustomerCreditDTO&lt;PaymentRequestDTO&gt;&gt;();</span>
+<span class="nc" id="L110">        this.lineItems = new ArrayList&lt;LineItemDTO&gt;();</span>
+<span class="nc" id="L111">        this.additionalFields = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L112">    }</span>
+
+    /**
+     * You should only call this once, as it will create a new customer
+     * if called more than once. Use the getter if you need to append more information later.
+     */
+    public GatewayCustomerDTO&lt;PaymentRequestDTO&gt; customer() {
+<span class="nc" id="L119">        customer = new GatewayCustomerDTO&lt;PaymentRequestDTO&gt;(this);</span>
+<span class="nc" id="L120">        return customer;</span>
+    }
+
+    /**
+     * You should only call this once, as it will create a new credit card
+     * if called more than once. Use the getter if you need to append more information later.
+     */
+    public CreditCardDTO&lt;PaymentRequestDTO&gt; creditCard() {
+<span class="nc" id="L128">        creditCard = new CreditCardDTO&lt;PaymentRequestDTO&gt;(this);</span>
+<span class="nc" id="L129">        return creditCard;</span>
+    }
+
+    /**
+     * You should only call this once, as it will create a new subscription
+     * if called more than once. Use the getter if you need to append more information later.
+     */
+    public SubscriptionDTO&lt;PaymentRequestDTO&gt; subscription() {
+<span class="nc" id="L137">        subscription = new SubscriptionDTO&lt;PaymentRequestDTO&gt;(this);</span>
+<span class="nc" id="L138">        return subscription;</span>
+    }
+
+    /**
+     * You should only call this once, as it will create a new customer
+     * if called more than once. Use the getter if you need to append more information later.
+     */
+    public AddressDTO&lt;PaymentRequestDTO&gt; shipTo() {
+<span class="nc" id="L146">        shipTo = new AddressDTO&lt;PaymentRequestDTO&gt;(this);</span>
+<span class="nc" id="L147">        return shipTo;</span>
+    }
+
+    /**
+     * You should only call this once, as it will create a new bill to address
+     * if called more than once. Use the getter if you need to append more information later.
+     */
+    public AddressDTO&lt;PaymentRequestDTO&gt; billTo() {
+<span class="nc" id="L155">        billTo = new AddressDTO&lt;PaymentRequestDTO&gt;(this);</span>
+<span class="nc" id="L156">        return billTo;</span>
+    }
+
+    /**
+     * You should only call this once, as it will create a new gift card
+     * if called more than once. Use the getter if you need to append more information later.
+     */
+    public GiftCardDTO&lt;PaymentRequestDTO&gt; giftCard() {
+<span class="nc" id="L164">        GiftCardDTO&lt;PaymentRequestDTO&gt; giftCardDTO = new GiftCardDTO&lt;PaymentRequestDTO&gt;(this);</span>
+<span class="nc" id="L165">        giftCards.add(giftCardDTO);</span>
+<span class="nc" id="L166">        return giftCardDTO;</span>
+    }
+
+    /**
+     * You should only call this once, as it will create a new gift card
+     * if called more than once. Use the getter if you need to append more information later.
+     */
+    public CustomerCreditDTO&lt;PaymentRequestDTO&gt; customerCredit() {
+<span class="nc" id="L174">        CustomerCreditDTO&lt;PaymentRequestDTO&gt; customerCreditDTO = new CustomerCreditDTO&lt;PaymentRequestDTO&gt;(this);</span>
+<span class="nc" id="L175">        customerCredits.add(customerCreditDTO);</span>
+<span class="nc" id="L176">        return customerCreditDTO;</span>
+    }
+
+    public LineItemDTO lineItem() {
+<span class="nc" id="L180">        return new LineItemDTO(this);</span>
+    }
+
+    public PaymentRequestDTO additionalField(String key, Object value) {
+<span class="nc" id="L184">        additionalFields.put(key, value);</span>
+<span class="nc" id="L185">        return this;</span>
+    }
+
+    public PaymentRequestDTO orderId(String orderId) {
+<span class="nc" id="L189">        this.orderId = orderId;</span>
+<span class="nc" id="L190">        return this;</span>
+    }
+
+    public PaymentRequestDTO orderCurrencyCode(String orderCurrencyCode) {
+<span class="nc" id="L194">        this.orderCurrencyCode = orderCurrencyCode;</span>
+<span class="nc" id="L195">        return this;</span>
+    }
+
+    public PaymentRequestDTO orderDescription(String orderDescription) {
+<span class="nc" id="L199">        this.orderDescription = orderDescription;</span>
+<span class="nc" id="L200">        return this;</span>
+    }
+
+    public PaymentRequestDTO orderSubtotal(String orderSubtotal) {
+<span class="nc" id="L204">        this.orderSubtotal = orderSubtotal;</span>
+<span class="nc" id="L205">        return this;</span>
+    }
+
+    public PaymentRequestDTO shippingTotal(String shippingTotal) {
+<span class="nc" id="L209">        this.shippingTotal = shippingTotal;</span>
+<span class="nc" id="L210">        return this;</span>
+    }
+
+    public PaymentRequestDTO taxTotal(String taxTotal) {
+<span class="nc" id="L214">        this.taxTotal = taxTotal;</span>
+<span class="nc" id="L215">        return this;</span>
+    }
+
+    public PaymentRequestDTO transactionTotal(String transactionTotal) {
+<span class="nc" id="L219">        this.transactionTotal = transactionTotal;</span>
+<span class="nc" id="L220">        return this;</span>
+    }
+
+    public PaymentRequestDTO completeCheckoutOnCallback(boolean completeCheckoutOnCallback) {
+<span class="nc" id="L224">        this.completeCheckoutOnCallback = completeCheckoutOnCallback;</span>
+<span class="nc" id="L225">        return this;</span>
+    }
+
+    public List&lt;LineItemDTO&gt; getLineItems() {
+<span class="nc" id="L229">        return lineItems;</span>
+    }
+
+    public List&lt;GiftCardDTO&lt;PaymentRequestDTO&gt;&gt; getGiftCards() {
+<span class="nc" id="L233">        return giftCards;</span>
+    }
+
+    public List&lt;CustomerCreditDTO&lt;PaymentRequestDTO&gt;&gt; getCustomerCredits() {
+<span class="nc" id="L237">        return customerCredits;</span>
+    }
+
+    public AddressDTO&lt;PaymentRequestDTO&gt; getShipTo() {
+<span class="nc" id="L241">        return shipTo;</span>
+    }
+
+    public AddressDTO&lt;PaymentRequestDTO&gt; getBillTo() {
+<span class="nc" id="L245">        return billTo;</span>
+    }
+
+    public CreditCardDTO&lt;PaymentRequestDTO&gt; getCreditCard() {
+<span class="nc" id="L249">        return creditCard;</span>
+    }
+
+    public SubscriptionDTO&lt;PaymentRequestDTO&gt; getSubscription() {
+<span class="nc" id="L253">        return subscription;</span>
+    }
+
+    public GatewayCustomerDTO&lt;PaymentRequestDTO&gt; getCustomer() {
+<span class="nc" id="L257">        return customer;</span>
+    }
+
+    public Map&lt;String, Object&gt; getAdditionalFields() {
+<span class="nc" id="L261">        return additionalFields;</span>
+    }
+
+    public String getOrderId() {
+<span class="nc" id="L265">        return orderId;</span>
+    }
+
+    public String getOrderCurrencyCode() {
+<span class="nc" id="L269">        return orderCurrencyCode;</span>
+    }
+
+    public String getOrderDescription() {
+<span class="nc" id="L273">        return orderDescription;</span>
+    }
+
+    public String getOrderSubtotal() {
+<span class="nc" id="L277">        return orderSubtotal;</span>
+    }
+
+    public String getShippingTotal() {
+<span class="nc" id="L281">        return shippingTotal;</span>
+    }
+
+    public String getTaxTotal() {
+<span class="nc" id="L285">        return taxTotal;</span>
+    }
+
+    public String getTransactionTotal() {
+<span class="nc" id="L289">        return transactionTotal;</span>
+    }
+
+    public boolean isCompleteCheckoutOnCallback() {
+<span class="nc" id="L293">        return completeCheckoutOnCallback;</span>
+    }
+
+    public boolean shipToPopulated() {
+<span class="nc bnc" id="L297" title="All 4 branches missed.">        return (getShipTo() != null &amp;&amp; getShipTo().addressPopulated());</span>
+    }
+
+    public boolean billToPopulated() {
+<span class="nc bnc" id="L301" title="All 4 branches missed.">        return (getBillTo() != null &amp;&amp; getBillTo().addressPopulated());</span>
+    }
+
+    public boolean creditCardPopulated() {
+<span class="nc bnc" id="L305" title="All 4 branches missed.">        return (getCreditCard() != null &amp;&amp; getCreditCard().creditCardPopulated());</span>
+    }
+
+    public boolean customerPopulated() {
+<span class="nc bnc" id="L309" title="All 4 branches missed.">        return (getCustomer() != null &amp;&amp; getCustomer().customerPopulated());</span>
+    }
+
+    public boolean subscriptionPopulated() {
+<span class="nc bnc" id="L313" title="All 4 branches missed.">        return (getSubscription() != null &amp;&amp; getSubscription().subscriptionPopulated());</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

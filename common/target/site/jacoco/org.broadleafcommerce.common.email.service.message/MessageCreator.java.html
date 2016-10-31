@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MessageCreator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.email.service.message</a> &gt; <span class="el_source">MessageCreator.java</span></div><h1>MessageCreator.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.email.service.message;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.broadleafcommerce.common.email.domain.EmailTarget;
+import org.broadleafcommerce.common.email.service.info.EmailInfo;
+import org.springframework.mail.MailException;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.mail.javamail.MimeMessagePreparator;
+
+import java.util.Map;
+
+import javax.mail.internet.MimeMessage;
+import javax.mail.util.ByteArrayDataSource;
+
+public abstract class MessageCreator {
+
+    private JavaMailSender mailSender;
+
+<span class="nc" id="L40">    public MessageCreator(JavaMailSender mailSender) {</span>
+<span class="nc" id="L41">        this.mailSender = mailSender;</span>
+<span class="nc" id="L42">    }</span>
+
+    public void sendMessage(final Map&lt;String, Object&gt; props) throws MailException {
+<span class="nc" id="L45">        MimeMessagePreparator preparator = buildMimeMessagePreparator(props);</span>
+<span class="nc" id="L46">        this.mailSender.send(preparator);</span>
+<span class="nc" id="L47">    }</span>
+
+    public abstract String buildMessageBody(EmailInfo info, Map&lt;String, Object&gt; props);
+
+    public MimeMessagePreparator buildMimeMessagePreparator(final Map&lt;String, Object&gt; props) {
+<span class="nc" id="L52">        MimeMessagePreparator preparator = new MimeMessagePreparator() {</span>
+
+            @Override
+            public void prepare(MimeMessage mimeMessage) throws Exception {
+<span class="nc" id="L56">                EmailTarget emailUser = (EmailTarget) props.get(EmailPropertyType.USER.getType());</span>
+<span class="nc" id="L57">                EmailInfo info = (EmailInfo) props.get(EmailPropertyType.INFO.getType());</span>
+<span class="nc" id="L58">                boolean isMultipart = CollectionUtils.isNotEmpty(info.getAttachments());</span>
+<span class="nc" id="L59">                MimeMessageHelper message = new MimeMessageHelper(mimeMessage, isMultipart, info.getEncoding());</span>
+<span class="nc" id="L60">                message.setTo(emailUser.getEmailAddress());</span>
+<span class="nc" id="L61">                message.setFrom(info.getFromAddress());</span>
+<span class="nc" id="L62">                message.setSubject(info.getSubject());</span>
+<span class="nc bnc" id="L63" title="All 4 branches missed.">                if (emailUser.getBCCAddresses() != null &amp;&amp; emailUser.getBCCAddresses().length &gt; 0) {</span>
+<span class="nc" id="L64">                    message.setBcc(emailUser.getBCCAddresses());</span>
+                }
+<span class="nc bnc" id="L66" title="All 4 branches missed.">                if (emailUser.getCCAddresses() != null &amp;&amp; emailUser.getCCAddresses().length &gt; 0) {</span>
+<span class="nc" id="L67">                    message.setCc(emailUser.getCCAddresses());</span>
+                }
+<span class="nc" id="L69">                String messageBody = info.getMessageBody();</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">                if (messageBody == null) {</span>
+<span class="nc" id="L71">                    messageBody = buildMessageBody(info, props);</span>
+                }
+<span class="nc" id="L73">                message.setText(messageBody, true);</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">                for (Attachment attachment : info.getAttachments()) {</span>
+<span class="nc" id="L75">                    ByteArrayDataSource dataSource = new ByteArrayDataSource(attachment.getData(), attachment.getMimeType());</span>
+<span class="nc" id="L76">                    message.addAttachment(attachment.getFilename(), dataSource);</span>
+<span class="nc" id="L77">                }</span>
+<span class="nc" id="L78">            }</span>
+        };
+<span class="nc" id="L80">        return preparator;</span>
+
+    }
+
+    public JavaMailSender getMailSender() {
+<span class="nc" id="L85">        return mailSender;</span>
+    }
+
+    public void setMailSender(JavaMailSender mailSender) {
+<span class="nc" id="L89">        this.mailSender = mailSender;</span>
+<span class="nc" id="L90">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

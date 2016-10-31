@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HydrationScanner.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.cache.engine</a> &gt; <span class="el_source">HydrationScanner.java</span></div><h1>HydrationScanner.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.cache.engine;
+
+import org.broadleafcommerce.common.cache.Hydrated;
+import org.hibernate.annotations.Cache;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.Attribute;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.EmptyVisitor;
+
+import javax.persistence.Id;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 
+ * @author jfischer
+ *
+ */
+public class HydrationScanner implements ClassVisitor, FieldVisitor, AnnotationVisitor {
+    
+    private static final int CLASSSTAGE = 0;
+    private static final int FIELDSTAGE = 1;
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L51">    public HydrationScanner(Class topEntityClass, Class entityClass) {</span>
+<span class="nc" id="L52">        this.topEntityClass = topEntityClass;</span>
+<span class="nc" id="L53">        this.entityClass = entityClass;</span>
+<span class="nc" id="L54">    }</span>
+    
+    private String cacheRegion;
+<span class="nc" id="L57">    private Map&lt;String, Method[]&gt; idMutators = new HashMap&lt;String, Method[]&gt;();</span>
+<span class="nc" id="L58">    private Map&lt;String, HydrationItemDescriptor&gt; cacheMutators = new HashMap&lt;String, HydrationItemDescriptor&gt;();</span>
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private final Class entityClass;
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private final Class topEntityClass;
+    
+<span class="nc" id="L64">    private int stage = CLASSSTAGE;</span>
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private Class clazz;
+    private String annotation;
+    private String fieldName;
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private Class fieldClass;
+    
+    public void init() {
+        try {
+<span class="nc" id="L74">            InputStream in = HydrationScanner.class.getClassLoader().getResourceAsStream(topEntityClass.getName().replace('.', '/') + &quot;.class&quot;);</span>
+<span class="nc" id="L75">            new ClassReader(in).accept(this, ClassReader.SKIP_DEBUG);</span>
+<span class="nc" id="L76">            in = HydrationScanner.class.getClassLoader().getResourceAsStream(entityClass.getName().replace('.', '/') + &quot;.class&quot;);</span>
+<span class="nc" id="L77">            new ClassReader(in).accept(this, ClassReader.SKIP_DEBUG);</span>
+<span class="nc" id="L78">        } catch (IOException e) {</span>
+<span class="nc" id="L79">            throw new RuntimeException(e);</span>
+<span class="nc" id="L80">        }</span>
+<span class="nc" id="L81">    }</span>
+    
+    public String getCacheRegion() {
+<span class="nc" id="L84">        return cacheRegion;</span>
+    }
+
+    public Map&lt;String, Method[]&gt; getIdMutators() {
+<span class="nc" id="L88">        return idMutators;</span>
+    }
+
+    public Map&lt;String, HydrationItemDescriptor&gt; getCacheMutators() {
+<span class="nc" id="L92">        return cacheMutators;</span>
+    }
+
+    //Common
+    public AnnotationVisitor visitAnnotation(String arg0, boolean arg1) {
+<span class="nc" id="L97">        Type annotationType = Type.getType(arg0);</span>
+<span class="nc bnc" id="L98" title="All 3 branches missed.">        switch(stage) {</span>
+        case CLASSSTAGE: {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">            if (annotationType.getClassName().equals(Cache.class.getName())){</span>
+<span class="nc" id="L101">                annotation = Cache.class.getName();</span>
+            }
+            break;
+        }
+        case FIELDSTAGE: {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">            if (annotationType.getClassName().equals(Id.class.getName())){</span>
+<span class="nc" id="L107">                idMutators.put(fieldName, retrieveMutators());</span>
+            }
+<span class="nc bnc" id="L109" title="All 2 branches missed.">            if (annotationType.getClassName().equals(Hydrated.class.getName())){</span>
+<span class="nc" id="L110">                annotation = Hydrated.class.getName();</span>
+            }
+            break;
+        }
+        default : {
+<span class="nc" id="L115">            annotation = null;</span>
+<span class="nc" id="L116">            fieldName = null;</span>
+            break;
+        }
+        }
+<span class="nc" id="L120">        return this;</span>
+    }
+    
+    private Method[] retrieveMutators() {
+<span class="nc" id="L124">        String mutatorName = fieldName.substring(0,1).toUpperCase() + fieldName.substring(1, fieldName.length());</span>
+<span class="nc" id="L125">        Method getMethod = null;</span>
+        try {
+<span class="nc" id="L127">            getMethod = clazz.getMethod(&quot;get&quot;+mutatorName, new Class[]{});</span>
+<span class="nc" id="L128">        } catch (Exception e) {</span>
+            //do nothing
+<span class="nc" id="L130">        }</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (getMethod == null) {</span>
+            try {
+<span class="nc" id="L133">                getMethod = clazz.getMethod(&quot;is&quot;+mutatorName, new Class[]{});</span>
+<span class="nc" id="L134">            } catch (Exception e) {</span>
+                //do nothing
+<span class="nc" id="L136">            }</span>
+        }
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (getMethod == null) {</span>
+            try {
+<span class="nc" id="L140">                getMethod = clazz.getMethod(fieldName, new Class[]{});</span>
+<span class="nc" id="L141">            } catch (Exception e) {</span>
+                //do nothing
+<span class="nc" id="L143">            }</span>
+        }
+<span class="nc" id="L145">        Method setMethod = null;</span>
+        try {
+<span class="nc" id="L147">            setMethod = clazz.getMethod(&quot;set&quot;+mutatorName, new Class[]{fieldClass});</span>
+<span class="nc" id="L148">        } catch (Exception e) {</span>
+            //do nothing
+<span class="nc" id="L150">        }</span>
+<span class="nc bnc" id="L151" title="All 4 branches missed.">        if (getMethod == null || setMethod == null) {</span>
+<span class="nc" id="L152">            throw new RuntimeException(&quot;Unable to find a getter and setter method for the AdminPresentation field: &quot; + fieldName + &quot;. Make sure you have a getter method entitled: get&quot; + mutatorName + &quot;(), or is&quot; + mutatorName + &quot;(), or &quot; + fieldName + &quot;(). Make sure you have a setter method entitled: set&quot; + mutatorName + &quot;(..).&quot;);</span>
+        }
+<span class="nc" id="L154">        return new Method[]{getMethod, setMethod};</span>
+    }
+
+    //FieldVisitor
+    public void visitAttribute(Attribute arg0) {
+        //do nothing
+<span class="nc" id="L160">    }</span>
+
+    public void visitEnd() {
+        //do nothing
+<span class="nc" id="L164">    }</span>
+
+    //ClassVisitor
+    public void visit(int arg0, int arg1, String arg2, String arg3, String arg4, String[] arg5) {
+        try {
+<span class="nc" id="L169">            clazz = Class.forName(arg2.replaceAll(&quot;/&quot;, &quot;.&quot;));</span>
+<span class="nc" id="L170">        } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L171">            throw new RuntimeException(e);</span>
+<span class="nc" id="L172">        }</span>
+<span class="nc" id="L173">        stage = CLASSSTAGE;</span>
+<span class="nc" id="L174">    }</span>
+
+    public FieldVisitor visitField(int arg0, String arg1, String arg2, String arg3, Object arg4) {
+<span class="nc" id="L177">        stage = FIELDSTAGE;</span>
+<span class="nc" id="L178">        fieldName = arg1;</span>
+<span class="nc" id="L179">        Type fieldType = Type.getType(arg2);</span>
+<span class="nc bnc" id="L180" title="All 10 branches missed.">        switch(fieldType.getSort()){</span>
+        case Type.BOOLEAN:
+<span class="nc" id="L182">            fieldClass = boolean.class;</span>
+<span class="nc" id="L183">            break;</span>
+        case Type.BYTE:
+<span class="nc" id="L185">            fieldClass = byte.class;</span>
+<span class="nc" id="L186">            break;</span>
+        case Type.CHAR:
+<span class="nc" id="L188">            fieldClass = char.class;</span>
+<span class="nc" id="L189">            break;</span>
+        case Type.DOUBLE:
+<span class="nc" id="L191">            fieldClass = double.class;</span>
+<span class="nc" id="L192">            break;</span>
+        case Type.FLOAT:
+<span class="nc" id="L194">            fieldClass = float.class;</span>
+<span class="nc" id="L195">            break;</span>
+        case Type.INT:
+<span class="nc" id="L197">            fieldClass = int.class;</span>
+<span class="nc" id="L198">            break;</span>
+        case Type.LONG:
+<span class="nc" id="L200">            fieldClass = long.class;</span>
+<span class="nc" id="L201">            break;</span>
+        case Type.SHORT:
+<span class="nc" id="L203">            fieldClass = short.class;</span>
+<span class="nc" id="L204">            break;</span>
+        case Type.OBJECT:
+            try {
+<span class="nc" id="L207">                fieldClass = Class.forName(Type.getType(arg2).getClassName());</span>
+<span class="nc" id="L208">            } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L209">                throw new RuntimeException(e);</span>
+<span class="nc" id="L210">            }</span>
+            break;
+        }
+<span class="nc" id="L213">        return this;</span>
+    }
+
+    public void visitInnerClass(String arg0, String arg1, String arg2, int arg3) {
+        //do nothing
+<span class="nc" id="L218">    }</span>
+
+    public MethodVisitor visitMethod(int arg0, String arg1, String arg2, String arg3, String[] arg4) {
+<span class="nc" id="L221">        return new EmptyVisitor();</span>
+    }
+
+    public void visitOuterClass(String arg0, String arg1, String arg2) {
+        //do nothing
+<span class="nc" id="L226">    }</span>
+
+    public void visitSource(String arg0, String arg1) {
+        //do nothing
+<span class="nc" id="L230">    }</span>
+
+    //AnnotationVisitor
+    public void visit(String arg0, Object arg1) {
+<span class="nc bnc" id="L234" title="All 4 branches missed.">        if (Cache.class.getName().equals(annotation) &amp;&amp; &quot;region&quot;.equals(arg0)) {</span>
+<span class="nc" id="L235">            cacheRegion = (String) arg1;</span>
+        }
+<span class="nc bnc" id="L237" title="All 4 branches missed.">        if (Hydrated.class.getName().equals(annotation) &amp;&amp; &quot;factoryMethod&quot;.equals(arg0)) {</span>
+<span class="nc" id="L238">            HydrationItemDescriptor itemDescriptor = new HydrationItemDescriptor();</span>
+<span class="nc" id="L239">            itemDescriptor.setFactoryMethod((String) arg1);</span>
+<span class="nc" id="L240">            itemDescriptor.setMutators(retrieveMutators());</span>
+<span class="nc" id="L241">            cacheMutators.put(fieldName, itemDescriptor);</span>
+        }
+<span class="nc" id="L243">    }</span>
+
+    public AnnotationVisitor visitAnnotation(String arg0, String arg1) {
+<span class="nc" id="L246">        return this;</span>
+    }
+
+    public AnnotationVisitor visitArray(String arg0) {
+<span class="nc" id="L250">        return this;</span>
+    }
+
+    public void visitEnum(String arg0, String arg1, String arg2) {
+        //do nothing
+<span class="nc" id="L255">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

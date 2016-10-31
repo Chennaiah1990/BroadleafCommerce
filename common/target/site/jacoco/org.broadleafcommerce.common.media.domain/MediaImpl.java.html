@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MediaImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.media.domain</a> &gt; <span class="el_source">MediaImpl.java</span></div><h1>MediaImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.media.domain;
+
+import org.broadleafcommerce.common.copy.CreateResponse;
+import org.broadleafcommerce.common.copy.MultiTenantCloneable;
+import org.broadleafcommerce.common.copy.MultiTenantCopyContext;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.client.SupportedFieldType;
+import org.broadleafcommerce.common.util.UnknownUnwrapTypeException;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Index;
+import org.hibernate.annotations.Parameter;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.Table;
+
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name=&quot;BLC_MEDIA&quot;)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region=&quot;blStandardElements&quot;)
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.SANDBOX, skipOverlaps=true),
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_CATALOG)
+})
+<span class="nc" id="L53">public class MediaImpl implements Media, MultiTenantCloneable&lt;MediaImpl&gt; {</span>
+    
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator= &quot;MediaId&quot;)
+    @GenericGenerator(
+        name=&quot;MediaId&quot;,
+        strategy=&quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+        parameters = {
+            @Parameter(name=&quot;segment_value&quot;, value=&quot;MediaImpl&quot;),
+            @Parameter(name=&quot;entity_name&quot;, value=&quot;org.broadleafcommerce.common.media.domain.MediaImpl&quot;)
+        }
+    )
+    @Column(name = &quot;MEDIA_ID&quot;)
+    protected Long id;
+
+    @Column(name = &quot;URL&quot;, nullable = false)
+    @Index(name=&quot;MEDIA_URL_INDEX&quot;, columnNames={&quot;URL&quot;})
+    @AdminPresentation(friendlyName = &quot;MediaImpl_Media_Url&quot;, order = 1, prominent = true,
+            fieldType = SupportedFieldType.ASSET_LOOKUP)
+    protected String url;
+    
+    @Column(name = &quot;TITLE&quot;)
+    @Index(name=&quot;MEDIA_TITLE_INDEX&quot;, columnNames={&quot;TITLE&quot;})
+    @AdminPresentation(friendlyName = &quot;MediaImpl_Media_Title&quot;, order=2, prominent=true)
+    protected String title;
+    
+    @Column(name = &quot;ALT_TEXT&quot;)
+    @AdminPresentation(friendlyName = &quot;MediaImpl_Media_Alt_Text&quot;, order=3, prominent=true)
+    protected String altText;
+    
+    @Column(name = &quot;TAGS&quot;)
+    @AdminPresentation(friendlyName = &quot;MediaImpl_Media_Tags&quot;)
+    protected String tags;
+
+    @Override
+    public Long getId() {
+<span class="nc" id="L91">        return id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L96">        this.id = id;</span>
+<span class="nc" id="L97">    }</span>
+    
+    @Override
+    public String getUrl() {
+<span class="nc" id="L101">        return url;</span>
+    }
+
+    @Override
+    public void setUrl(String url) {
+<span class="nc" id="L106">        this.url = url;</span>
+<span class="nc" id="L107">    }</span>
+
+    @Override
+    public String getTitle() {
+<span class="nc" id="L111">        return title;</span>
+    }
+
+    @Override
+    public void setTitle(String title) {
+<span class="nc" id="L116">        this.title = title;</span>
+<span class="nc" id="L117">    }</span>
+
+    @Override
+    public String getAltText() {
+<span class="nc" id="L121">        return altText;</span>
+    }
+
+    @Override
+    public void setAltText(String altText) {
+<span class="nc" id="L126">        this.altText = altText;</span>
+<span class="nc" id="L127">    }</span>
+    
+    @Override
+    public String getTags() {
+<span class="nc" id="L131">        return tags;</span>
+    }
+
+    @Override
+    public void setTags(String tags) {
+<span class="nc" id="L136">        this.tags = tags;</span>
+<span class="nc" id="L137">    }</span>
+
+    @Override
+    public boolean isUnwrappableAs(Class unwrapType) {
+<span class="nc" id="L141">        return false;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T unwrap(Class&lt;T&gt; unwrapType) {
+<span class="nc" id="L146">        throw new UnknownUnwrapTypeException(unwrapType);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L151">        final int prime = 31;</span>
+<span class="nc" id="L152">        int result = 1;</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        result = prime * result + ((title == null) ? 0 : title.hashCode());</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        result = prime * result + ((altText == null) ? 0 : altText.hashCode());</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        result = prime * result + ((tags == null) ? 0 : tags.hashCode());</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">        result = prime * result + ((url == null) ? 0 : url.hashCode());</span>
+<span class="nc" id="L157">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L163">            return true;</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L165">            return false;</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L167">            return false;</span>
+<span class="nc" id="L168">        MediaImpl other = (MediaImpl) obj;</span>
+
+<span class="nc bnc" id="L170" title="All 4 branches missed.">        if (id != null &amp;&amp; other.id != null) {</span>
+<span class="nc" id="L171">            return id.equals(other.id);</span>
+        }
+        
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (title == null) {</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">            if (other.title != null)</span>
+<span class="nc" id="L176">                return false;</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        } else if (!title.equals(other.title))</span>
+<span class="nc" id="L178">            return false;</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        if (altText == null) {</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">            if (other.altText != null)</span>
+<span class="nc" id="L181">                return false;</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        } else if (!altText.equals(other.altText))</span>
+<span class="nc" id="L183">            return false;</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if (tags == null) {</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">            if (other.tags != null)</span>
+<span class="nc" id="L186">                return false;</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">        } else if (!tags.equals(other.tags))</span>
+<span class="nc" id="L188">            return false;</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        if (url == null) {</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">            if (other.url != null)</span>
+<span class="nc" id="L191">                return false;</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        } else if (!url.equals(other.url))</span>
+<span class="nc" id="L193">            return false;</span>
+<span class="nc" id="L194">        return true;</span>
+    }
+
+    @Override
+    public &lt;G extends MediaImpl&gt; CreateResponse&lt;G&gt; createOrRetrieveCopyInstance(MultiTenantCopyContext context) throws CloneNotSupportedException {
+<span class="nc" id="L199">        CreateResponse&lt;G&gt; createResponse = context.createOrRetrieveCopyInstance(this);</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (createResponse.isAlreadyPopulated()) {</span>
+<span class="nc" id="L201">            return createResponse;</span>
+        }
+<span class="nc" id="L203">        MediaImpl cloned = createResponse.getClone();</span>
+<span class="nc" id="L204">        cloned.setAltText(altText);</span>
+<span class="nc" id="L205">        cloned.setTags(tags);</span>
+<span class="nc" id="L206">        cloned.setTitle(title);</span>
+<span class="nc" id="L207">        cloned.setUrl(url);</span>
+<span class="nc" id="L208">        return  createResponse;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

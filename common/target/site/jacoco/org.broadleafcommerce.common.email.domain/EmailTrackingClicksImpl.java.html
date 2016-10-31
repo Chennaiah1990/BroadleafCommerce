@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EmailTrackingClicksImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.email.domain</a> &gt; <span class="el_source">EmailTrackingClicksImpl.java</span></div><h1>EmailTrackingClicksImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.email.domain;
+
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Index;
+import org.hibernate.annotations.Parameter;
+
+import java.util.Date;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+
+/**
+ * @author jfischer
+ *
+ */
+@Entity
+@Table(name = &quot;BLC_EMAIL_TRACKING_CLICKS&quot;)
+<span class="nc" id="L42">public class EmailTrackingClicksImpl implements EmailTrackingClicks {</span>
+
+    /** The Constant serialVersionUID. */
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator = &quot;ClickId&quot;)
+    @GenericGenerator(
+        name=&quot;ClickId&quot;,
+        strategy=&quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+        parameters = {
+            @Parameter(name=&quot;segment_value&quot;, value=&quot;EmailTrackingClicksImpl&quot;),
+            @Parameter(name=&quot;entity_name&quot;, value=&quot;org.broadleafcommerce.common.email.domain.EmailTrackingClicksImpl&quot;)
+        }
+    )
+    @Column(name = &quot;CLICK_ID&quot;)
+    protected Long id;
+
+    @ManyToOne(optional=false, targetEntity = EmailTrackingImpl.class)
+    @JoinColumn(name = &quot;EMAIL_TRACKING_ID&quot;)
+    @Index(name=&quot;TRACKINGCLICKS_TRACKING_INDEX&quot;, columnNames={&quot;EMAIL_TRACKING_ID&quot;})
+    protected EmailTracking emailTracking;
+
+    @Column(nullable=false, name = &quot;DATE_CLICKED&quot;)
+    protected Date dateClicked;
+
+    @Column(name = &quot;CUSTOMER_ID&quot;)
+    @Index(name=&quot;TRACKINGCLICKS_CUSTOMER_INDEX&quot;, columnNames={&quot;CUSTOMER_ID&quot;})
+    protected String customerId;
+
+    @Column(name = &quot;DESTINATION_URI&quot;)
+    protected String destinationUri;
+
+    @Column(name = &quot;QUERY_STRING&quot;)
+    protected String queryString;
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#getId()
+     */
+    @Override
+    public Long getId() {
+<span class="nc" id="L83">        return id;</span>
+    }
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#setId(java.lang.Long)
+     */
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L91">        this.id = id;</span>
+<span class="nc" id="L92">    }</span>
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#getDateClicked()
+     */
+    @Override
+    public Date getDateClicked() {
+<span class="nc" id="L99">        return dateClicked;</span>
+    }
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#setDateClicked(java.util.Date)
+     */
+    @Override
+    public void setDateClicked(Date dateClicked) {
+<span class="nc" id="L107">        this.dateClicked = dateClicked;</span>
+<span class="nc" id="L108">    }</span>
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#getDestinationUri()
+     */
+    @Override
+    public String getDestinationUri() {
+<span class="nc" id="L115">        return destinationUri;</span>
+    }
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#setDestinationUri(java.lang.String)
+     */
+    @Override
+    public void setDestinationUri(String destinationUri) {
+<span class="nc" id="L123">        this.destinationUri = destinationUri;</span>
+<span class="nc" id="L124">    }</span>
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#getQueryString()
+     */
+    @Override
+    public String getQueryString() {
+<span class="nc" id="L131">        return queryString;</span>
+    }
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#setQueryString(java.lang.String)
+     */
+    @Override
+    public void setQueryString(String queryString) {
+<span class="nc" id="L139">        this.queryString = queryString;</span>
+<span class="nc" id="L140">    }</span>
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#getEmailTracking()
+     */
+    @Override
+    public EmailTracking getEmailTracking() {
+<span class="nc" id="L147">        return emailTracking;</span>
+    }
+
+    /* (non-Javadoc)
+     * @see org.broadleafcommerce.common.email.domain.EmailTrackingClicks#setEmailTracking(org.broadleafcommerce.common.email.domain.EmailTrackingImpl)
+     */
+    @Override
+    public void setEmailTracking(EmailTracking emailTracking) {
+<span class="nc" id="L155">        this.emailTracking = emailTracking;</span>
+<span class="nc" id="L156">    }</span>
+
+    /**
+     * @return the customer
+     */
+    @Override
+    public String getCustomerId() {
+<span class="nc" id="L163">        return customerId;</span>
+    }
+
+    /**
+     * @param customerId the customer to set
+     */
+    @Override
+    public void setCustomerId(String customerId) {
+<span class="nc" id="L171">        this.customerId = customerId;</span>
+<span class="nc" id="L172">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L176">        final int prime = 31;</span>
+<span class="nc" id="L177">        int result = 1;</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        result = prime * result + ((customerId == null) ? 0 : customerId.hashCode());</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        result = prime * result + ((dateClicked == null) ? 0 : dateClicked.hashCode());</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">        result = prime * result + ((destinationUri == null) ? 0 : destinationUri.hashCode());</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        result = prime * result + ((emailTracking == null) ? 0 : emailTracking.hashCode());</span>
+<span class="nc" id="L182">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L188">            return true;</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L190">            return false;</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L192">            return false;</span>
+<span class="nc" id="L193">        EmailTrackingClicksImpl other = (EmailTrackingClicksImpl) obj;</span>
+
+<span class="nc bnc" id="L195" title="All 4 branches missed.">        if (id != null &amp;&amp; other.id != null) {</span>
+<span class="nc" id="L196">            return id.equals(other.id);</span>
+        }
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        if (customerId == null) {</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">            if (other.customerId != null)</span>
+<span class="nc" id="L201">                return false;</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">        } else if (!customerId.equals(other.customerId))</span>
+<span class="nc" id="L203">            return false;</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (dateClicked == null) {</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">            if (other.dateClicked != null)</span>
+<span class="nc" id="L206">                return false;</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        } else if (!dateClicked.equals(other.dateClicked))</span>
+<span class="nc" id="L208">            return false;</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        if (destinationUri == null) {</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            if (other.destinationUri != null)</span>
+<span class="nc" id="L211">                return false;</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">        } else if (!destinationUri.equals(other.destinationUri))</span>
+<span class="nc" id="L213">            return false;</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        if (emailTracking == null) {</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">            if (other.emailTracking != null)</span>
+<span class="nc" id="L216">                return false;</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">        } else if (!emailTracking.equals(other.emailTracking))</span>
+<span class="nc" id="L218">            return false;</span>
+<span class="nc" id="L219">        return true;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

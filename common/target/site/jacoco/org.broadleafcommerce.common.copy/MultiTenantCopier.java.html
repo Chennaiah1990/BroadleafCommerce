@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MultiTenantCopier.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.copy</a> &gt; <span class="el_source">MultiTenantCopier.java</span></div><h1>MultiTenantCopier.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.copy;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.exception.ExceptionHelper;
+import org.broadleafcommerce.common.exception.ServiceException;
+import org.broadleafcommerce.common.service.GenericEntityService;
+import org.broadleafcommerce.common.site.domain.Catalog;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.broadleafcommerce.common.util.StreamCapableTransactionalOperationAdapter;
+import org.broadleafcommerce.common.util.StreamingTransactionCapableUtil;
+import org.broadleafcommerce.common.util.tenant.IdentityExecutionUtils;
+import org.broadleafcommerce.common.util.tenant.IdentityOperation;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.broadleafcommerce.common.web.EnforceEnterpriseCollectionBehaviorState;
+import org.springframework.core.Ordered;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.annotation.Resource;
+import javax.persistence.Embeddable;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+
+/**
+ * Abstract class for copying entities to a new catalog as required during derived catalog propagation. Subclasses generally
+ * call {@link #copyEntitiesOfType(Class, org.broadleafcommerce.common.site.domain.Site, org.broadleafcommerce.common.site.domain.Catalog, MultiTenantCopyContext)}
+ * one or more times inside of their {@link #copyEntities(MultiTenantCopyContext)} implementation to clone and persist
+ * an entity object tree.
+ * 
+ * @author Andre Azzolini (apazzolini)
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L62">public abstract class MultiTenantCopier implements Ordered {</span>
+<span class="nc" id="L63">    protected static final Log LOG = LogFactory.getLog(MultiTenantCopier.class);</span>
+    
+    @Resource(name = &quot;blGenericEntityService&quot;)
+    protected GenericEntityService genericEntityService;
+    
+    @Resource(name = &quot;blMultiTenantCopierExtensionManager&quot;)
+    protected MultiTenantCopierExtensionManager extensionManager;
+
+    @Resource(name=&quot;blStreamingTransactionCapableUtil&quot;)
+    protected StreamingTransactionCapableUtil transUtil;
+    
+<span class="nc" id="L74">    protected int order = 0;</span>
+
+    /**
+     * Main method that should be implemented by each {@link MultiTenantCopier} to drive the logic of
+     * copying that particular entity to the new derived catalog.
+     *
+     * @param context
+     */
+    public abstract void copyEntities(MultiTenantCopyContext context) throws Exception;
+
+    /**
+     *
+     * @return the order of this {@link MultiTenantCopier}
+     */
+    @Override
+    public int getOrder() {
+<span class="nc" id="L90">        return order;</span>
+    }
+
+    public void setOrder(int order) {
+<span class="nc" id="L94">        this.order = order;</span>
+<span class="nc" id="L95">    }</span>
+
+    protected &lt;T, G extends Exception&gt; void persistCopyObjectTree(CopyOperation&lt;T,G&gt; copyOperation, Class&lt;T&gt; clazz, T original, MultiTenantCopyContext context) throws G {
+        try {
+            //don't persist if there is already an equivalent present
+<span class="nc bnc" id="L100" title="All 2 branches missed.">            if (context.getEquivalentId(clazz.getName(), genericEntityService.getIdentifier(original)) != null) {</span>
+                return;
+            }
+
+<span class="nc" id="L104">            context.clearOriginalIdentifiers();</span>
+<span class="nc" id="L105">            genericEntityService.clearAutoFlushMode();</span>
+<span class="nc" id="L106">            Object copy = copyOperation.execute(original);</span>
+<span class="nc" id="L107">            BroadleafRequestContext.getBroadleafRequestContext().setEnforceEnterpriseCollectionBehaviorState(EnforceEnterpriseCollectionBehaviorState.FALSE);</span>
+<span class="nc" id="L108">            persistCopyObjectTreeInternal(copy, new HashSet&lt;Integer&gt;(), context);</span>
+<span class="nc" id="L109">            genericEntityService.flush();</span>
+<span class="nc" id="L110">        } catch (Exception e) {</span>
+<span class="nc" id="L111">            LOG.error(&quot;Unable to persist the copy object tree&quot;, e);</span>
+<span class="nc" id="L112">            throw ExceptionHelper.refineException(e);</span>
+        } finally {
+<span class="nc" id="L114">            BroadleafRequestContext.getBroadleafRequestContext().setEnforceEnterpriseCollectionBehaviorState(EnforceEnterpriseCollectionBehaviorState.TRUE);</span>
+<span class="nc" id="L115">            context.clearOriginalIdentifiers();</span>
+<span class="nc" id="L116">            genericEntityService.enableAutoFlushMode();</span>
+<span class="nc" id="L117">        }</span>
+<span class="nc" id="L118">    }</span>
+
+    protected void persistCopyObjectTreeInternal(Object copy, Set&lt;Integer&gt; library, MultiTenantCopyContext context) {
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (library.contains(System.identityHashCode(copy))) {</span>
+<span class="nc" id="L122">            return;</span>
+        }
+<span class="nc" id="L124">        library.add(System.identityHashCode(copy));</span>
+<span class="nc" id="L125">        List&lt;Object[]&gt; collections = new ArrayList&lt;Object[]&gt;();</span>
+<span class="nc" id="L126">        Field[] allFields = context.getAllFields(copy.getClass());</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        for (Field field : allFields) {</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">            if (field.getName().equals(&quot;embeddableSiteDiscriminator&quot;)) {</span>
+<span class="nc" id="L129">                continue;</span>
+            }
+<span class="nc bnc" id="L131" title="All 2 branches missed.">            if (!Modifier.isStatic(field.getModifiers())) {</span>
+<span class="nc" id="L132">                field.setAccessible(true);</span>
+                Object newTarget;
+                try {
+<span class="nc" id="L135">                    newTarget = field.get(copy);</span>
+<span class="nc" id="L136">                } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L137">                    throw ExceptionHelper.refineException(e);</span>
+<span class="nc" id="L138">                }</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">                if (newTarget != null) {</span>
+<span class="nc bnc" id="L140" title="All 4 branches missed.">                    if (field.getAnnotation(ManyToOne.class) != null || field.getAnnotation(OneToOne.class) != null) {</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">                        if (library.contains(System.identityHashCode(newTarget))) {</span>
+<span class="nc" id="L142">                            persistNode(newTarget, context);</span>
+<span class="nc" id="L143">                            continue;</span>
+                        }
+<span class="nc" id="L145">                        persistCopyObjectTreeInternal(newTarget, library, context);</span>
+<span class="nc bnc" id="L146" title="All 4 branches missed.">                    } else if (field.getAnnotation(ManyToMany.class) != null || field.getAnnotation(OneToMany.class) != null) {</span>
+<span class="nc" id="L147">                        collections.add(new Object[]{field, newTarget});</span>
+<span class="nc bnc" id="L148" title="All 4 branches missed.">                    } else if (field.getType().getAnnotation(Embeddable.class) != null &amp;&amp; MultiTenantCloneable.class.isAssignableFrom(field.getType())) {</span>
+<span class="nc" id="L149">                        persistCopyObjectTreeInternal(newTarget, library, context);</span>
+                    }
+                }
+            }
+        }
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (copy.getClass().getAnnotation(Embeddable.class) == null) {</span>
+<span class="nc" id="L155">            persistNode(copy, context);</span>
+        }
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        for (Object[] collectionItem : collections) {</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">            if (collectionItem[1] instanceof Collection) {</span>
+<span class="nc" id="L159">                Collection newCollection = (Collection) collectionItem[1];</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                for (Object member : newCollection) {</span>
+<span class="nc" id="L161">                    persistCopyObjectTreeInternal(member, library, context);</span>
+<span class="nc" id="L162">                }</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">            } else if (collectionItem[1] instanceof Map) {</span>
+<span class="nc" id="L164">                Map newMap = (Map) collectionItem[1];</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">                for (Object key : newMap.keySet()) {</span>
+<span class="nc" id="L166">                    persistCopyObjectTreeInternal(newMap.get(key), library, context);</span>
+<span class="nc" id="L167">                }</span>
+<span class="nc" id="L168">            } else {</span>
+<span class="nc" id="L169">                throw new IllegalArgumentException(String.format(&quot;During copy object persistence, &quot; +</span>
+                        &quot;an unrecognized type was detected for a OneToMany or ManyToMany field. The system currently only &quot; +
+                        &quot;recognizes Collection and Map. (%s.%s)&quot;, copy.getClass().getName(), ((Field) collectionItem[0]).getName()));
+            }
+<span class="nc" id="L173">        }</span>
+<span class="nc" id="L174">    }</span>
+
+    protected void persistNode(final Object copy, MultiTenantCopyContext context) {
+<span class="nc bnc" id="L177" title="All 4 branches missed.">        if (!genericEntityService.sessionContains(copy) &amp;&amp; !genericEntityService.idAssigned(copy)) {</span>
+<span class="nc" id="L178">            Object original = genericEntityService.readGenericEntity(copy.getClass().getName(), context.removeOriginalIdentifier(copy));</span>
+<span class="nc" id="L179">            extensionManager.getProxy().transformCopy(context, original, copy);</span>
+<span class="nc" id="L180">            extensionManager.getProxy().prepareForSave(context, original, copy);</span>
+
+<span class="nc" id="L182">            IdentityExecutionUtils.runOperationByIdentifier(new IdentityOperation&lt;Void, RuntimeException&gt;() {</span>
+                @Override
+                public Void execute() {
+<span class="nc" id="L185">                    genericEntityService.persist(copy);</span>
+<span class="nc" id="L186">                    return null;</span>
+                }
+            }, context.getToSite(), context.getToSite(), context.getToCatalog());
+
+<span class="nc" id="L190">            context.storeEquivalentMapping(original.getClass().getName(), context.getIdentifier(original), context.getIdentifier(copy));</span>
+        }
+<span class="nc" id="L192">    }</span>
+
+    /**
+     * Subclasses will generally call this method in their {@link #copyEntities(MultiTenantCopyContext)} implementation.
+     *
+     * @param clazz
+     * @param fromSite
+     * @param fromCatalog
+     * @param context
+     * @param &lt;T&gt;
+     * @throws ServiceException
+     * @throws CloneNotSupportedException
+     */
+    protected &lt;T extends MultiTenantCloneable&gt; void copyEntitiesOfType(final Class&lt;T&gt; clazz, final Site fromSite, final Catalog fromCatalog, final MultiTenantCopyContext context)
+            throws ServiceException, CloneNotSupportedException {
+<span class="nc" id="L207">        genericEntityService.flush();</span>
+<span class="nc" id="L208">        genericEntityService.clear();</span>
+<span class="nc" id="L209">        transUtil.runStreamingTransactionalOperation(new StreamCapableTransactionalOperationAdapter() {</span>
+            @Override
+            public Object[] retrievePage(int startPos, int pageSize) {
+                try {
+<span class="nc" id="L213">                    Object[] temp = new Object[1];</span>
+<span class="nc" id="L214">                    List&lt;T&gt; results = readAll(clazz, pageSize, startPos, fromSite, fromCatalog);</span>
+<span class="nc" id="L215">                    temp[0] = results;</span>
+<span class="nc" id="L216">                    return temp;</span>
+<span class="nc" id="L217">                } catch (ServiceException e) {</span>
+<span class="nc" id="L218">                    throw ExceptionHelper.refineException(e);</span>
+                }
+            }
+
+            @Override
+            public void pagedExecute(Object[] param) throws Throwable {
+                try {
+<span class="nc" id="L225">                    List&lt;T&gt; results = (List&lt;T&gt;) param[0];</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">                    for (T result : results) {</span>
+<span class="nc" id="L227">                        persistCopyObjectTree(new CopyOperation&lt;T, CloneNotSupportedException&gt;() {</span>
+                            @Override
+                            public T execute(T original) throws CloneNotSupportedException {
+<span class="nc" id="L230">                                return (T) original.createOrRetrieveCopyInstance(context).getClone();</span>
+                            }
+                        }, clazz, result, context);
+<span class="nc" id="L233">                    }</span>
+                } finally {
+<span class="nc" id="L235">                    genericEntityService.clear();</span>
+<span class="nc" id="L236">                }</span>
+<span class="nc" id="L237">            }</span>
+
+            @Override
+            public Long retrieveTotalCount() {
+                try {
+<span class="nc" id="L242">                    return readCount(clazz, fromSite, fromCatalog);</span>
+<span class="nc" id="L243">                } catch (ServiceException e) {</span>
+<span class="nc" id="L244">                    throw ExceptionHelper.refineException(e);</span>
+                }
+            }
+
+            @Override
+            public boolean shouldRetryOnTransactionLockAcquisitionFailure() {
+<span class="nc" id="L250">                return true;</span>
+            }
+        }, RuntimeException.class);
+<span class="nc" id="L253">    }</span>
+    
+    /**
+     * Saves the specified object in the toSite and toCatalog of the given context.
+     * 
+     * @param context
+     * @param object
+     * @return the saved entity
+     * @throws ServiceException
+     */
+    protected &lt;T&gt; T save(MultiTenantCopyContext context, final T object) throws ServiceException {
+<span class="nc" id="L264">        return IdentityExecutionUtils.runOperationByIdentifier(new IdentityOperation&lt;T, ServiceException&gt;() {</span>
+            @Override
+            public T execute() throws ServiceException {
+<span class="nc" id="L267">                return genericEntityService.save(object);</span>
+            }
+        }, context.getToSite(), context.getToSite(), context.getToCatalog());
+    }
+    
+    /**
+     * Returns the count of the given entity class for the specified site and catalog
+     * 
+     * @param clazz
+     * @param site
+     * @param catalog
+     * @return the count
+     * @throws ServiceException
+     */
+    protected &lt;T&gt; Long readCount(final Class&lt;T&gt; clazz, Site site, Catalog catalog) throws ServiceException {
+<span class="nc" id="L282">        return IdentityExecutionUtils.runOperationByIdentifier(new IdentityOperation&lt;Long, ServiceException&gt;() {</span>
+            @Override
+            public Long execute() throws ServiceException {
+<span class="nc" id="L285">                return genericEntityService.readCountGenericEntity(clazz);</span>
+            }
+        }, site, site, catalog);
+    }
+    
+    /**
+     * @see #readAll(Class, int, int, Site, Catalog)
+     * 
+     * @param clazz
+     * @param site
+     * @param catalog
+     * @return the list of entities for the specified parameters
+     * @throws ServiceException
+     */
+    protected &lt;T&gt; List&lt;T&gt; readAll(Class&lt;T&gt; clazz, Site site, Catalog catalog) throws ServiceException {
+<span class="nc" id="L300">        return readAll(clazz, Integer.MAX_VALUE, 0, site, catalog);</span>
+    }
+
+    /**
+     * Returns the primary key values for all entities of the specified type in the site or catalog.
+     *
+     * @param clazz
+     * @param site
+     * @param catalog
+     * @return
+     * @throws ServiceException
+     */
+    protected List&lt;Long&gt; readAllIds(final Class&lt;?&gt; clazz, Site site, Catalog catalog) throws ServiceException {
+<span class="nc" id="L313">        return IdentityExecutionUtils.runOperationByIdentifier(new IdentityOperation&lt;List&lt;Long&gt;, ServiceException&gt;() {</span>
+            @Override
+            public List&lt;Long&gt; execute() throws ServiceException {
+<span class="nc" id="L316">                return genericEntityService.readAllGenericEntityId(clazz);</span>
+            }
+        }, site, site, catalog);
+    }
+
+    /**
+     * Returns a list of all entities in the system for the given class, site, and catalog. Additionally,
+     * this method supports pagination.
+     * 
+     * @param clazz
+     * @param limit
+     * @param offset
+     * @param site
+     * @param catalog
+     * @return the list of entities for the specified parameters
+     * @throws ServiceException
+     */
+    protected &lt;T&gt; List&lt;T&gt; readAll(final Class&lt;T&gt; clazz, final int limit, final int offset, Site site, 
+            Catalog catalog) throws ServiceException {
+<span class="nc" id="L335">        return IdentityExecutionUtils.runOperationByIdentifier(new IdentityOperation&lt;List&lt;T&gt;, ServiceException&gt;() {</span>
+            @Override
+            public List&lt;T&gt; execute() throws ServiceException {
+<span class="nc" id="L338">                return genericEntityService.readAllGenericEntity(clazz, limit, offset);</span>
+            }
+        }, site, site, catalog);
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

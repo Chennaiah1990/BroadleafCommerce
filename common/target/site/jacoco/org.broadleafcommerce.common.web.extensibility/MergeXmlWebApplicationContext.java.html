@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MergeXmlWebApplicationContext.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.extensibility</a> &gt; <span class="el_source">MergeXmlWebApplicationContext.java</span></div><h1>MergeXmlWebApplicationContext.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.extensibility;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extensibility.context.MergeApplicationContextXmlConfigResource;
+import org.broadleafcommerce.common.extensibility.context.ResourceInputStream;
+import org.broadleafcommerce.common.extensibility.context.StandardConfigLocations;
+import org.broadleafcommerce.common.extensibility.context.merge.ImportProcessor;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeException;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.FatalBeanException;
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.util.StringUtils;
+import org.springframework.web.context.support.XmlWebApplicationContext;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * {@link org.springframework.web.context.WebApplicationContext} implementation
+ * which takes its configuration from XML documents, understood by an
+ * {@link org.springframework.beans.factory.xml.XmlBeanDefinitionReader}.
+ *
+ * &lt;p&gt;By default, the configuration will be taken from &quot;/WEB-INF/applicationContext.xml&quot;
+ * for the rootId context, and &quot;/WEB-INF/test-servlet.xml&quot; for a context with the namespace
+ * &quot;test-servlet&quot; (like for a DispatcherServlet instance with the servlet-name &quot;test&quot;).
+ *
+ * &lt;p&gt;The config location defaults can be overridden via the &quot;contextConfigLocation&quot;
+ * context-param of {@link org.springframework.web.context.ContextLoader} and servlet
+ * init-param of {@link org.springframework.web.servlet.FrameworkServlet}. Config locations
+ * can either denote concrete files like &quot;/WEB-INF/context.xml&quot; or Ant-style patterns
+ * like &quot;/WEB-INF/*-context.xml&quot; (see {@link org.springframework.util.PathMatcher}
+ * javadoc for pattern details).
+ *
+ * &lt;p&gt;Note: In case of multiple config locations, later bean definitions will
+ * override ones defined in earlier loaded files. This can be leveraged to
+ * deliberately override certain bean definitions via an extra XML file.
+ *
+ * &lt;p&gt;In addition to standard configuration, this implementation also takes a list of
+ * patch configuration files that are merged into the configuration provided above.
+ * {@link org.broadleafcommerce.profile.extensibility.MergeXmlConfigResourceFactory}. The patch
+ * file locations are set via the &quot;patchConfigLocation&quot; context-param of
+ * {@link MergeContextLoader}. Patch locations
+ * can either denote concrete files like &quot;/WEB-INF/patch.xml&quot; or Ant-style patterns
+ * like &quot;/WEB-INF/*-context.xml&quot; (see {@link org.springframework.util.pathMatcher}
+ * javadoc for pattern details).
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L76">public class MergeXmlWebApplicationContext extends XmlWebApplicationContext {</span>
+
+<span class="nc" id="L78">    private static final Log LOG = LogFactory.getLog(MergeXmlWebApplicationContext.class);</span>
+
+    private String patchLocation;
+    private String shutdownBean;
+    private String shutdownMethod;
+<span class="nc" id="L83">    private int standardLocationTypes = StandardConfigLocations.APPCONTEXTTYPE;</span>
+
+    /**
+     * Load the bean definitions with the given XmlBeanDefinitionReader.
+     * &lt;p&gt;The lifecycle of the bean factory is handled by the refreshBeanFactory method;
+     * therefore this method is just supposed to load and/or register bean definitions.
+     * &lt;p&gt;Delegates to a ResourcePatternResolver for resolving location patterns
+     * into Resource instances.
+     * @throws org.springframework.beans.BeansException in case of bean registration errors
+     * @throws java.io.IOException if the required XML document isn't found
+     * @see #refreshBeanFactory
+     * @see #getConfigLocations
+     * @see #getResources
+     * @see #getResourcePatternResolver
+     */
+    protected void loadBeanDefinitions(XmlBeanDefinitionReader reader) throws BeansException, IOException {
+<span class="nc" id="L99">        String[] broadleafConfigLocations = StandardConfigLocations.retrieveAll(standardLocationTypes);</span>
+
+<span class="nc" id="L101">        ArrayList&lt;ResourceInputStream&gt; sources = new ArrayList&lt;ResourceInputStream&gt;(20);</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        for (String location : broadleafConfigLocations) {</span>
+<span class="nc" id="L103">            InputStream source = MergeXmlWebApplicationContext.class.getClassLoader().getResourceAsStream(location);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">            if (source != null) {</span>
+<span class="nc" id="L105">                sources.add(new ResourceInputStream(source, location));</span>
+            }
+        }
+<span class="nc" id="L108">        ResourceInputStream[] filteredSources = new ResourceInputStream[]{};</span>
+<span class="nc" id="L109">        filteredSources = sources.toArray(filteredSources);</span>
+<span class="nc" id="L110">        String patchLocation = getPatchLocation();</span>
+<span class="nc" id="L111">        String[] patchLocations = StringUtils.tokenizeToStringArray(patchLocation, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS);</span>
+<span class="nc" id="L112">        List&lt;ResourceInputStream&gt; patchList = new ArrayList&lt;ResourceInputStream&gt;();</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        for (int i = 0; i &lt; patchLocations.length; i++) {</span>
+            ResourceInputStream patch;
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            if (patchLocations[i].startsWith(&quot;classpath&quot;)) {</span>
+<span class="nc" id="L116">                InputStream is = MergeXmlWebApplicationContext.class.getClassLoader().getResourceAsStream(patchLocations[i].substring(&quot;classpath*:&quot;.length(), patchLocations[i].length()));</span>
+<span class="nc" id="L117">                patch = new ResourceInputStream(is, patchLocations[i]);</span>
+<span class="nc" id="L118">            } else {</span>
+<span class="nc" id="L119">                Resource resource = getResourceByPath(patchLocations[i]);</span>
+<span class="nc" id="L120">                patch = new ResourceInputStream(resource.getInputStream(), patchLocations[i]);</span>
+            }
+<span class="nc bnc" id="L122" title="All 4 branches missed.">            if (patch == null || patch.available() &lt;= 0) {</span>
+<span class="nc" id="L123">                patchList.addAll(getResourcesFromPatternResolver(patchLocations[i]));</span>
+            } else {
+<span class="nc" id="L125">                patchList.add(patch);</span>
+            }
+        }
+
+<span class="nc" id="L129">        ImportProcessor importProcessor = new ImportProcessor(this);</span>
+        ResourceInputStream[] patchArray;
+        try {
+<span class="nc" id="L132">            filteredSources = importProcessor.extract(filteredSources);</span>
+<span class="nc" id="L133">            patchArray = importProcessor.extract(patchList.toArray(new ResourceInputStream[patchList.size()]));</span>
+<span class="nc" id="L134">        } catch (MergeException e) {</span>
+<span class="nc" id="L135">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L136">        }</span>
+
+<span class="nc" id="L138">        Resource[] resources = new MergeApplicationContextXmlConfigResource().getConfigResources(filteredSources, patchArray);</span>
+<span class="nc" id="L139">        reader.loadBeanDefinitions(resources);</span>
+<span class="nc" id="L140">    }</span>
+
+    private List&lt;ResourceInputStream&gt; getResourcesFromPatternResolver(String patchLocation) throws IOException {
+        ResourceInputStream resolverPatch;
+<span class="nc" id="L144">        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();</span>
+<span class="nc" id="L145">        Resource[] resources = resolver.getResources(patchLocation);</span>
+<span class="nc" id="L146">        List&lt;ResourceInputStream&gt; resolverList = new ArrayList&lt;ResourceInputStream&gt;();</span>
+
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (ArrayUtils.isEmpty(resources)) {</span>
+<span class="nc" id="L149">            LOG.warn(&quot;Unable to use automatic applicationContext loading. To avoid this, upgrade your poms to reference the latest versions of all modules.&quot;);</span>
+<span class="nc" id="L150">            return resolverList;</span>
+        }
+
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        for (Resource resource : resources) {</span>
+<span class="nc" id="L154">            resolverPatch = new ResourceInputStream(resource.getInputStream(), patchLocation);</span>
+<span class="nc bnc" id="L155" title="All 4 branches missed.">            if (resolverPatch == null || resolverPatch.available() &lt;= 0) {</span>
+<span class="nc" id="L156">                throw new IOException(&quot;Unable to open an input stream on specified application context resource: &quot; + patchLocation);</span>
+            }
+<span class="nc" id="L158">            resolverList.add(resolverPatch);</span>
+        }
+
+<span class="nc" id="L161">        return resolverList;</span>
+    }
+
+    /* (non-Javadoc)
+     * @see org.springframework.context.support.AbstractApplicationContext#doClose()
+     */
+    @Override
+    protected void doClose() {
+<span class="nc bnc" id="L169" title="All 4 branches missed.">        if (getShutdownBean() != null &amp;&amp; getShutdownMethod() != null) {</span>
+            try {
+<span class="nc" id="L171">                Object shutdownBean = getBean(getShutdownBean());</span>
+<span class="nc" id="L172">                Method shutdownMethod = shutdownBean.getClass().getMethod(getShutdownMethod(), new Class[]{});</span>
+<span class="nc" id="L173">                shutdownMethod.invoke(shutdownBean, new Object[]{});</span>
+<span class="nc" id="L174">            } catch (Throwable e) {</span>
+<span class="nc" id="L175">                LOG.error(&quot;Unable to execute custom shutdown call&quot;, e);</span>
+<span class="nc" id="L176">            }</span>
+        }
+<span class="nc" id="L178">        super.doClose();</span>
+<span class="nc" id="L179">    }</span>
+
+    /**
+     * @return the patchLocation
+     */
+    public String getPatchLocation() {
+<span class="nc" id="L185">        return patchLocation;</span>
+    }
+
+    /**
+     * @param patchLocation the patchLocation to set
+     */
+    public void setPatchLocation(String patchLocation) {
+<span class="nc" id="L192">        this.patchLocation = patchLocation;</span>
+<span class="nc" id="L193">    }</span>
+    
+    /**
+     * Sets the type of standard Broadleaf context locations that should be merged. For possible values see
+     * {@link StandardConfigLocations#APPCONTEXTTYPE}
+     */
+    public void setStandardLocationTypes(int standardLocationTypes) {
+<span class="nc" id="L200">        this.standardLocationTypes = standardLocationTypes;</span>
+<span class="nc" id="L201">    }</span>
+
+    /**
+     * @return the shutdownBean
+     */
+    public String getShutdownBean() {
+<span class="nc" id="L207">        return shutdownBean;</span>
+    }
+
+    /**
+     * @param shutdownBean the shutdownBean to set
+     */
+    public void setShutdownBean(String shutdownBean) {
+<span class="nc" id="L214">        this.shutdownBean = shutdownBean;</span>
+<span class="nc" id="L215">    }</span>
+
+    /**
+     * @return the shutdownMethod
+     */
+    public String getShutdownMethod() {
+<span class="nc" id="L221">        return shutdownMethod;</span>
+    }
+
+    /**
+     * @param shutdownMethod the shutdownMethod to set
+     */
+    public void setShutdownMethod(String shutdownMethod) {
+<span class="nc" id="L228">        this.shutdownMethod = shutdownMethod;</span>
+<span class="nc" id="L229">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

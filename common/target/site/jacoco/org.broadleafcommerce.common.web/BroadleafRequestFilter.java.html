@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafRequestFilter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafRequestFilter.java</span></div><h1>BroadleafRequestFilter.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.RequestDTOImpl;
+import org.broadleafcommerce.common.exception.SiteNotFoundException;
+import org.broadleafcommerce.common.web.exception.HaltFilterChainException;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.annotation.Resource;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Responsible for setting up the site and locale used by Broadleaf Commerce components.
+ * 
+ * @author bpolster
+ */
+@Component(&quot;blRequestFilter&quot;)
+<span class="nc" id="L48">public class BroadleafRequestFilter extends OncePerRequestFilter {</span>
+
+<span class="nc" id="L50">    private final Log LOG = LogFactory.getLog(getClass());</span>
+
+    /**
+     * Parameter/Attribute name for the current language
+     */
+<span class="nc" id="L55">    public static String REQUEST_DTO_PARAM_NAME = &quot;blRequestDTO&quot;;</span>
+
+    public static final String ADMIN_USER_ID_PARAM_NAME = &quot;blAdminUserId&quot;;
+
+    // Properties to manage URLs that will not be processed by this filter.
+    private static final String BLC_ADMIN_GWT = &quot;org.broadleafcommerce.admin&quot;;
+    private static final String BLC_ADMIN_PREFIX = &quot;blcadmin&quot;;
+    private static final String BLC_ADMIN_SERVICE = &quot;.service&quot;;
+
+    private Set&lt;String&gt; ignoreSuffixes;
+
+    @Resource(name = &quot;blRequestProcessor&quot;)
+    protected BroadleafRequestProcessor requestProcessor;
+
+    @Override
+    public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
+
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if (!shouldProcessURL(request, request.getRequestURI())) {</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L74">                LOG.trace(&quot;Process URL not processing URL &quot; + request.getRequestURI());</span>
+            }
+<span class="nc" id="L76">            filterChain.doFilter(request, response);</span>
+<span class="nc" id="L77">            return;</span>
+        }
+        
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (LOG.isTraceEnabled()) {</span>
+            String requestURIWithoutContext;
+
+<span class="nc bnc" id="L83" title="All 2 branches missed.">            if (request.getContextPath() != null) {</span>
+<span class="nc" id="L84">                requestURIWithoutContext = request.getRequestURI().substring(request.getContextPath().length());</span>
+            } else {
+<span class="nc" id="L86">                requestURIWithoutContext = request.getRequestURI();</span>
+            }
+
+            // Remove JSESSION-ID or other modifiers
+<span class="nc" id="L90">            int pos = requestURIWithoutContext.indexOf(&quot;;&quot;);</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">            if (pos &gt;= 0) {</span>
+<span class="nc" id="L92">                requestURIWithoutContext = requestURIWithoutContext.substring(0, pos);</span>
+            }
+
+<span class="nc" id="L95">            LOG.trace(&quot;Process URL Filter Begin &quot; + requestURIWithoutContext);</span>
+        }
+
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (request.getAttribute(REQUEST_DTO_PARAM_NAME) == null) {</span>
+<span class="nc" id="L99">            request.setAttribute(REQUEST_DTO_PARAM_NAME, new RequestDTOImpl(request));</span>
+        }
+
+        try {
+<span class="nc" id="L103">            requestProcessor.process(new ServletWebRequest(request, response));</span>
+<span class="nc" id="L104">            filterChain.doFilter(request, response);</span>
+<span class="nc" id="L105">        } catch (HaltFilterChainException e) {</span>
+            return;
+<span class="nc" id="L107">        } catch (SiteNotFoundException e) {</span>
+<span class="nc" id="L108">            response.setStatus(HttpServletResponse.SC_NOT_FOUND);</span>
+        } finally {
+<span class="nc" id="L110">            requestProcessor.postProcess(new ServletWebRequest(request, response));</span>
+<span class="nc" id="L111">        }</span>
+<span class="nc" id="L112">    }</span>
+
+    /**
+     * Determines if the passed in URL should be processed by the content management system.
+     * &lt;p/&gt;
+     * By default, this method returns false for any BLC-Admin URLs and service calls and for all common image/digital mime-types (as determined by an internal call to {@code getIgnoreSuffixes}.
+     * &lt;p/&gt;
+     * This check is called with the {@code doFilterInternal} method to short-circuit the content processing which can be expensive for requests that do not require it.
+     * 
+     * @param requestURI
+     *            - the HttpServletRequest.getRequestURI
+     * @return true if the {@code HttpServletRequest} should be processed
+     */
+    protected boolean shouldProcessURL(HttpServletRequest request, String requestURI) {
+<span class="nc bnc" id="L126" title="All 6 branches missed.">        if (requestURI.contains(BLC_ADMIN_GWT) || requestURI.endsWith(BLC_ADMIN_SERVICE) || requestURI.contains(BLC_ADMIN_PREFIX)) {</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">            if (LOG.isTraceEnabled()) {</span>
+<span class="nc" id="L128">                LOG.trace(&quot;BroadleafProcessURLFilter ignoring admin request URI &quot; + requestURI);</span>
+            }
+<span class="nc" id="L130">            return false;</span>
+        } else {
+<span class="nc" id="L132">            int pos = requestURI.lastIndexOf(&quot;.&quot;);</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">            if (pos &gt; 0) {</span>
+//                String suffix = requestURI.substring(pos);
+//                if (getIgnoreSuffixes().contains(suffix.toLowerCase())) {
+//                    if (LOG.isTraceEnabled()) {
+//                        LOG.trace(&quot;BroadleafProcessURLFilter ignoring request due to suffix &quot; + requestURI);
+//                    }
+//                    return false;
+//                }
+            }
+        }
+<span class="nc" id="L143">        return true;</span>
+    }
+
+    /**
+     * Returns a set of suffixes that can be ignored by content processing. The following are returned:
+     * &lt;p/&gt;
+     * &lt;B&gt;List of suffixes ignored:&lt;/B&gt;
+     * 
+     * &quot;.aif&quot;, &quot;.aiff&quot;, &quot;.asf&quot;, &quot;.avi&quot;, &quot;.bin&quot;, &quot;.bmp&quot;, &quot;.doc&quot;, &quot;.eps&quot;, &quot;.gif&quot;, &quot;.hqx&quot;, &quot;.jpg&quot;, &quot;.jpeg&quot;, &quot;.mid&quot;, &quot;.midi&quot;, &quot;.mov&quot;, &quot;.mp3&quot;, &quot;.mpg&quot;, &quot;.mpeg&quot;, &quot;.p65&quot;, &quot;.pdf&quot;, &quot;.pic&quot;, &quot;.pict&quot;, &quot;.png&quot;, &quot;.ppt&quot;, &quot;.psd&quot;, &quot;.qxd&quot;, &quot;.ram&quot;, &quot;.ra&quot;, &quot;.rm&quot;, &quot;.sea&quot;, &quot;.sit&quot;, &quot;.stk&quot;, &quot;.swf&quot;, &quot;.tif&quot;, &quot;.tiff&quot;, &quot;.txt&quot;, &quot;.rtf&quot;, &quot;.vob&quot;, &quot;.wav&quot;, &quot;.wmf&quot;, &quot;.xls&quot;, &quot;.zip&quot;;
+     * 
+     * @return set of suffixes to ignore.
+     */
+    protected Set getIgnoreSuffixes() {
+<span class="nc bnc" id="L156" title="All 4 branches missed.">        if (ignoreSuffixes == null || ignoreSuffixes.isEmpty()) {</span>
+<span class="nc" id="L157">            String[] ignoreSuffixList = { &quot;.aif&quot;, &quot;.aiff&quot;, &quot;.asf&quot;, &quot;.avi&quot;, &quot;.bin&quot;, &quot;.bmp&quot;, &quot;.css&quot;, &quot;.doc&quot;, &quot;.eps&quot;, &quot;.gif&quot;, &quot;.hqx&quot;, &quot;.js&quot;, &quot;.jpg&quot;, &quot;.jpeg&quot;, &quot;.mid&quot;, &quot;.midi&quot;, &quot;.mov&quot;, &quot;.mp3&quot;, &quot;.mpg&quot;, &quot;.mpeg&quot;, &quot;.p65&quot;, &quot;.pdf&quot;, &quot;.pic&quot;, &quot;.pict&quot;, &quot;.png&quot;, &quot;.ppt&quot;, &quot;.psd&quot;, &quot;.qxd&quot;, &quot;.ram&quot;, &quot;.ra&quot;, &quot;.rm&quot;, &quot;.sea&quot;, &quot;.sit&quot;, &quot;.stk&quot;, &quot;.swf&quot;, &quot;.tif&quot;, &quot;.tiff&quot;, &quot;.txt&quot;, &quot;.rtf&quot;, &quot;.vob&quot;, &quot;.wav&quot;, &quot;.wmf&quot;, &quot;.xls&quot;, &quot;.zip&quot; };</span>
+<span class="nc" id="L158">            ignoreSuffixes = new HashSet&lt;String&gt;(Arrays.asList(ignoreSuffixList));</span>
+        }
+<span class="nc" id="L160">        return ignoreSuffixes;</span>
+    }
+
+    @Override
+    protected boolean shouldNotFilterErrorDispatch() {
+<span class="nc" id="L165">        return false;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

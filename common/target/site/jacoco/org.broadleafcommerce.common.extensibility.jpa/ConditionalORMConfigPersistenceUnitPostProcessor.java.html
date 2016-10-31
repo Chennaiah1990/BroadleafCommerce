@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ConditionalORMConfigPersistenceUnitPostProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa</a> &gt; <span class="el_source">ConditionalORMConfigPersistenceUnitPostProcessor.java</span></div><h1>ConditionalORMConfigPersistenceUnitPostProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa;
+
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.orm.jpa.persistenceunit.MutablePersistenceUnitInfo;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+/**
+ * Responsible for determining if an entity has been conditionally enabled. The primary utility of this class is to allow
+ * conditional inclusion of additional entities important for enhancements or bug fixes. Since this behavior requires
+ * explicit action by an implementation's codebase, fixes that require schema changes can safely be introduced in a patch release stream.
+ * &lt;/p&gt;
+ * Setup inside a Broadleaf Commerce module is generally performed in a manner similar to this example:
+ * {@code
+    &lt;bean id=&quot;blAuditConditionalORMConfig&quot; class=&quot;org.broadleafcommerce.common.extensibility.jpa.ConditionalORMConfigDto&quot;&gt;
+        &lt;property name=&quot;puName&quot; value=&quot;blPU&quot;/&gt;
+        &lt;property name=&quot;conditionalProperty&quot; value=&quot;enable.workflow.audit.report.request&quot;/&gt;
+    &lt;/bean&gt;
+
+    &lt;bean id=&quot;blCommonConditionalEntities&quot; class=&quot;org.springframework.beans.factory.config.MapFactoryBean&quot;&gt;
+        &lt;property name=&quot;sourceMap&quot;&gt;
+            &lt;map&gt;
+                &lt;entry key=&quot;com.broadleafcommerce.enterprise.workflow.domain.AuditLogRequestImpl&quot; value-ref=&quot;blAuditConditionalORMConfig&quot;/&gt;
+                &lt;entry key=&quot;com.broadleafcommerce.enterprise.workflow.domain.AuditLogNodeRequestImpl&quot; value-ref=&quot;blAuditConditionalORMConfig&quot;/&gt;
+                &lt;entry key=&quot;com.broadleafcommerce.enterprise.workflow.domain.AuditReportRequestImpl&quot; value-ref=&quot;blAuditConditionalORMConfig&quot;/&gt;
+            &lt;/map&gt;
+        &lt;/property&gt;
+    &lt;/bean&gt;
+
+    &lt;bean class=&quot;org.broadleafcommerce.common.extensibility.context.merge.EarlyStageMergeBeanPostProcessor&quot;&gt;
+        &lt;property name=&quot;collectionRef&quot; value=&quot;blCommonConditionalEntities&quot;/&gt;
+        &lt;property name=&quot;targetRef&quot; value=&quot;blConditionalEntities&quot;/&gt;
+    &lt;/bean&gt;
+ * }
+ * The goal is to add configuration for one or more entities and then add that configuration to the &quot;blCommonConditionalEntities&quot; map in
+ * Spring. The activity of this configuration will remain dormant until the &quot;conditionalProperty&quot; is defined and set to true in the implementation's
+ * Spring property files (or override property file). At that point, the entities will be introduced to Hibernate for normal
+ * inclusion. This has a similar effect to declaring a &lt;class&gt;&lt;/class&gt; element in a persistence.xml file. Note, the &quot;blCommonConditionalOrmFiles&quot;
+ * collection may be targeted as well, allowing you to conditionally includes ORM mapping files as well. This has a similar
+ * effect to declaring a &lt;mapping-file&gt;&lt;/mapping-file&gt; element in a persistence.xml file.
+ *
+ * @author Jeff Fischer
+ */
+<span class="nc" id="L70">public class ConditionalORMConfigPersistenceUnitPostProcessor implements org.springframework.orm.jpa.persistenceunit.PersistenceUnitPostProcessor, BeanFactoryAware {</span>
+
+    @Resource(name=&quot;blConditionalEntities&quot;)
+    protected Map&lt;String, ConditionalORMConfigDto&gt; entities;
+
+<span class="nc" id="L75">    protected Map&lt;String, ConditionalORMConfigDto&gt; enabledEntities = new HashMap&lt;String, ConditionalORMConfigDto&gt;();</span>
+
+    @Resource(name=&quot;blConditionalOrmFiles&quot;)
+    protected Map&lt;String, ConditionalORMConfigDto&gt; ormFiles;
+
+<span class="nc" id="L80">    protected Map&lt;String, ConditionalORMConfigDto&gt; enabledOrmFiles = new HashMap&lt;String, ConditionalORMConfigDto&gt;();</span>
+
+    protected ConfigurableBeanFactory beanFactory;
+
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+<span class="nc" id="L86">        this.beanFactory = (ConfigurableBeanFactory) beanFactory;</span>
+<span class="nc" id="L87">    }</span>
+
+    @PostConstruct
+    public void init() {
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        for (Map.Entry&lt;String, ConditionalORMConfigDto&gt; entry : entities.entrySet()) {</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">            if (isPropertyEnabled(entry.getValue().getConditionalProperty())) {</span>
+<span class="nc" id="L93">                enabledEntities.put(entry.getKey(), entry.getValue());</span>
+            }
+<span class="nc" id="L95">        }</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        for (Map.Entry&lt;String, ConditionalORMConfigDto&gt; entry : ormFiles.entrySet()) {</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            if (isPropertyEnabled(entry.getValue().getConditionalProperty())) {</span>
+<span class="nc" id="L98">                enabledOrmFiles.put(entry.getKey(), entry.getValue());</span>
+            }
+<span class="nc" id="L100">        }</span>
+<span class="nc" id="L101">    }</span>
+
+    @Override
+    public void postProcessPersistenceUnitInfo(MutablePersistenceUnitInfo pui) {
+<span class="nc" id="L105">        String puName = pui.getPersistenceUnitName();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        for (Map.Entry&lt;String, ConditionalORMConfigDto&gt; entry : enabledEntities.entrySet()) {</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            if (puName.equals(entry.getValue().getPuName())) {</span>
+<span class="nc" id="L108">                pui.getManagedClassNames().add(entry.getKey());</span>
+            }
+<span class="nc" id="L110">        }</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        for (Map.Entry&lt;String, ConditionalORMConfigDto&gt; entry : enabledOrmFiles.entrySet()) {</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">            if (puName.equals(entry.getValue().getPuName())) {</span>
+<span class="nc" id="L113">                pui.getMappingFileNames().add(entry.getKey());</span>
+            }
+<span class="nc" id="L115">        }</span>
+<span class="nc" id="L116">    }</span>
+
+    protected Boolean isPropertyEnabled(String propertyName) {
+        Boolean shouldProceed;
+        try {
+<span class="nc" id="L121">            String value = beanFactory.resolveEmbeddedValue(&quot;${&quot; + propertyName + &quot;:false}&quot;);</span>
+<span class="nc" id="L122">            shouldProceed = Boolean.parseBoolean(value);</span>
+<span class="nc" id="L123">        } catch (Exception e) {</span>
+<span class="nc" id="L124">            shouldProceed = false;</span>
+<span class="nc" id="L125">        }</span>
+<span class="nc" id="L126">        return shouldProceed;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

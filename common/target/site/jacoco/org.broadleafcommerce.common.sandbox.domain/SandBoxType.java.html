@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SandBoxType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.sandbox.domain</a> &gt; <span class="el_source">SandBoxType.java</span></div><h1>SandBoxType.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.sandbox.domain;
+
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Created by bpolster.
+ */
+public class SandBoxType implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L36">    private static final Map&lt;String, SandBoxType&gt; TYPES = new LinkedHashMap&lt;String, SandBoxType&gt;();</span>
+
+<span class="nc" id="L38">    public static final SandBoxType USER = new SandBoxType(&quot;USER&quot;, &quot;User&quot;, 3);</span>
+<span class="nc" id="L39">    public static final SandBoxType APPROVAL = new SandBoxType(&quot;APPROVAL&quot;, &quot;Approval&quot;, 2);</span>
+<span class="nc" id="L40">    public static final SandBoxType DEFAULT = new SandBoxType(&quot;DEFAULT&quot;, &quot;Default&quot;, 2);</span>
+<span class="nc" id="L41">    public static final SandBoxType PRODUCTION = new SandBoxType(&quot;PRODUCTION&quot;, &quot;Production&quot;, 1);</span>
+
+
+    public static SandBoxType getInstance(final String type) {
+<span class="nc" id="L45">        return TYPES.get(type);</span>
+    }
+
+    private String type;
+    private String friendlyType;
+    private Integer priority;
+
+<span class="nc" id="L52">    public SandBoxType() {</span>
+        //do nothing
+<span class="nc" id="L54">    }</span>
+
+<span class="nc" id="L56">    public SandBoxType(final String type, final String friendlyType, final Integer priority) {</span>
+<span class="nc" id="L57">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L58">        this.priority = priority;</span>
+<span class="nc" id="L59">        setType(type);</span>
+<span class="nc" id="L60">    }</span>
+
+    public String getType() {
+<span class="nc" id="L63">        return type;</span>
+    }
+
+    public String getFriendlyType() {
+<span class="nc" id="L67">        return friendlyType;</span>
+    }
+
+    public Integer getPriority() {
+<span class="nc" id="L71">        return priority;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L75">        this.type = type;</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (!TYPES.containsKey(type)) {</span>
+<span class="nc" id="L77">            TYPES.put(type, this);</span>
+        } else {
+<span class="nc" id="L79">            throw new RuntimeException(&quot;Cannot add the type: (&quot; + type + &quot;). It already exists as a type via &quot; + getInstance(type).getClass().getName());</span>
+        }
+<span class="nc" id="L81">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L85">        final int prime = 31;</span>
+<span class="nc" id="L86">        int result = 1;</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L88">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L94">            return true;</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L96">            return false;</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L98">            return false;</span>
+<span class="nc" id="L99">        SandBoxType other = (SandBoxType) obj;</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L102">                return false;</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L104">            return false;</span>
+<span class="nc" id="L105">        return true;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

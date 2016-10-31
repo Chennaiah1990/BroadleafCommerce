@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CsrfFilter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.security.handler</a> &gt; <span class="el_source">CsrfFilter.java</span></div><h1>CsrfFilter.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.security.handler;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.exception.ServiceException;
+import org.broadleafcommerce.common.security.service.ExploitProtectionService;
+import org.springframework.security.web.util.AntPathRequestMatcher;
+import org.springframework.security.web.util.RequestMatcher;
+import org.springframework.web.filter.GenericFilterBean;
+
+import javax.annotation.Resource;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+
+/**
+ * Checks the validity of the CSRF token on every POST request.
+ * You can inject excluded Request URI patterns to bypass this filter.
+ * This filter uses the AntPathRequestMatcher which compares a pre-defined ant-style pattern against the URL
+ * ({@code servletPath + pathInfo}) of an {@code HttpServletRequest}.
+ * This allows you to use wildcard matching as well, for example {@code /**} or {@code **}
+ *
+ * @see org.springframework.security.web.util.AntPathRequestMatcher
+ *
+ * @author Andre Azzolini (apazzolini)
+ */
+<span class="nc" id="L51">public class CsrfFilter extends GenericFilterBean {</span>
+<span class="nc" id="L52">    protected static final Log LOG = LogFactory.getLog(CsrfFilter.class);</span>
+    
+    @Resource(name=&quot;blExploitProtectionService&quot;)
+    protected ExploitProtectionService exploitProtectionService;
+
+    protected List&lt;String&gt; excludedRequestPatterns;
+
+    @Override
+    public void doFilter(ServletRequest baseRequest, ServletResponse baseResponse, FilterChain chain) throws IOException, ServletException {
+<span class="nc" id="L61">        HttpServletRequest request = (HttpServletRequest) baseRequest;</span>
+<span class="nc" id="L62">        HttpServletResponse response = (HttpServletResponse) baseResponse;</span>
+
+<span class="nc" id="L64">        boolean excludedRequestFound = false;</span>
+<span class="nc bnc" id="L65" title="All 4 branches missed.">        if (excludedRequestPatterns != null &amp;&amp; excludedRequestPatterns.size() &gt; 0) {</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">            for (String pattern : excludedRequestPatterns) {</span>
+<span class="nc" id="L67">                RequestMatcher matcher = new AntPathRequestMatcher(pattern);</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">                if (matcher.matches(request)){</span>
+<span class="nc" id="L69">                    excludedRequestFound = true;</span>
+<span class="nc" id="L70">                    break;</span>
+                }
+<span class="nc" id="L72">            }</span>
+        }
+
+        // We only validate CSRF tokens on POST
+<span class="nc bnc" id="L76" title="All 4 branches missed.">        if (request.getMethod().equals(&quot;POST&quot;) &amp;&amp; !excludedRequestFound) {</span>
+<span class="nc" id="L77">            String requestToken = request.getParameter(exploitProtectionService.getCsrfTokenParameter());</span>
+            try {
+<span class="nc" id="L79">                exploitProtectionService.compareToken(requestToken);</span>
+<span class="nc" id="L80">            } catch (ServiceException e) {</span>
+<span class="nc" id="L81">                throw new ServletException(e);</span>
+<span class="nc" id="L82">            }</span>
+        }
+        
+<span class="nc" id="L85">        chain.doFilter(request, response);</span>
+<span class="nc" id="L86">    }</span>
+
+    public List&lt;String&gt; getExcludedRequestPatterns() {
+<span class="nc" id="L89">        return excludedRequestPatterns;</span>
+    }
+
+    /**
+     * This allows you to declaratively set a list of excluded Request Patterns
+     *
+     * &lt;bean id=&quot;blCsrfFilter&quot; class=&quot;org.broadleafcommerce.common.security.handler.CsrfFilter&quot; &gt;
+     *     &lt;property name=&quot;excludedRequestPatterns&quot;&gt;
+     *         &lt;list&gt;
+     *             &lt;value&gt;/exclude-me/**&lt;/value&gt;
+     *         &lt;/list&gt;
+     *     &lt;/property&gt;
+     * &lt;/bean&gt;
+     *
+     **/
+    public void setExcludedRequestPatterns(List&lt;String&gt; excludedRequestPatterns) {
+<span class="nc" id="L105">        this.excludedRequestPatterns = excludedRequestPatterns;</span>
+<span class="nc" id="L106">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

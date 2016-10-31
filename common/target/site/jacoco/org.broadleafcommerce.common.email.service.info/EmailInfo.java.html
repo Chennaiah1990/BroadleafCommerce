@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EmailInfo.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.email.service.info</a> &gt; <span class="el_source">EmailInfo.java</span></div><h1>EmailInfo.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.email.service.info;
+
+import org.broadleafcommerce.common.email.service.message.Attachment;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author jfischer
+ *
+ */
+<span class="nc" id="L32">public class EmailInfo implements Serializable {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    private String emailType;
+    private String emailTemplate;
+    private String subject;
+    private String fromAddress;
+    private String messageBody;
+<span class="nc" id="L41">    private String encoding = &quot;UTF8&quot;;</span>
+<span class="nc" id="L42">    private List&lt;Attachment&gt; attachments = new ArrayList&lt;Attachment&gt;();</span>
+
+    private String sendEmailReliableAsync;
+    private String sendAsyncPriority;
+
+    /**
+     * @return the emailType
+     */
+    public String getEmailType() {
+<span class="nc" id="L51">        return emailType;</span>
+    }
+
+    /**
+     * @param emailType the emailType to set
+     */
+    public void setEmailType(String emailType) {
+<span class="nc" id="L58">        this.emailType = emailType;</span>
+<span class="nc" id="L59">    }</span>
+
+    /**
+     * @return the emailTemplate
+     */
+    public String getEmailTemplate() {
+<span class="nc" id="L65">        return emailTemplate;</span>
+    }
+
+    /**
+     * @param emailTemplate the emailTemplate to set
+     */
+    public void setEmailTemplate(String emailTemplate) {
+<span class="nc" id="L72">        this.emailTemplate = emailTemplate;</span>
+<span class="nc" id="L73">    }</span>
+
+    /**
+     * @return the subject
+     */
+    public String getSubject() {
+<span class="nc" id="L79">        return subject;</span>
+    }
+
+    /**
+     * @param subject the subject to set
+     */
+    public void setSubject(String subject) {
+<span class="nc" id="L86">        this.subject = subject;</span>
+<span class="nc" id="L87">    }</span>
+
+    /**
+     * @return the fromAddress
+     */
+    public String getFromAddress() {
+<span class="nc" id="L93">        return fromAddress;</span>
+    }
+
+    /**
+     * @param fromAddress the fromAddress to set
+     */
+    public void setFromAddress(String fromAddress) {
+<span class="nc" id="L100">        this.fromAddress = fromAddress;</span>
+<span class="nc" id="L101">    }</span>
+
+    /**
+     * @return the sendEmailReliableAsync
+     */
+    public String getSendEmailReliableAsync() {
+<span class="nc" id="L107">        return sendEmailReliableAsync;</span>
+    }
+
+    /**
+     * @param sendEmailReliableAsync the sendEmailReliableAsync to set
+     */
+    public void setSendEmailReliableAsync(String sendEmailReliableAsync) {
+<span class="nc" id="L114">        this.sendEmailReliableAsync = sendEmailReliableAsync;</span>
+<span class="nc" id="L115">    }</span>
+
+    /**
+     * @return the sendAsyncPriority
+     */
+    public String getSendAsyncPriority() {
+<span class="nc" id="L121">        return sendAsyncPriority;</span>
+    }
+
+    /**
+     * @param sendAsyncPriority the sendAsyncPriority to set
+     */
+    public void setSendAsyncPriority(String sendAsyncPriority) {
+<span class="nc" id="L128">        this.sendAsyncPriority = sendAsyncPriority;</span>
+<span class="nc" id="L129">    }</span>
+
+    public String getMessageBody() {
+<span class="nc" id="L132">        return messageBody;</span>
+    }
+
+    public void setMessageBody(String messageBody) {
+<span class="nc" id="L136">        this.messageBody = messageBody;</span>
+<span class="nc" id="L137">    }</span>
+
+    public List&lt;Attachment&gt; getAttachments() {
+<span class="nc" id="L140">        return attachments;</span>
+    }
+
+    public void setAttachments(List&lt;Attachment&gt; attachments) {
+<span class="nc" id="L144">        this.attachments = attachments;</span>
+<span class="nc" id="L145">    }</span>
+
+    public String getEncoding() {
+<span class="nc" id="L148">        return encoding;</span>
+    }
+
+    public void setEncoding(String encoding) {
+<span class="nc" id="L152">        this.encoding = encoding;</span>
+<span class="nc" id="L153">    }</span>
+
+    public synchronized EmailInfo clone() {
+<span class="nc" id="L156">        EmailInfo info = new EmailInfo();</span>
+<span class="nc" id="L157">        info.setAttachments(attachments);</span>
+<span class="nc" id="L158">        info.setEmailTemplate(emailTemplate);</span>
+<span class="nc" id="L159">        info.setEmailType(emailType);</span>
+<span class="nc" id="L160">        info.setFromAddress(fromAddress);</span>
+<span class="nc" id="L161">        info.setMessageBody(messageBody);</span>
+<span class="nc" id="L162">        info.setSendAsyncPriority(sendAsyncPriority);</span>
+<span class="nc" id="L163">        info.setSendEmailReliableAsync(sendEmailReliableAsync);</span>
+<span class="nc" id="L164">        info.setSubject(subject);</span>
+<span class="nc" id="L165">        info.setEncoding(encoding);</span>
+
+<span class="nc" id="L167">        return info;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ResourceInputStream.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.context</a> &gt; <span class="el_source">ResourceInputStream.java</span></div><h1>ResourceInputStream.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.context;
+
+import org.apache.commons.lang.StringUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author jfischer
+ */
+<span class="nc bnc" id="L32" title="All 2 branches missed.">public class ResourceInputStream extends InputStream {</span>
+
+    private final InputStream is;
+<span class="nc" id="L35">    private List&lt;String&gt; names = new ArrayList&lt;String&gt;(20);</span>
+
+<span class="nc" id="L37">    public ResourceInputStream(InputStream is, String name) {</span>
+<span class="nc" id="L38">        this.is = is;</span>
+<span class="nc" id="L39">        names.add(name);</span>
+<span class="nc" id="L40">    }</span>
+
+<span class="nc" id="L42">    public ResourceInputStream(InputStream is, String name, List&lt;String&gt; previousNames) {</span>
+<span class="nc" id="L43">        this.is = is;</span>
+<span class="nc" id="L44">        names.addAll(previousNames);</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        if (!StringUtils.isEmpty(name)) {</span>
+<span class="nc" id="L46">            names.add(name);</span>
+        }
+<span class="nc" id="L48">    }</span>
+
+    public List&lt;String&gt; getNames() {
+<span class="nc" id="L51">        return names;</span>
+    }
+
+    public String getName() {
+<span class="nc bnc" id="L55" title="All 4 branches missed.">        assert names.size() == 1;</span>
+<span class="nc" id="L56">        return names.get(0);</span>
+    }
+
+    public String toString() {
+<span class="nc" id="L60">        StringBuilder sb = new StringBuilder(100);</span>
+<span class="nc" id="L61">        int size = names.size();</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        for (int j=0;j&lt;size;j++) {</span>
+<span class="nc" id="L63">            sb.append(names.get(j));</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">            if (j &lt; size - 1) {</span>
+<span class="nc" id="L65">                sb.append(&quot; : &quot;);</span>
+            }
+        }
+
+<span class="nc" id="L69">        return sb.toString();</span>
+    }
+
+    @Override
+    public int available() throws IOException {
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        return (is==null)?-1:is.available();</span>
+    }
+
+    @Override
+    public void close() throws IOException {
+<span class="nc" id="L79">        is.close();</span>
+<span class="nc" id="L80">    }</span>
+
+    @Override
+    public void mark(int i) {
+<span class="nc" id="L84">        is.mark(i);</span>
+<span class="nc" id="L85">    }</span>
+
+    @Override
+    public boolean markSupported() {
+<span class="nc" id="L89">        return is.markSupported();</span>
+    }
+
+    @Override
+    public int read() throws IOException {
+<span class="nc" id="L94">        return is.read();</span>
+    }
+
+    @Override
+    public int read(byte[] bytes) throws IOException {
+<span class="nc" id="L99">        return is.read(bytes);</span>
+    }
+
+    @Override
+    public int read(byte[] bytes, int i, int i1) throws IOException {
+<span class="nc" id="L104">        return is.read(bytes, i, i1);</span>
+    }
+
+    @Override
+    public void reset() throws IOException {
+<span class="nc" id="L109">        is.reset();</span>
+<span class="nc" id="L110">    }</span>
+
+    @Override
+    public long skip(long l) throws IOException {
+<span class="nc" id="L114">        return is.skip(l);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PaymentGatewayType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment</a> &gt; <span class="el_source">PaymentGatewayType.java</span></div><h1>PaymentGatewayType.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.payment;
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+
+/**
+ * &lt;p&gt;This is designed such that individual payment modules will extend this to add their own type. For instance, while
+ * this class does not explicitly have a 'Braintree' payment gateway type, the Braintree module will provide an extension
+ * to this class and add itself in the list of types. For instance:&lt;/p&gt;
+ * 
+ * &lt;pre&gt;
+ * {@code
+ * public class BraintreeGatewayType extends PaymentGatewayType {
+ *     public static final BRAINTREE = new PaymentGatewayType(&quot;BRAINTREE&quot;, &quot;Braintree&quot;);
+ * }
+ * &lt;/pre&gt;
+ * 
+ * And then in your application context:
+ * &lt;pre&gt;
+ * {@code
+ * &lt;bean class=&quot;org.broadleafcommerce.vendor.braintree.BraintreeGatewayType&quot; /&gt;
+ * }
+ * &lt;/pre&gt;
+ * 
+ * &lt;p&gt;This is especially useful in auditing scenarios so that, at a glance, you can easily see what gateway a particular
+ * order payment was processed by.&lt;/p&gt;
+ * 
+ * @author Phillip Verheyden (phillipuniverse)
+ */
+public class PaymentGatewayType implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L58">    private static final Map&lt;String, PaymentGatewayType&gt; TYPES = new LinkedHashMap&lt;String, PaymentGatewayType&gt;();</span>
+
+<span class="nc" id="L60">    public static final PaymentGatewayType TEMPORARY  = new PaymentGatewayType(&quot;Temporary&quot;, &quot;This is a temporary Order Payment&quot;);</span>
+<span class="nc" id="L61">    public static final PaymentGatewayType PASSTHROUGH  = new PaymentGatewayType(&quot;Passthrough&quot;, &quot;Passthrough Payment&quot;);</span>
+
+    public static PaymentGatewayType getInstance(final String type) {
+<span class="nc" id="L64">        return TYPES.get(type);</span>
+    }
+
+    private String type;
+    private String friendlyType;
+
+<span class="nc" id="L70">    public PaymentGatewayType() {</span>
+        // do nothing
+<span class="nc" id="L72">    }</span>
+
+<span class="nc" id="L74">    public PaymentGatewayType(String type, String friendlyType) {</span>
+<span class="nc" id="L75">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L76">        setType(type);</span>
+<span class="nc" id="L77">    }</span>
+
+   @Override
+     public String getType() {
+<span class="nc" id="L81">        return type;</span>
+    }
+
+   @Override
+     public String getFriendlyType() {
+<span class="nc" id="L86">        return friendlyType;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L90">        this.type = type;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (!TYPES.containsKey(type)){</span>
+<span class="nc" id="L92">            TYPES.put(type, this);</span>
+        }
+<span class="nc" id="L94">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L98">        final int prime = 31;</span>
+<span class="nc" id="L99">        int result = 1;</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L101">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L107">            return true;</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L109">            return false;</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L111">            return false;</span>
+<span class="nc" id="L112">        PaymentGatewayType other = (PaymentGatewayType) obj;</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L115">                return false;</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L117">            return false;</span>
+<span class="nc" id="L118">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

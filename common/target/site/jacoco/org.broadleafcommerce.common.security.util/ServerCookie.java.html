@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ServerCookie.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.security.util</a> &gt; <span class="el_source">ServerCookie.java</span></div><h1>ServerCookie.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.security.util;
+
+import java.text.DateFormat;
+import java.text.FieldPosition;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
+
+/**
+ * This is a modified version of the ServerCookie implementation taken from
+ * the Apache Tomcat source. This class allows Broadleaf to properly construct
+ * cookies for different browsers and include the httpOnly protection as well.
+ * 
+ * @author jfischer
+ *
+ */
+<span class="nc" id="L37">public class ServerCookie {</span>
+
+    private static final String tspecials = &quot;,; &quot;;
+    private static final String tspecials2 = &quot;()&lt;&gt;@,;:\\\&quot;/[]?={} \t&quot;;
+    private static final String tspecials2NoSlash = &quot;()&lt;&gt;@,;:\\\&quot;[]?={} \t&quot;;
+
+    // Other fields
+    private static final String OLD_COOKIE_PATTERN =
+        &quot;EEE, dd-MMM-yyyy HH:mm:ss z&quot;;
+<span class="nc" id="L46">    private static final ThreadLocal&lt;DateFormat&gt; OLD_COOKIE_FORMAT =</span>
+<span class="nc" id="L47">        new ThreadLocal&lt;DateFormat&gt;() {</span>
+        protected DateFormat initialValue() {
+<span class="nc" id="L49">            DateFormat df =</span>
+                new SimpleDateFormat(OLD_COOKIE_PATTERN, Locale.US);
+<span class="nc" id="L51">            df.setTimeZone(TimeZone.getTimeZone(&quot;GMT&quot;));</span>
+<span class="nc" id="L52">            return df;</span>
+        }
+    };
+    private static final String ancientDate;
+    static {
+<span class="nc" id="L57">        ancientDate = OLD_COOKIE_FORMAT.get().format(new Date(10000));</span>
+<span class="nc" id="L58">    }</span>
+
+    /**
+     * If set to true, we parse cookies according to the servlet spec,
+     */
+    public static final boolean STRICT_SERVLET_COMPLIANCE = false;
+
+    /**
+     * If set to false, we don't use the IE6/7 Max-Age/Expires work around
+     */
+    public static final boolean ALWAYS_ADD_EXPIRES = true;
+
+    // TODO RFC2965 fields also need to be passed
+    public static void appendCookieValue( StringBuffer headerBuf,
+            int version,
+            String name,
+            String value,
+            String path,
+            String domain,
+            String comment,
+            int maxAge,
+            boolean isSecure,
+            boolean isHttpOnly)
+    {
+<span class="nc" id="L82">        StringBuffer buf = new StringBuffer();</span>
+        // Servlet implementation checks name
+<span class="nc" id="L84">        buf.append( name );</span>
+<span class="nc" id="L85">        buf.append(&quot;=&quot;);</span>
+        // Servlet implementation does not check anything else
+
+<span class="nc" id="L88">        version = maybeQuote2(version, buf, value,true);</span>
+
+        // Add version 1 specific information
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (version == 1) {</span>
+            // Version=1 ... required
+<span class="nc" id="L93">            buf.append (&quot;; Version=1&quot;);</span>
+
+            // Comment=comment
+<span class="nc bnc" id="L96" title="All 2 branches missed.">            if ( comment!=null ) {</span>
+<span class="nc" id="L97">                buf.append (&quot;; Comment=&quot;);</span>
+<span class="nc" id="L98">                maybeQuote2(version, buf, comment);</span>
+            }
+        }
+
+        // Add domain information, if present
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (domain!=null) {</span>
+<span class="nc" id="L104">            buf.append(&quot;; Domain=&quot;);</span>
+<span class="nc" id="L105">            maybeQuote2(version, buf, domain);</span>
+        }
+
+        // Max-Age=secs ... or use old &quot;Expires&quot; format
+        // TODO RFC2965 Discard
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (maxAge &gt;= 0) {</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">            if (version &gt; 0) {</span>
+<span class="nc" id="L112">                buf.append (&quot;; Max-Age=&quot;);</span>
+<span class="nc" id="L113">                buf.append (maxAge);</span>
+            }
+            // IE6, IE7 and possibly other browsers don't understand Max-Age.
+            // They do understand Expires, even with V1 cookies!
+<span class="nc bnc" id="L117" title="All 2 branches missed.">            if (version == 0 || ALWAYS_ADD_EXPIRES) {</span>
+                // Wdy, DD-Mon-YY HH:MM:SS GMT ( Expires Netscape format )
+<span class="nc" id="L119">                buf.append (&quot;; Expires=&quot;);</span>
+                // To expire immediately we need to set the time in past
+<span class="nc bnc" id="L121" title="All 2 branches missed.">                if (maxAge == 0)</span>
+<span class="nc" id="L122">                    buf.append( ancientDate );</span>
+                else
+<span class="nc" id="L124">                    OLD_COOKIE_FORMAT.get().format(</span>
+                            new Date(System.currentTimeMillis() +
+                                    maxAge*1000L),
+                                    buf, new FieldPosition(0));
+            }
+        }
+
+        // Path=path
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        if (path!=null) {</span>
+<span class="nc" id="L133">            buf.append (&quot;; Path=&quot;);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">            if (version==0) {</span>
+<span class="nc" id="L135">                maybeQuote2(version, buf, path);</span>
+            } else {
+<span class="nc" id="L137">                maybeQuote2(version, buf, path, ServerCookie.tspecials2NoSlash, false);</span>
+            }
+        }
+
+        // Secure
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (isSecure) {</span>
+<span class="nc" id="L143">            buf.append (&quot;; Secure&quot;);</span>
+        }
+
+        // HttpOnly
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (isHttpOnly) {</span>
+<span class="nc" id="L148">            buf.append(&quot;; HttpOnly&quot;);</span>
+        }
+<span class="nc" id="L150">        headerBuf.append(buf);</span>
+<span class="nc" id="L151">    }</span>
+
+    public static int maybeQuote2 (int version, StringBuffer buf, String value) {
+<span class="nc" id="L154">        return maybeQuote2(version,buf,value,false);</span>
+    }
+
+    public static int maybeQuote2 (int version, StringBuffer buf, String value, boolean allowVersionSwitch) {
+<span class="nc" id="L158">        return maybeQuote2(version,buf,value,null,allowVersionSwitch);</span>
+    }
+
+    public static int maybeQuote2 (int version, StringBuffer buf, String value, String literals, boolean allowVersionSwitch) {
+<span class="nc bnc" id="L162" title="All 4 branches missed.">        if (value==null || value.length()==0) {</span>
+<span class="nc" id="L163">            buf.append(&quot;\&quot;\&quot;&quot;);</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        }else if (containsCTL(value,version))</span>
+<span class="nc" id="L165">            throw new IllegalArgumentException(&quot;Control character in cookie value, consider BASE64 encoding your value&quot;);</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        else if (alreadyQuoted(value)) {</span>
+<span class="nc" id="L167">            buf.append('&quot;');</span>
+<span class="nc" id="L168">            buf.append(escapeDoubleQuotes(value,1,value.length()-1));</span>
+<span class="nc" id="L169">            buf.append('&quot;');</span>
+<span class="nc bnc" id="L170" title="All 6 branches missed.">        } else if (allowVersionSwitch &amp;&amp; (!STRICT_SERVLET_COMPLIANCE) &amp;&amp; version==0 &amp;&amp; !isToken2(value, literals)) {</span>
+<span class="nc" id="L171">            buf.append('&quot;');</span>
+<span class="nc" id="L172">            buf.append(escapeDoubleQuotes(value,0,value.length()));</span>
+<span class="nc" id="L173">            buf.append('&quot;');</span>
+<span class="nc" id="L174">            version = 1;</span>
+<span class="nc bnc" id="L175" title="All 4 branches missed.">        } else if (version==0 &amp;&amp; !isToken(value,literals)) {</span>
+<span class="nc" id="L176">            buf.append('&quot;');</span>
+<span class="nc" id="L177">            buf.append(escapeDoubleQuotes(value,0,value.length()));</span>
+<span class="nc" id="L178">            buf.append('&quot;');</span>
+<span class="nc bnc" id="L179" title="All 4 branches missed.">        } else if (version==1 &amp;&amp; !isToken2(value,literals)) {</span>
+<span class="nc" id="L180">            buf.append('&quot;');</span>
+<span class="nc" id="L181">            buf.append(escapeDoubleQuotes(value,0,value.length()));</span>
+<span class="nc" id="L182">            buf.append('&quot;');</span>
+        }else {
+<span class="nc" id="L184">            buf.append(value);</span>
+        }
+<span class="nc" id="L186">        return version;</span>
+    }
+
+    public static boolean containsCTL(String value, int version) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if( value==null) return false;</span>
+<span class="nc" id="L191">        int len = value.length();</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        for (int i = 0; i &lt; len; i++) {</span>
+<span class="nc" id="L193">            char c = value.charAt(i);</span>
+<span class="nc bnc" id="L194" title="All 4 branches missed.">            if (c &lt; 0x20 || c &gt;= 0x7f) {</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">                if (c == 0x09)</span>
+<span class="nc" id="L196">                    continue; //allow horizontal tabs</span>
+<span class="nc" id="L197">                return true;</span>
+            }
+        }
+<span class="nc" id="L200">        return false;</span>
+    }
+
+    public static boolean alreadyQuoted (String value) {
+<span class="nc bnc" id="L204" title="All 4 branches missed.">        if (value==null || value.length()==0) return false;</span>
+<span class="nc bnc" id="L205" title="All 4 branches missed.">        return (value.charAt(0)=='\&quot;' &amp;&amp; value.charAt(value.length()-1)=='\&quot;');</span>
+    }
+
+    /**
+     * Escapes any double quotes in the given string.
+     *
+     * @param s the input string
+     * @param beginIndex start index inclusive
+     * @param endIndex exclusive
+     * @return The (possibly) escaped string
+     */
+    private static String escapeDoubleQuotes(String s, int beginIndex, int endIndex) {
+
+<span class="nc bnc" id="L218" title="All 6 branches missed.">        if (s == null || s.length() == 0 || s.indexOf('&quot;') == -1) {</span>
+<span class="nc" id="L219">            return s;</span>
+        }
+
+<span class="nc" id="L222">        StringBuffer b = new StringBuffer();</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        for (int i = beginIndex; i &lt; endIndex; i++) {</span>
+<span class="nc" id="L224">            char c = s.charAt(i);</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">            if (c == '\\' ) {</span>
+<span class="nc" id="L226">                b.append(c);</span>
+                //ignore the character after an escape, just append it
+<span class="nc bnc" id="L228" title="All 2 branches missed.">                if (++i&gt;=endIndex) throw new IllegalArgumentException(&quot;Invalid escape character in cookie value.&quot;);</span>
+<span class="nc" id="L229">                b.append(s.charAt(i));</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">            } else if (c == '&quot;')</span>
+<span class="nc" id="L231">                b.append('\\').append('&quot;');</span>
+            else
+<span class="nc" id="L233">                b.append(c);</span>
+        }
+
+<span class="nc" id="L236">        return b.toString();</span>
+    }
+
+    /*
+     * Tests a string and returns true if the string counts as a
+     * reserved token in the Java language.
+     *
+     * @param value the &lt;code&gt;String&lt;/code&gt; to be tested
+     *
+     * @return      &lt;code&gt;true&lt;/code&gt; if the &lt;code&gt;String&lt;/code&gt; is a reserved
+     *              token; &lt;code&gt;false&lt;/code&gt; if it is not
+     */
+    public static boolean isToken(String value) {
+<span class="nc" id="L249">        return isToken(value,null);</span>
+    }
+
+    public static boolean isToken(String value, String literals) {
+<span class="nc bnc" id="L253" title="All 2 branches missed.">        String tspecials = (literals==null?ServerCookie.tspecials:literals);</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        if( value==null) return true;</span>
+<span class="nc" id="L255">        int len = value.length();</span>
+
+<span class="nc bnc" id="L257" title="All 2 branches missed.">        for (int i = 0; i &lt; len; i++) {</span>
+<span class="nc" id="L258">            char c = value.charAt(i);</span>
+
+<span class="nc bnc" id="L260" title="All 2 branches missed.">            if (tspecials.indexOf(c) != -1)</span>
+<span class="nc" id="L261">                return false;</span>
+        }
+<span class="nc" id="L263">        return true;</span>
+    }
+
+    public static boolean isToken2(String value) {
+<span class="nc" id="L267">        return isToken2(value,null);</span>
+    }
+
+    public static boolean isToken2(String value, String literals) {
+<span class="nc bnc" id="L271" title="All 2 branches missed.">        String tspecials2 = (literals==null?ServerCookie.tspecials2:literals);</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        if( value==null) return true;</span>
+<span class="nc" id="L273">        int len = value.length();</span>
+
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        for (int i = 0; i &lt; len; i++) {</span>
+<span class="nc" id="L276">            char c = value.charAt(i);</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">            if (tspecials2.indexOf(c) != -1)</span>
+<span class="nc" id="L278">                return false;</span>
+        }
+<span class="nc" id="L280">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

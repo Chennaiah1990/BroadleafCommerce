@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>LocaleImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.locale.domain</a> &gt; <span class="el_source">LocaleImpl.java</span></div><h1>LocaleImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.locale.domain;
+
+import org.broadleafcommerce.common.admin.domain.AdminMainEntity;
+import org.broadleafcommerce.common.currency.domain.BroadleafCurrency;
+import org.broadleafcommerce.common.currency.domain.BroadleafCurrencyImpl;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+
+/**
+ * Created by jfischer
+ */
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name = &quot;BLC_LOCALE&quot;)
+@Cache(usage= CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region=&quot;blCMSElements&quot;)
+@AdminPresentationClass(friendlyName = &quot;LocaleImpl_baseLocale&quot;)
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_SITE)
+})
+<span class="fc" id="L53">public class LocaleImpl implements Locale, AdminMainEntity {</span>
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Column (name = &quot;LOCALE_CODE&quot;)
+    @AdminPresentation(friendlyName = &quot;LocaleImpl_Locale_Code&quot;, order = 1, 
+        group = &quot;LocaleImpl_Details&quot;, 
+        prominent = true, gridOrder = 2)
+    protected String localeCode;
+
+    @Column (name = &quot;FRIENDLY_NAME&quot;)
+    @AdminPresentation(friendlyName = &quot;LocaleImpl_Name&quot;, order = 2, 
+        group = &quot;LocaleImpl_Details&quot;, 
+        prominent = true, gridOrder = 1)
+    protected String friendlyName;
+
+<span class="fc" id="L70">    @Column (name = &quot;DEFAULT_FLAG&quot;)</span>
+    @AdminPresentation(friendlyName = &quot;LocaleImpl_Is_Default&quot;, order = 3, 
+        group = &quot;LocaleImpl_Details&quot;, 
+        prominent = true, gridOrder = 3)
+    protected Boolean defaultFlag = false;
+
+    @ManyToOne(targetEntity = BroadleafCurrencyImpl.class)
+    @JoinColumn(name = &quot;CURRENCY_CODE&quot;)
+    @AdminPresentation(friendlyName = &quot;LocaleImpl_Currency&quot;, order = 4, 
+        group = &quot;LocaleImpl_Details&quot;, 
+        prominent = true)
+    protected BroadleafCurrency defaultCurrency;
+
+<span class="fc" id="L83">    @Column (name = &quot;USE_IN_SEARCH_INDEX&quot;)</span>
+    @AdminPresentation(friendlyName = &quot;LocaleImpl_Use_In_Search_Index&quot;, order = 5, 
+        group = &quot;LocaleImpl_Details&quot;, 
+        prominent = true, gridOrder = 3)
+    protected Boolean useInSearchIndex = false;
+    
+    @Override
+    public String getLocaleCode() {
+<span class="fc" id="L91">        return localeCode;</span>
+    }
+
+    @Override
+    public void setLocaleCode(String localeCode) {
+<span class="fc" id="L96">        this.localeCode = localeCode;</span>
+<span class="fc" id="L97">    }</span>
+
+    @Override
+    public String getFriendlyName() {
+<span class="nc" id="L101">        return friendlyName;</span>
+    }
+
+    @Override
+    public void setFriendlyName(String friendlyName) {
+<span class="nc" id="L106">        this.friendlyName = friendlyName;</span>
+<span class="nc" id="L107">    }</span>
+
+    @Override
+    public void setDefaultFlag(Boolean defaultFlag) {
+<span class="nc" id="L111">        this.defaultFlag = defaultFlag;</span>
+<span class="nc" id="L112">    }</span>
+
+    @Override
+    public Boolean getDefaultFlag() {
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (defaultFlag == null) {</span>
+<span class="nc" id="L117">            return Boolean.FALSE;</span>
+        } else {
+<span class="nc" id="L119">            return defaultFlag;</span>
+        }
+    }
+
+    @Override
+    public BroadleafCurrency getDefaultCurrency() {
+<span class="nc" id="L125">        return defaultCurrency;</span>
+    }
+
+    @Override
+    public void setDefaultCurrency(BroadleafCurrency defaultCurrency) {
+<span class="nc" id="L130">        this.defaultCurrency = defaultCurrency;</span>
+<span class="nc" id="L131">    }</span>
+    
+    @Override
+    public Boolean getUseCountryInSearchIndex() {
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        return useInSearchIndex == null ? false : useInSearchIndex;</span>
+    }
+
+    @Override
+    public void setUseCountryInSearchIndex(Boolean useInSearchIndex) {
+<span class="nc" id="L140">        this.useInSearchIndex = useInSearchIndex;</span>
+<span class="nc" id="L141">    }</span>
+
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        if (this == o) {</span>
+<span class="nc" id="L146">            return true;</span>
+        }
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (o == null) return false;</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(o.getClass())) {</span>
+<span class="nc" id="L150">            return false;</span>
+        }
+
+<span class="nc" id="L153">        LocaleImpl locale = (LocaleImpl) o;</span>
+
+<span class="nc bnc" id="L155" title="All 6 branches missed.">        if (localeCode != null ? !localeCode.equals(locale.localeCode) : locale.localeCode != null) {</span>
+<span class="nc" id="L156">            return false;</span>
+        }
+<span class="nc bnc" id="L158" title="All 6 branches missed.">        if (friendlyName != null ? !friendlyName.equals(locale.friendlyName) : locale.friendlyName != null) {</span>
+<span class="nc" id="L159">            return false;</span>
+        }
+
+<span class="nc" id="L162">        return true;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc bnc" id="L167" title="All 2 branches missed.">        int result = localeCode != null ? localeCode.hashCode() : 0;</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        result = 31 * result + (friendlyName != null ? friendlyName.hashCode() : 0);</span>
+<span class="nc" id="L169">        return result;</span>
+    }
+
+    @Override
+    public String getMainEntityName() {
+<span class="nc" id="L174">        return getLocaleCode();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

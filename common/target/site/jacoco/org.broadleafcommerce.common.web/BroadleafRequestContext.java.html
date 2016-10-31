@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafRequestContext.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web</a> &gt; <span class="el_source">BroadleafRequestContext.java</span></div><h1>BroadleafRequestContext.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web;
+
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.RequestDTO;
+import org.broadleafcommerce.common.classloader.release.ThreadLocalManager;
+import org.broadleafcommerce.common.currency.domain.BroadleafCurrency;
+import org.broadleafcommerce.common.currency.domain.BroadleafCurrencyImpl;
+import org.broadleafcommerce.common.exception.ExceptionHelper;
+import org.broadleafcommerce.common.locale.domain.Locale;
+import org.broadleafcommerce.common.locale.domain.LocaleImpl;
+import org.broadleafcommerce.common.sandbox.domain.SandBox;
+import org.broadleafcommerce.common.sandbox.domain.SandBoxImpl;
+import org.broadleafcommerce.common.sandbox.domain.SandBoxType;
+import org.broadleafcommerce.common.site.domain.Catalog;
+import org.broadleafcommerce.common.site.domain.CatalogImpl;
+import org.broadleafcommerce.common.site.domain.Site;
+import org.broadleafcommerce.common.site.domain.SiteImpl;
+import org.broadleafcommerce.common.site.domain.Theme;
+import org.springframework.context.MessageSource;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.util.Currency;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TimeZone;
+
+import javax.persistence.EntityManager;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Convenient holder class for various objects to be automatically available on thread local without invoking the various
+ * services yourself
+ * 
+ * @see {@link BroadleafRequestProcessor}
+ */
+<span class="fc" id="L64">public class BroadleafRequestContext {</span>
+    
+<span class="fc" id="L66">    protected static final Log LOG = LogFactory.getLog(BroadleafRequestContext.class);</span>
+    
+<span class="fc" id="L68">    private static final ThreadLocal&lt;BroadleafRequestContext&gt; BROADLEAF_REQUEST_CONTEXT = ThreadLocalManager.createThreadLocal(BroadleafRequestContext.class);</span>
+    
+    public static BroadleafRequestContext getBroadleafRequestContext() {
+<span class="fc" id="L71">        return BROADLEAF_REQUEST_CONTEXT.get();</span>
+    }
+    
+    public static void setBroadleafRequestContext(BroadleafRequestContext broadleafRequestContext) {
+<span class="fc" id="L75">        BROADLEAF_REQUEST_CONTEXT.set(broadleafRequestContext);</span>
+<span class="fc" id="L76">    }</span>
+
+    public static boolean hasLocale(){
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (getBroadleafRequestContext() != null) {</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">            if(getBroadleafRequestContext().getLocale() != null){</span>
+<span class="nc" id="L81">                return true;</span>
+            }
+        }
+<span class="nc" id="L84">        return false;</span>
+    }
+    
+    public static boolean hasCurrency() {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (getBroadleafRequestContext() != null) {</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">            if (getBroadleafRequestContext().getBroadleafCurrency() != null) {</span>
+<span class="nc" id="L90">                return true;</span>
+            }
+        }
+<span class="nc" id="L93">        return false;</span>
+    }
+
+    public static BroadleafCurrency getCurrency() {
+<span class="nc" id="L97">        BroadleafCurrency returnCurrency = null;</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (getBroadleafRequestContext() != null) {</span>
+<span class="nc" id="L99">            returnCurrency = getBroadleafRequestContext().getBroadleafCurrency();</span>
+        }
+
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (returnCurrency == null) {</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            if (LOG.isWarnEnabled()) {</span>
+<span class="nc" id="L104">                LOG.warn(&quot;BroadleafRequestContext.getCurrency() called but returned null&quot;);</span>
+            }
+        }
+<span class="nc" id="L107">        return returnCurrency;</span>
+    }
+
+    protected HttpServletRequest request;
+    protected HttpServletResponse response;
+    protected WebRequest webRequest;
+    protected SandBox sandBox;
+    protected Locale locale;
+    protected TimeZone timeZone;
+    protected BroadleafCurrency broadleafCurrency;
+    protected BroadleafCurrency requestedCurrency;
+    protected Site site;
+    protected Theme theme;
+    protected java.util.Locale javaLocale;
+    protected Currency javaCurrency;
+    protected Catalog currentCatalog;
+    protected Site currentProfile;
+<span class="fc" id="L124">    protected Boolean ignoreSite = false;</span>
+<span class="fc" id="L125">    protected Map&lt;String, Object&gt; additionalProperties = new HashMap&lt;String, Object&gt;();</span>
+    protected MessageSource messageSource;
+    protected RequestDTO requestDTO;
+<span class="fc" id="L128">    protected Boolean isAdmin = false;</span>
+    protected Long adminUserId;
+
+<span class="fc" id="L131">    protected DeployState deployState = DeployState.UNDEFINED;</span>
+<span class="fc" id="L132">    protected DeployBehavior deployBehavior = DeployBehavior.UNDEFINED;</span>
+<span class="fc" id="L133">    protected Boolean internalIgnoreFilters = false;</span>
+<span class="fc" id="L134">    protected ValidateProductionChangesState validateProductionChangesState = ValidateProductionChangesState.UNDEFINED;</span>
+<span class="fc" id="L135">    protected EnforceEnterpriseCollectionBehaviorState enforceEnterpriseCollectionBehaviorState = EnforceEnterpriseCollectionBehaviorState.UNDEFINED;</span>
+
+    /**
+     * Gets the current request on the context
+     * @return
+     */
+    public HttpServletRequest getRequest() {
+<span class="nc" id="L142">        return request;</span>
+    }
+
+    /**
+     * Provide easy access to Request Attributes without introducing a tight dependency on the HttpRequest.
+     * @return
+     */
+    public Object getRequestAttribute(String name) {
+<span class="nc" id="L150">        Object param = null;</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (getRequest() != null) {</span>
+<span class="nc" id="L152">            param = getRequest().getAttribute(name);</span>
+        }
+<span class="nc" id="L154">        return param;</span>
+    }
+
+    /**
+     * Sets the current request on the context. Note that this also invokes {@link #setWebRequest(WebRequest)} by wrapping
+     * &lt;b&gt;request&lt;/b&gt; in a {@link ServletWebRequest}.
+     * 
+     * @param request
+     */
+    public void setRequest(HttpServletRequest request) {
+<span class="nc" id="L164">        this.request = request;</span>
+<span class="nc" id="L165">        this.webRequest = new ServletWebRequest(request);</span>
+<span class="nc" id="L166">    }</span>
+
+    /**
+     * Returns the response for the context
+     * 
+     * @return
+     */
+    public HttpServletResponse getResponse() {
+<span class="nc" id="L174">        return response;</span>
+    }
+
+    /**
+     * Sets the response on the context
+     * 
+     * @param response
+     */
+    public void setResponse(HttpServletResponse response) {
+<span class="nc" id="L183">        this.response = response;</span>
+<span class="nc" id="L184">    }</span>
+
+    /**
+     * Sets the generic request on the context. This is available to be used in non-Servlet environments (like Portlets).
+     * Note that if &lt;b&gt;webRequest&lt;/b&gt; is an instance of {@link ServletWebRequest} then
+     * {@link #setRequest(HttpServletRequest)} will be invoked as well with the native underlying {@link HttpServletRequest}
+     * passed as a parameter.
+     * &lt;br /&gt;
+     * &lt;br /&gt;
+     * Also, if &lt;b&gt;webRequest&lt;/b&gt; is an instance of {@link ServletWebRequest} then an attempt is made to set the response
+     * (note that this could be null if the ServletWebRequest was not instantiated with both the {@link HttpServletRequest}
+     * and {@link HttpServletResponse}
+     * @param webRequest
+     */
+    public void setWebRequest(WebRequest webRequest) {
+<span class="nc" id="L199">        this.webRequest = webRequest;</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (webRequest instanceof ServletWebRequest) {</span>
+<span class="nc" id="L201">            this.request = ((ServletWebRequest) webRequest).getRequest();</span>
+<span class="nc" id="L202">            setResponse(((ServletWebRequest) webRequest).getResponse());</span>
+        }
+<span class="nc" id="L204">    }</span>
+
+    /**
+     * Returns the generic request for use outside of servlets (like in Portlets). This will be automatically set
+     * by invoking {@link #setRequest(HttpServletRequest)}
+     * 
+     * @return the generic request
+     * @see {@link #setWebRequest(WebRequest)}
+     */
+    public WebRequest getWebRequest() {
+<span class="nc" id="L214">        return webRequest;</span>
+    }
+
+    /**
+     * Returns a Site instance that is not attached to any Hibernate session
+     * @return
+     * @deprecated this has been changed to {@link #getNonPersistentSite()} to explicitly indicate that the site
+     * being returned is not attached to a Hibernate session
+     */
+    @Deprecated
+    public Site getSite() {
+<span class="fc" id="L225">        return getNonPersistentSite();</span>
+    }
+
+    /**
+     * @deprecated this has been changed to {@link #setNonPersistentSite()} to explicitly indicate that the site being set
+     * is not attached to an active Hibernate session
+     */
+    @Deprecated
+    public void setSite(Site site) {
+<span class="fc" id="L234">        setNonPersistentSite(site);</span>
+<span class="fc" id="L235">    }</span>
+    
+    /**
+     * @return the site that is currently associated to this request thread. The site that is returned is not attached to a
+     * Hibernate session and thus cannot lazy-load collection properties. For additional collections that are added to
+     * extensions of {@link Site}, they should be manually cloned by overriding the clone() method.
+     */
+    public Site getNonPersistentSite() {
+<span class="fc" id="L243">        return site;</span>
+    }
+    
+    /**
+     * 
+     */
+    public void setNonPersistentSite(Site site) {
+<span class="fc" id="L250">        this.site = site;</span>
+<span class="fc" id="L251">    }</span>
+
+    public SandBox getSandBox() {
+<span class="nc" id="L254">        return sandBox;</span>
+    }
+
+    public Long getSandBoxId() {
+<span class="nc bnc" id="L258" title="All 2 branches missed.">        if (sandBox != null) {</span>
+<span class="nc" id="L259">            return sandBox.getId();</span>
+        }
+<span class="nc" id="L261">        return null;</span>
+    }
+
+    public boolean isProductionSandBox() {
+<span class="nc bnc" id="L265" title="All 4 branches missed.">        return sandBox == null || SandBoxType.PRODUCTION == sandBox.getSandBoxType();</span>
+    }
+
+    public void setSandBox(SandBox sandBox) {
+<span class="nc" id="L269">        this.sandBox = sandBox;</span>
+<span class="nc" id="L270">    }</span>
+
+    public Locale getLocale() {
+<span class="nc" id="L273">        return locale;</span>
+    }
+
+    /**
+     * Returns the java.util.Locale constructed from the org.broadleafcommerce.common.locale.domain.Locale.
+     * @return
+     */
+    public java.util.Locale getJavaLocale() {
+<span class="nc bnc" id="L281" title="All 2 branches missed.">        if (this.javaLocale == null) {</span>
+<span class="nc" id="L282">            this.javaLocale = convertLocaleToJavaLocale();</span>
+        }
+<span class="nc" id="L284">        return this.javaLocale;</span>
+    }
+
+    /**
+     * Returns the java.util.Currency constructed from the org.broadleafcommerce.common.currency.domain.BroadleafCurrency.
+     * If there is no BroadleafCurrency specified this will return the currency based on the JVM locale
+     * 
+     * @return
+     */
+    public Currency getJavaCurrency() {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">        if (javaCurrency == null) {</span>
+            try {
+<span class="nc bnc" id="L296" title="All 4 branches missed.">                if (getBroadleafCurrency() != null &amp;&amp; getBroadleafCurrency().getCurrencyCode() != null) {</span>
+<span class="nc" id="L297">                    javaCurrency = Currency.getInstance(getBroadleafCurrency().getCurrencyCode());</span>
+                } else {
+<span class="nc" id="L299">                    javaCurrency = Currency.getInstance(getJavaLocale());</span>
+                }
+<span class="nc" id="L301">            } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L302">                LOG.warn(&quot;There was an error processing the configured locale into the java currency. This is likely because the default&quot; +</span>
+                		&quot; locale is set to something like 'en' (which is NOT apart of ISO 3166 and does not have a currency&quot; +
+                		&quot; associated with it) instead of 'en_US' (which IS apart of ISO 3166 and has a currency associated&quot; +
+                		&quot; with it). Because of this, the currency is now set to the default locale of the JVM&quot;);
+<span class="nc" id="L306">                LOG.warn(&quot;To fully resolve this, update the default entry in the BLC_LOCALE table to take into account the&quot; +</span>
+                		&quot; country code as well as the language. Alternatively, you could also update the BLC_CURRENCY table&quot; +
+                		&quot; to contain a default currency.&quot;);
+<span class="nc" id="L309">                javaCurrency = Currency.getInstance(java.util.Locale.getDefault());</span>
+<span class="nc" id="L310">            }</span>
+        }
+<span class="nc" id="L312">        return javaCurrency;</span>
+    }
+
+    public void setLocale(Locale locale) {
+<span class="nc" id="L316">        this.locale = locale;</span>
+<span class="nc" id="L317">        this.javaLocale = convertLocaleToJavaLocale();</span>
+<span class="nc" id="L318">    }</span>
+
+    public String getRequestURIWithoutContext() {
+<span class="nc" id="L321">        String requestURIWithoutContext = null;</span>
+
+<span class="nc bnc" id="L323" title="All 4 branches missed.">        if (request != null &amp;&amp; request.getRequestURI() != null) {</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">            if (request.getContextPath() != null) {</span>
+<span class="nc" id="L325">                requestURIWithoutContext = request.getRequestURI().substring(request.getContextPath().length());</span>
+            } else {
+<span class="nc" id="L327">                requestURIWithoutContext = request.getRequestURI();</span>
+            }
+
+            // Remove JSESSION-ID or other modifiers
+<span class="nc" id="L331">            int pos = requestURIWithoutContext.indexOf(&quot;;&quot;);</span>
+<span class="nc bnc" id="L332" title="All 2 branches missed.">            if (pos &gt;= 0) {</span>
+<span class="nc" id="L333">                requestURIWithoutContext = requestURIWithoutContext.substring(0,pos);</span>
+            }
+        }
+        
+<span class="nc" id="L337">        return requestURIWithoutContext;</span>
+        
+    }
+    
+    protected java.util.Locale convertLocaleToJavaLocale() {      
+<span class="nc bnc" id="L342" title="All 4 branches missed.">        if (locale == null || locale.getLocaleCode() == null) {</span>
+<span class="nc" id="L343">            return java.util.Locale.getDefault();</span>
+        } else {
+<span class="nc" id="L345">            return BroadleafRequestContext.convertLocaleToJavaLocale(locale);</span>
+        }
+    }
+    
+    public static java.util.Locale convertLocaleToJavaLocale(Locale broadleafLocale) {
+<span class="nc bnc" id="L350" title="All 2 branches missed.">        if (broadleafLocale != null) {</span>
+<span class="nc" id="L351">            String localeString = broadleafLocale.getLocaleCode();</span>
+<span class="nc" id="L352">            return org.springframework.util.StringUtils.parseLocaleString(localeString);</span>
+        }
+<span class="nc" id="L354">        return null;</span>
+    }
+    
+    public boolean isSecure() {
+<span class="nc" id="L358">        boolean secure = false;</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">        if (request != null) {</span>
+<span class="nc bnc" id="L360" title="All 4 branches missed.">             secure = (&quot;HTTPS&quot;.equalsIgnoreCase(request.getScheme()) || request.isSecure());</span>
+        }
+<span class="nc" id="L362">        return secure;</span>
+    }
+
+    public Theme getTheme() {
+<span class="nc" id="L366">        return theme;</span>
+    }
+
+    public void setTheme(Theme theme) {
+<span class="nc" id="L370">        this.theme = theme;</span>
+<span class="nc" id="L371">    }</span>
+
+    public BroadleafCurrency getBroadleafCurrency() {
+<span class="nc" id="L374">        return broadleafCurrency;</span>
+    }
+
+    public void setBroadleafCurrency(BroadleafCurrency broadleafCurrency) {
+<span class="nc" id="L378">        this.broadleafCurrency = broadleafCurrency;</span>
+<span class="nc" id="L379">    }</span>
+
+    public BroadleafCurrency getRequestedBroadleafCurrency() {
+<span class="nc" id="L382">        return requestedCurrency;</span>
+    }
+
+    public void setRequestedBroadleafCurrency(BroadleafCurrency requestedCurrency) {
+<span class="nc" id="L386">        this.requestedCurrency = requestedCurrency;</span>
+<span class="nc" id="L387">    }</span>
+
+    public Catalog getCurrentCatalog() {
+<span class="nc" id="L390">        return currentCatalog;</span>
+    }
+
+    public void setCurrentCatalog(Catalog currentCatalog) {
+<span class="nc" id="L394">        this.currentCatalog = currentCatalog;</span>
+<span class="nc" id="L395">    }</span>
+
+    public Site getCurrentProfile() {
+<span class="nc" id="L398">        return currentProfile;</span>
+    }
+
+    public void setCurrentProfile(Site currentProfile) {
+<span class="nc" id="L402">        this.currentProfile = currentProfile;</span>
+<span class="nc" id="L403">    }</span>
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public static Map&lt;String, String[]&gt; getRequestParameterMap() {
+<span class="nc" id="L407">        return getBroadleafRequestContext().getRequest().getParameterMap();</span>
+    }
+
+    public Boolean getIgnoreSite() {
+<span class="nc" id="L411">        return ignoreSite;</span>
+    }
+
+    public void setIgnoreSite(Boolean ignoreSite) {
+<span class="nc" id="L415">        this.ignoreSite = ignoreSite;</span>
+<span class="nc" id="L416">    }</span>
+
+    public Map&lt;String, Object&gt; getAdditionalProperties() {
+<span class="nc" id="L419">        return additionalProperties;</span>
+    }
+
+    public void setAdditionalProperties(Map&lt;String, Object&gt; additionalProperties) {
+<span class="nc" id="L423">        this.additionalProperties = additionalProperties;</span>
+<span class="nc" id="L424">    }</span>
+
+    public MessageSource getMessageSource() {
+<span class="nc" id="L427">        return messageSource;</span>
+    }
+
+    public void setMessageSource(MessageSource messageSource) {
+<span class="nc" id="L431">        this.messageSource = messageSource;</span>
+<span class="nc" id="L432">    }</span>
+
+    public TimeZone getTimeZone() {
+<span class="nc" id="L435">        return timeZone;</span>
+    }
+
+    public void setTimeZone(TimeZone timeZone) {
+<span class="nc" id="L439">        this.timeZone = timeZone;</span>
+<span class="nc" id="L440">    }</span>
+
+    public RequestDTO getRequestDTO() {
+<span class="nc" id="L443">        return requestDTO;</span>
+    }
+
+    public void setRequestDTO(RequestDTO requestDTO) {
+<span class="nc" id="L447">        this.requestDTO = requestDTO;</span>
+<span class="nc" id="L448">    }</span>
+
+    public Boolean getAdmin() {
+<span class="nc bnc" id="L451" title="All 2 branches missed.">        return isAdmin == null ? false : isAdmin;</span>
+    }
+
+    public void setAdmin(Boolean admin) {
+<span class="nc" id="L455">        isAdmin = admin;</span>
+<span class="nc" id="L456">    }</span>
+
+    public Long getAdminUserId() {
+<span class="nc" id="L459">        return adminUserId;</span>
+    }
+
+    public void setAdminUserId(Long adminUserId) {
+<span class="nc" id="L463">        this.adminUserId = adminUserId;</span>
+<span class="nc" id="L464">    }</span>
+
+    /**
+     * Intended for internal use only
+     */
+    public Boolean getInternalIgnoreFilters() {
+<span class="nc" id="L470">        return internalIgnoreFilters;</span>
+    }
+
+    /**
+     * Intended for internal use only
+     */
+    public void setInternalIgnoreFilters(Boolean internalIgnoreFilters) {
+<span class="nc" id="L477">        this.internalIgnoreFilters = internalIgnoreFilters;</span>
+<span class="nc" id="L478">    }</span>
+
+    public DeployState getDeployState() {
+<span class="nc" id="L481">        return deployState;</span>
+    }
+
+    public void setDeployState(DeployState deployState) {
+<span class="nc" id="L485">        this.deployState = deployState;</span>
+<span class="nc" id="L486">    }</span>
+
+    public DeployBehavior getDeployBehavior() {
+<span class="nc" id="L489">        return deployBehavior;</span>
+    }
+
+    public void setDeployBehavior(DeployBehavior deployBehavior) {
+<span class="nc" id="L493">        this.deployBehavior = deployBehavior;</span>
+<span class="nc" id="L494">    }</span>
+
+    public ValidateProductionChangesState getValidateProductionChangesState() {
+<span class="nc" id="L497">        return validateProductionChangesState;</span>
+    }
+
+    public void setValidateProductionChangesState(ValidateProductionChangesState validateProductionChangesState) {
+<span class="nc" id="L501">        this.validateProductionChangesState = validateProductionChangesState;</span>
+<span class="nc" id="L502">    }</span>
+
+    /**
+     * Defines the state in which sandboxable collections in the Enterprise module should adhere to Broadleaf defined behavior.
+     * When FALSE, {@link org.hibernate.collection.spi.PersistentCollection} extensions in the Enterprise module will delegate
+     * to the standard Hibernate behavior. This is useful when the desire is to build and persist entity object structures (that
+     * the Enterprise module would otherwise interpret as sandboxable) without interference from the Enterprise module
+     * on the collection persistence behavior. When the Enterprise module is loaded, the behavior is enforced by default.
+     *
+     * @return the definition of how the enterprise module should handle persistent collection behavior
+     */
+    public EnforceEnterpriseCollectionBehaviorState getEnforceEnterpriseCollectionBehaviorState() {
+<span class="nc" id="L514">        return enforceEnterpriseCollectionBehaviorState;</span>
+    }
+
+    /**
+     * Returns the state in which sandboxable collections in the Enterprise module should adhere to Broadleaf defined behavior.
+     * When FALSE, {@link org.hibernate.collection.spi.PersistentCollection} extensions in the Enterprise module will delegate
+     * to the standard Hibernate behavior. This is useful when the desire is to build and persist entity object structures (that
+     * the Enterprise module would otherwise interpret as sandboxable) without interference from the Enterprise module
+     * on the collection persistence behavior. When the Enterprise module is loaded, the behavior is enforced by default.
+     *
+     * @param enforceEnterpriseCollectionBehaviorState
+     */
+    public void setEnforceEnterpriseCollectionBehaviorState(EnforceEnterpriseCollectionBehaviorState
+                                                                    enforceEnterpriseCollectionBehaviorState) {
+<span class="nc" id="L528">        this.enforceEnterpriseCollectionBehaviorState = enforceEnterpriseCollectionBehaviorState;</span>
+<span class="nc" id="L529">    }</span>
+
+    /**
+     * In some cases, it is useful to utilize a clone of the context that does not include the actual container request
+     * and response information. Such a case would be when executing an asynchronous operation on a new thread from
+     * an existing request thread. That new thread may still require context information, in which case this lightweight
+     * context is useful.
+     *
+     * @return The instance without the container request and response
+     */
+    public BroadleafRequestContext createLightWeightClone() {
+<span class="nc" id="L540">        BroadleafRequestContext context = new BroadleafRequestContext();</span>
+<span class="nc" id="L541">        context.setIgnoreSite(ignoreSite);</span>
+<span class="nc" id="L542">        context.setSandBox(sandBox);</span>
+<span class="nc" id="L543">        context.setNonPersistentSite(site);</span>
+<span class="nc" id="L544">        context.setEnforceEnterpriseCollectionBehaviorState(enforceEnterpriseCollectionBehaviorState);</span>
+<span class="nc" id="L545">        context.setAdmin(isAdmin);</span>
+<span class="nc" id="L546">        context.setAdminUserId(adminUserId);</span>
+<span class="nc" id="L547">        context.setBroadleafCurrency(broadleafCurrency);</span>
+<span class="nc" id="L548">        context.setCurrentCatalog(currentCatalog);</span>
+<span class="nc" id="L549">        context.setCurrentProfile(currentProfile);</span>
+<span class="nc" id="L550">        context.setDeployBehavior(deployBehavior);</span>
+<span class="nc" id="L551">        context.setDeployState(deployState);</span>
+<span class="nc" id="L552">        context.setInternalIgnoreFilters(internalIgnoreFilters);</span>
+<span class="nc" id="L553">        context.setLocale(locale);</span>
+<span class="nc" id="L554">        context.setMessageSource(messageSource);</span>
+<span class="nc" id="L555">        context.setTheme(theme);</span>
+<span class="nc" id="L556">        context.setValidateProductionChangesState(validateProductionChangesState);</span>
+<span class="nc" id="L557">        context.setTimeZone(timeZone);</span>
+        //purposefully excluding additionalProperties - this contains state that can mess with SandBoxFilterEnabler (for one)
+
+<span class="nc" id="L560">        return context;</span>
+    }
+
+    /**
+     * In some cases, it is useful to create a JSON representation of the context that does not include the actual container
+     * request and response information. This can be used subsequently to resurrect the BroadleafRequestContext state, presumably
+     * on a new thread.
+     *
+     * @return
+     */
+    public String createLightWeightCloneJson() {
+<span class="nc" id="L571">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L572">        sb.append(&quot;{\&quot;ignoreSite\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L573" title="All 2 branches missed.">        sb.append(ignoreSite==null?null:ignoreSite);</span>
+<span class="nc" id="L574">        sb.append(&quot;\&quot;,\&quot;sandBox\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">        sb.append(sandBox==null?null:sandBox.getId());</span>
+<span class="nc" id="L576">        sb.append(&quot;\&quot;,\&quot;nonPersistentSite\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L577" title="All 2 branches missed.">        sb.append(site==null?null:site.getId());</span>
+<span class="nc" id="L578">        sb.append(&quot;\&quot;,\&quot;enforceEnterpriseCollectionBehaviorState\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L579" title="All 2 branches missed.">        sb.append(enforceEnterpriseCollectionBehaviorState==null?null:enforceEnterpriseCollectionBehaviorState.toString());</span>
+<span class="nc" id="L580">        sb.append(&quot;\&quot;,\&quot;admin\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L581" title="All 2 branches missed.">        sb.append(isAdmin==null?null:isAdmin.toString());</span>
+<span class="nc" id="L582">        sb.append(&quot;\&quot;,\&quot;adminUserId\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L583" title="All 2 branches missed.">        sb.append(adminUserId==null?null:adminUserId);</span>
+<span class="nc" id="L584">        sb.append(&quot;\&quot;,\&quot;broadleafCurrency\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L585" title="All 2 branches missed.">        sb.append(broadleafCurrency==null?null:broadleafCurrency.getCurrencyCode());</span>
+<span class="nc" id="L586">        sb.append(&quot;\&quot;,\&quot;currentCatalog\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L587" title="All 2 branches missed.">        sb.append(currentCatalog==null?null:currentCatalog.getId());</span>
+<span class="nc" id="L588">        sb.append(&quot;\&quot;,\&quot;currentProfile\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L589" title="All 2 branches missed.">        sb.append(currentProfile==null?null:currentProfile.getId());</span>
+<span class="nc" id="L590">        sb.append(&quot;\&quot;,\&quot;deployBehavior\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">        sb.append(deployBehavior==null?null:deployBehavior.toString());</span>
+<span class="nc" id="L592">        sb.append(&quot;\&quot;,\&quot;deployState\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L593" title="All 2 branches missed.">        sb.append(deployState==null?null:deployState.toString());</span>
+<span class="nc" id="L594">        sb.append(&quot;\&quot;,\&quot;internalIgnoreFilters\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L595" title="All 2 branches missed.">        sb.append(internalIgnoreFilters==null?null:internalIgnoreFilters.toString());</span>
+<span class="nc" id="L596">        sb.append(&quot;\&quot;,\&quot;locale\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L597" title="All 2 branches missed.">        sb.append(locale==null?null:locale.getLocaleCode());</span>
+<span class="nc" id="L598">        sb.append(&quot;\&quot;,\&quot;validateProductionChangesState\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L599" title="All 2 branches missed.">        sb.append(validateProductionChangesState==null?null:validateProductionChangesState.toString());</span>
+<span class="nc" id="L600">        sb.append(&quot;\&quot;,\&quot;timeZone\&quot;:\&quot;&quot;);</span>
+<span class="nc bnc" id="L601" title="All 2 branches missed.">        sb.append(timeZone==null?null:timeZone.getID());</span>
+<span class="nc" id="L602">        sb.append(&quot;\&quot;}&quot;);</span>
+<span class="nc" id="L603">        return sb.toString();</span>
+    }
+
+    /**
+     * Resurrect the BroadleafRequestContext state based on a JSON representation.
+     *
+     * @param Json
+     * @param em
+     * @return
+     */
+    public static BroadleafRequestContext createLightWeightCloneFromJson(String Json, EntityManager em) {
+<span class="nc" id="L614">        BroadleafRequestContext context = new BroadleafRequestContext();</span>
+<span class="nc" id="L615">        JsonFactory factory = new JsonFactory();</span>
+<span class="nc" id="L616">        ObjectMapper mapper = new ObjectMapper(factory);</span>
+<span class="nc" id="L617">        TypeReference&lt;HashMap&lt;String,String&gt;&gt; typeRef = new TypeReference&lt;HashMap&lt;String,String&gt;&gt;() {};</span>
+        HashMap&lt;String,String&gt; json;
+        try {
+<span class="nc" id="L620">            json = mapper.readValue(Json, typeRef);</span>
+<span class="nc" id="L621">        } catch (IOException e) {</span>
+<span class="nc" id="L622">            throw ExceptionHelper.refineException(e);</span>
+<span class="nc" id="L623">        }</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">        if (!json.get(&quot;ignoreSite&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L625">            context.setIgnoreSite(Boolean.valueOf(json.get(&quot;ignoreSite&quot;)));</span>
+        }
+<span class="nc bnc" id="L627" title="All 2 branches missed.">        if (!json.get(&quot;sandBox&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L628">            context.setSandBox(em.find(SandBoxImpl.class, Long.parseLong(json.get(&quot;sandBox&quot;))));</span>
+        }
+<span class="nc bnc" id="L630" title="All 2 branches missed.">        if (!json.get(&quot;nonPersistentSite&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L631">            context.setNonPersistentSite(em.find(SiteImpl.class, Long.parseLong(json.get(&quot;nonPersistentSite&quot;))));</span>
+        }
+<span class="nc bnc" id="L633" title="All 2 branches missed.">        if (!json.get(&quot;enforceEnterpriseCollectionBehaviorState&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L634">            context.setEnforceEnterpriseCollectionBehaviorState(EnforceEnterpriseCollectionBehaviorState.valueOf(json</span>
+                    .get(&quot;enforceEnterpriseCollectionBehaviorState&quot;)));
+        }
+<span class="nc bnc" id="L637" title="All 2 branches missed.">        if (!json.get(&quot;admin&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L638">            context.setAdmin(Boolean.valueOf(json.get(&quot;admin&quot;)));</span>
+        }
+<span class="nc bnc" id="L640" title="All 2 branches missed.">        if (!json.get(&quot;adminUserId&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L641">            context.setAdminUserId(Long.parseLong(json.get(&quot;ignoreSite&quot;)));</span>
+        }
+<span class="nc bnc" id="L643" title="All 2 branches missed.">        if (!json.get(&quot;broadleafCurrency&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L644">            context.setBroadleafCurrency(em.find(BroadleafCurrencyImpl.class, json.get(&quot;broadleafCurrency&quot;)));</span>
+        }
+<span class="nc bnc" id="L646" title="All 2 branches missed.">        if (!json.get(&quot;currentCatalog&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L647">            context.setCurrentCatalog(em.find(CatalogImpl.class, Long.parseLong(json.get(&quot;currentCatalog&quot;))));</span>
+        }
+<span class="nc bnc" id="L649" title="All 2 branches missed.">        if (!json.get(&quot;currentProfile&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L650">            context.setCurrentProfile(em.find(SiteImpl.class, Long.parseLong(json.get(&quot;currentProfile&quot;))));</span>
+        }
+<span class="nc bnc" id="L652" title="All 2 branches missed.">        if (!json.get(&quot;deployBehavior&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L653">            context.setDeployBehavior(DeployBehavior.valueOf(json.get(&quot;deployBehavior&quot;)));</span>
+        }
+<span class="nc bnc" id="L655" title="All 2 branches missed.">        if (!json.get(&quot;deployState&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L656">            context.setDeployState(DeployState.valueOf(json.get(&quot;deployState&quot;)));</span>
+        }
+<span class="nc bnc" id="L658" title="All 2 branches missed.">        if (!json.get(&quot;internalIgnoreFilters&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L659">            context.setInternalIgnoreFilters(Boolean.valueOf(json.get(&quot;internalIgnoreFilters&quot;)));</span>
+        }
+<span class="nc bnc" id="L661" title="All 2 branches missed.">        if (!json.get(&quot;locale&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L662">            context.setLocale(em.find(LocaleImpl.class, json.get(&quot;locale&quot;)));</span>
+        }
+<span class="nc bnc" id="L664" title="All 2 branches missed.">        if (!json.get(&quot;validateProductionChangesState&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L665">            context.setValidateProductionChangesState(ValidateProductionChangesState.valueOf(json.get(&quot;validateProductionChangesState&quot;)));</span>
+        }
+<span class="nc bnc" id="L667" title="All 2 branches missed.">        if (!json.get(&quot;timeZone&quot;).equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L668">            context.setTimeZone(TimeZone.getTimeZone(json.get(&quot;timeZone&quot;)));</span>
+        }
+
+<span class="nc" id="L671">        return context;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

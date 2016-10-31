@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>HydratedSetup.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.cache</a> &gt; <span class="el_source">HydratedSetup.java</span></div><h1>HydratedSetup.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.cache;
+
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.cache.engine.CacheFactoryException;
+import org.broadleafcommerce.common.cache.engine.HydratedAnnotationManager;
+import org.broadleafcommerce.common.cache.engine.HydratedCacheEventListenerFactory;
+import org.broadleafcommerce.common.cache.engine.HydratedCacheManager;
+import org.broadleafcommerce.common.cache.engine.HydrationDescriptor;
+import org.hibernate.annotations.Cache;
+import org.springframework.orm.jpa.EntityManagerHolder;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import javax.persistence.Entity;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 
+ * @author jfischer
+ *
+ */
+<span class="nc" id="L50">public class HydratedSetup {</span>
+    
+<span class="nc" id="L52">    private static final Log LOG = LogFactory.getLog(HydratedSetup.class);</span>
+<span class="nc" id="L53">    private static Map&lt;String, String&gt; inheritanceHierarchyRoots = Collections.synchronizedMap(new HashMap&lt;String, String&gt;());</span>
+
+    private static String getInheritanceHierarchyRoot(Class&lt;?&gt; myEntityClass) {
+<span class="nc" id="L56">        String myEntityName = myEntityClass.getName();</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">        if (inheritanceHierarchyRoots.containsKey(myEntityName)) {</span>
+<span class="nc" id="L58">            return inheritanceHierarchyRoots.get(myEntityName);</span>
+        }
+<span class="nc" id="L60">        Class&lt;?&gt; currentClass = myEntityClass;</span>
+<span class="nc" id="L61">        boolean eof = false;</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        while (!eof) {</span>
+<span class="nc" id="L63">            Class&lt;?&gt; superclass = currentClass.getSuperclass();</span>
+<span class="nc bnc" id="L64" title="All 4 branches missed.">            if (superclass.equals(Object.class) || !superclass.isAnnotationPresent(Entity.class)) {</span>
+<span class="nc" id="L65">                eof = true;</span>
+            } else {
+<span class="nc" id="L67">                currentClass = superclass;</span>
+            }
+<span class="nc" id="L69">        }</span>
+
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (!currentClass.isAnnotationPresent(Cache.class)) {</span>
+<span class="nc" id="L72">            currentClass = myEntityClass;</span>
+        }
+
+<span class="nc" id="L75">        inheritanceHierarchyRoots.put(myEntityName, currentClass.getName());</span>
+<span class="nc" id="L76">        return inheritanceHierarchyRoots.get(myEntityName);</span>
+    }
+
+    public static void populateFromCache(Object entity) {
+<span class="nc" id="L80">        populateFromCache(entity, null);</span>
+<span class="nc" id="L81">    }</span>
+
+    public static void populateFromCache(Object entity, String propertyName) {
+<span class="nc" id="L84">        HydratedCacheManager manager = HydratedCacheEventListenerFactory.getConfiguredManager();</span>
+<span class="nc" id="L85">        HydrationDescriptor descriptor = ((HydratedAnnotationManager) manager).getHydrationDescriptor(entity);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (!MapUtils.isEmpty(descriptor.getHydratedMutators())) {</span>
+<span class="nc" id="L87">            Method[] idMutators = descriptor.getIdMutators();</span>
+<span class="nc" id="L88">            String cacheRegion = descriptor.getCacheRegion();</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">            for (String field : descriptor.getHydratedMutators().keySet()) {</span>
+<span class="nc bnc" id="L90" title="All 4 branches missed.">                if (StringUtils.isEmpty(propertyName) || field.equals(propertyName)) {</span>
+                    try {
+<span class="nc" id="L92">                        Serializable entityId = (Serializable) idMutators[0].invoke(entity);</span>
+<span class="nc" id="L93">                        Object hydratedItem = manager.getHydratedCacheElementItem(cacheRegion, getInheritanceHierarchyRoot(entity.getClass()), entityId, field);</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">                        if (hydratedItem == null) {</span>
+<span class="nc" id="L95">                            Method factoryMethod = entity.getClass().getMethod(descriptor.getHydratedMutators().get(field).getFactoryMethod(), new Class[]{});</span>
+<span class="nc" id="L96">                            Object fieldVal = factoryMethod.invoke(entity);</span>
+<span class="nc" id="L97">                            manager.addHydratedCacheElementItem(cacheRegion, getInheritanceHierarchyRoot(entity.getClass()), entityId, field, fieldVal);</span>
+<span class="nc" id="L98">                            hydratedItem = fieldVal;</span>
+                        }
+<span class="nc" id="L100">                        descriptor.getHydratedMutators().get(field).getMutators()[1].invoke(entity, hydratedItem);</span>
+<span class="nc" id="L101">                    } catch (InvocationTargetException e) {</span>
+<span class="nc bnc" id="L102" title="All 4 branches missed.">                        if (e.getTargetException() != null &amp;&amp; e.getTargetException() instanceof CacheFactoryException) {</span>
+<span class="nc" id="L103">                            LOG.warn(&quot;Unable to setup the hydrated cache for an entity. &quot; + e.getTargetException().getMessage());</span>
+                        } else {
+<span class="nc" id="L105">                            throw new RuntimeException(&quot;There was a problem while replacing a hydrated cache item - field(&quot;+field+&quot;) : entity(&quot;+entity.getClass().getName()+')', e);</span>
+                        }
+<span class="nc" id="L107">                    } catch (Exception e) {</span>
+<span class="nc" id="L108">                        throw new RuntimeException(&quot;There was a problem while replacing a hydrated cache item - field(&quot;+field+&quot;) : entity(&quot;+entity.getClass().getName()+')', e);</span>
+<span class="nc" id="L109">                    }</span>
+                }
+<span class="nc" id="L111">            }</span>
+        }
+<span class="nc" id="L113">    }</span>
+
+    public static void addCacheItem(String cacheRegion, String cacheName, Serializable elementKey, String elementItemName, Object elementValue) {
+<span class="nc" id="L116">        HydratedCacheManager manager = HydratedCacheEventListenerFactory.getConfiguredManager();</span>
+<span class="nc" id="L117">        manager.addHydratedCacheElementItem(cacheRegion, cacheName, elementKey, elementItemName, elementValue);</span>
+<span class="nc" id="L118">    }</span>
+
+    public static Object getCacheItem(String cacheRegion, String cacheName, Serializable elementKey, String elementItemName) {
+<span class="nc" id="L121">        HydratedCacheManager manager = HydratedCacheEventListenerFactory.getConfiguredManager();</span>
+<span class="nc" id="L122">        return manager.getHydratedCacheElementItem(cacheRegion, cacheName, elementKey, elementItemName);</span>
+    }
+
+    public static EntityManager retrieveBoundEntityManager() {
+<span class="nc" id="L126">        Map&lt;Object, Object&gt; resources = TransactionSynchronizationManager.getResourceMap();</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        for (Map.Entry&lt;Object, Object&gt; entry : resources.entrySet()) {</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">            if (entry.getKey() instanceof EntityManagerFactory) {</span>
+<span class="nc" id="L129">                EntityManagerFactory emf = (EntityManagerFactory) entry.getKey();</span>
+                //return the entityManager from the first found
+<span class="nc" id="L131">                return  ((EntityManagerHolder) entry.getValue()).getEntityManager();</span>
+            }
+<span class="nc" id="L133">        }</span>
+<span class="nc" id="L134">        throw new RuntimeException(&quot;Unable to restore skus from hydrated cache. Please make sure that the OpenEntityManagerInViewFilter is configured in web.xml for the blPU persistence unit.&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

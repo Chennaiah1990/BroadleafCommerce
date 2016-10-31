@@ -168,7 +168,7 @@
                                         </goals>
                                     </pluginExecutionFilter>
                                     <action>
-                                        <ignore />
+                                        <ignore/>
                                     </action>
                                 </pluginExecution>
                                 <pluginExecution>
@@ -185,7 +185,7 @@
                                 		</goals>
                                 	</pluginExecutionFilter>
                                 	<action>
-                                		<ignore />
+                                		<ignore/>
                                 	</action>
                                 </pluginExecution>
                                 <pluginExecution>
@@ -209,7 +209,7 @@
                                 		</goals>
                                 	</pluginExecutionFilter>
                                 	<action>
-                                		<ignore />
+                                		<ignore/>
                                 	</action>
                                 </pluginExecution>
                             </pluginExecutions>
@@ -328,7 +328,8 @@
         <module>core</module>
         <module>integration</module>
         <module>admin</module>
-    </modules>
+    <module>my-app</module>
+  </modules>
     <dependencies>
     </dependencies>
     <distributionManagement>

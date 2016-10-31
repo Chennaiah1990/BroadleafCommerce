@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SystemPropertiesDaoImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.config.dao</a> &gt; <span class="el_source">SystemPropertiesDaoImpl.java</span></div><h1>SystemPropertiesDaoImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.config.dao;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.cache.AbstractCacheMissAware;
+import org.broadleafcommerce.common.cache.PersistentRetrieval;
+import org.broadleafcommerce.common.config.domain.SystemProperty;
+import org.broadleafcommerce.common.config.domain.SystemPropertyImpl;
+import org.broadleafcommerce.common.extensibility.jpa.SiteDiscriminator;
+import org.broadleafcommerce.common.extension.ExtensionResultHolder;
+import org.broadleafcommerce.common.extension.ExtensionResultStatusType;
+import org.broadleafcommerce.common.persistence.EntityConfiguration;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.hibernate.ejb.QueryHints;
+import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Order;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+
+/**
+ * This DAO enables access to manage system properties that can be stored in the database.
+ * &lt;p/&gt;
+ * User: Kelly Tisdell
+ * Date: 6/20/12
+ */
+@Repository(&quot;blSystemPropertiesDao&quot;)
+<span class="nc" id="L57">public class SystemPropertiesDaoImpl extends AbstractCacheMissAware implements SystemPropertiesDao {</span>
+
+<span class="nc" id="L59">    protected static final Log LOG = LogFactory.getLog(SystemPropertiesDaoImpl.class);</span>
+
+    @PersistenceContext(unitName = &quot;blPU&quot;)
+    protected EntityManager em;
+
+    @Resource(name = &quot;blEntityConfiguration&quot;)
+    protected EntityConfiguration entityConfiguration;
+
+    @Resource(name = &quot;blSystemPropertyDaoQueryExtensionManager&quot;)
+    protected SystemPropertyDaoQueryExtensionManager queryExtensionManager;
+
+    @Override
+    public SystemProperty readById(Long id) {
+<span class="nc" id="L72">        return em.find(SystemPropertyImpl.class, id);</span>
+    }
+
+    @Override
+    public SystemProperty saveSystemProperty(SystemProperty systemProperty) {
+<span class="nc" id="L77">        return em.merge(systemProperty);</span>
+    }
+
+    @Override
+    public void deleteSystemProperty(SystemProperty systemProperty) {
+<span class="nc" id="L82">        em.remove(systemProperty);</span>
+<span class="nc" id="L83">    }</span>
+
+    @Override
+    public List&lt;SystemProperty&gt; readAllSystemProperties() {
+<span class="nc" id="L87">        CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L88">        CriteriaQuery&lt;SystemProperty&gt; criteria = builder.createQuery(SystemProperty.class);</span>
+<span class="nc" id="L89">        Root&lt;SystemPropertyImpl&gt; handler = criteria.from(SystemPropertyImpl.class);</span>
+<span class="nc" id="L90">        criteria.select(handler);</span>
+<span class="nc" id="L91">        List&lt;Predicate&gt; restrictions = new ArrayList&lt;Predicate&gt;();</span>
+<span class="nc" id="L92">        List&lt;Order&gt; sorts = new ArrayList&lt;Order&gt;();</span>
+        try {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">            if (queryExtensionManager != null) {</span>
+<span class="nc" id="L95">                queryExtensionManager.getProxy().setup(SystemPropertyImpl.class, null);</span>
+<span class="nc" id="L96">                queryExtensionManager.getProxy().refineRetrieve(SystemPropertyImpl.class, null, builder, criteria, handler, restrictions);</span>
+<span class="nc" id="L97">                queryExtensionManager.getProxy().refineOrder(SystemPropertyImpl.class, null, builder, criteria, handler, sorts);</span>
+            }
+<span class="nc" id="L99">            criteria.where(restrictions.toArray(new Predicate[restrictions.size()]));</span>
+<span class="nc" id="L100">            return em.createQuery(criteria).getResultList();</span>
+<span class="nc" id="L101">        } catch (NoResultException e) {</span>
+<span class="nc" id="L102">            LOG.error(e);</span>
+<span class="nc" id="L103">            return new ArrayList&lt;SystemProperty&gt;();</span>
+        } finally {
+<span class="nc bnc" id="L105" title="All 6 branches missed.">            if (queryExtensionManager != null) {</span>
+<span class="nc" id="L106">                queryExtensionManager.getProxy().breakdown(SystemPropertyImpl.class, null);</span>
+            }
+        }
+    }
+
+    @Override
+    public SystemProperty readSystemPropertyByName(final String name) {
+<span class="nc" id="L113">        return getCachedObject(SystemProperty.class, &quot;blSystemPropertyNullCheckCache&quot;, &quot;SYSTEM_PROPERTY_MISSING_CACHE_HIT_RATE&quot;, new PersistentRetrieval&lt;SystemProperty&gt;() {</span>
+            @Override
+            public SystemProperty retrievePersistentObject() {
+<span class="nc" id="L116">                CriteriaBuilder builder = em.getCriteriaBuilder();</span>
+<span class="nc" id="L117">                CriteriaQuery&lt;SystemProperty&gt; criteria = builder.createQuery(SystemProperty.class);</span>
+<span class="nc" id="L118">                Root&lt;SystemPropertyImpl&gt; handler = criteria.from(SystemPropertyImpl.class);</span>
+<span class="nc" id="L119">                criteria.select(handler);</span>
+
+<span class="nc" id="L121">                List&lt;Predicate&gt; restrictions = new ArrayList&lt;Predicate&gt;();</span>
+<span class="nc" id="L122">                restrictions.add(builder.equal(handler.get(&quot;name&quot;), name));</span>
+
+                try {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">                    if (queryExtensionManager != null) {</span>
+<span class="nc" id="L126">                        queryExtensionManager.getProxy().setup(SystemPropertyImpl.class, null);</span>
+<span class="nc" id="L127">                        queryExtensionManager.getProxy().refineRetrieve(SystemPropertyImpl.class, null, builder, criteria, handler, restrictions);</span>
+                    }
+<span class="nc" id="L129">                    criteria.where(restrictions.toArray(new Predicate[restrictions.size()]));</span>
+
+<span class="nc" id="L131">                    TypedQuery&lt;SystemProperty&gt; query = em.createQuery(criteria);</span>
+<span class="nc" id="L132">                    query.setHint(QueryHints.HINT_CACHEABLE, true);</span>
+<span class="nc" id="L133">                    List&lt;SystemProperty&gt; response = query.getResultList();</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">                    if (response.size() &gt; 0) {</span>
+<span class="nc" id="L135">                        ExtensionResultHolder&lt;List&gt; resultHolder = new ExtensionResultHolder&lt;&gt;();</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">                        if (queryExtensionManager != null) {</span>
+<span class="nc" id="L137">                            ExtensionResultStatusType resultStatusType = queryExtensionManager.getProxy().refineResults(SystemPropertyImpl.class, null, response, resultHolder);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">                            if (!resultStatusType.equals(ExtensionResultStatusType.NOT_HANDLED)) {</span>
+<span class="nc" id="L139">                                return (SystemProperty) resultHolder.getResult().get(0);</span>
+                            }
+                        }
+<span class="nc" id="L142">                        return response.get(0);</span>
+                    }
+<span class="nc" id="L144">                    return null;</span>
+                } finally {
+<span class="nc bnc" id="L146" title="All 8 branches missed.">                    if (queryExtensionManager != null) {</span>
+<span class="nc" id="L147">                        queryExtensionManager.getProxy().breakdown(SystemPropertyImpl.class, null);</span>
+                    }
+                }
+            }
+        }, name, getSite());
+    }
+
+    @Override
+    public void removeFromCache(SystemProperty systemProperty) {
+<span class="nc" id="L156">        String site = &quot;&quot;;</span>
+<span class="nc bnc" id="L157" title="All 4 branches missed.">        if (systemProperty instanceof SiteDiscriminator &amp;&amp; ((SiteDiscriminator) systemProperty).getSiteDiscriminator() != null) {</span>
+<span class="nc" id="L158">            site = String.valueOf(((SiteDiscriminator) systemProperty).getSiteDiscriminator());</span>
+        }
+<span class="nc" id="L160">        super.removeItemFromCache(&quot;blSystemPropertyNullCheckCache&quot;, systemProperty.getName(), site);</span>
+<span class="nc" id="L161">    }</span>
+
+    @Override
+    public SystemProperty createNewSystemProperty() {
+<span class="nc" id="L165">        return (SystemProperty) entityConfiguration.createEntityInstance(SystemProperty.class.getName());</span>
+    }
+
+    @Override
+    protected Log getLogger() {
+<span class="nc" id="L170">        return LOG;</span>
+    }
+
+    protected String getSite() {
+<span class="nc" id="L174">        String site = &quot;&quot;;</span>
+<span class="nc" id="L175">        BroadleafRequestContext brc = BroadleafRequestContext.getBroadleafRequestContext();</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">        if (brc != null) {</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">            if (brc.getSite() != null) {</span>
+<span class="nc" id="L178">                site = String.valueOf(brc.getSite().getId());</span>
+            }
+        }
+<span class="nc" id="L181">        return site;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

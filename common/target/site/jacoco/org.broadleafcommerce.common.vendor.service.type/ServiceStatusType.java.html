@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ServiceStatusType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.vendor.service.type</a> &gt; <span class="el_source">ServiceStatusType.java</span></div><h1>ServiceStatusType.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.vendor.service.type;
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * An extendible enumeration of service status types.
+ * 
+ * @author jfischer
+ *
+ */
+public class ServiceStatusType implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L38">    private static final Map&lt;String, ServiceStatusType&gt; TYPES = new LinkedHashMap&lt;String, ServiceStatusType&gt;();</span>
+
+<span class="nc" id="L40">    public static final ServiceStatusType UP  = new ServiceStatusType(&quot;UP&quot;, &quot;Up&quot;);</span>
+<span class="nc" id="L41">    public static final ServiceStatusType DOWN  = new ServiceStatusType(&quot;DOWN&quot;, &quot;Down&quot;);</span>
+<span class="nc" id="L42">    public static final ServiceStatusType PAUSED  = new ServiceStatusType(&quot;PAUSED&quot;, &quot;Paused&quot;);</span>
+
+    public static ServiceStatusType getInstance(final String type) {
+<span class="nc" id="L45">        return TYPES.get(type);</span>
+    }
+
+    private String type;
+    private String friendlyType;
+
+<span class="nc" id="L51">    public ServiceStatusType() {</span>
+        //do nothing
+<span class="nc" id="L53">    }</span>
+
+<span class="nc" id="L55">    public ServiceStatusType(final String type, final String friendlyType) {</span>
+<span class="nc" id="L56">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L57">        setType(type);</span>
+<span class="nc" id="L58">    }</span>
+
+    public String getType() {
+<span class="nc" id="L61">        return type;</span>
+    }
+
+    public String getFriendlyType() {
+<span class="nc" id="L65">        return friendlyType;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L69">        this.type = type;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (!TYPES.containsKey(type)){</span>
+<span class="nc" id="L71">            TYPES.put(type, this);</span>
+        } else {
+<span class="nc" id="L73">            throw new RuntimeException(&quot;Cannot add the type: (&quot; + type + &quot;). It already exists as a type via &quot; + getInstance(type).getClass().getName());</span>
+        }
+<span class="nc" id="L75">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L79">        final int prime = 31;</span>
+<span class="nc" id="L80">        int result = 1;</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L82">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L88">            return true;</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L90">            return false;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L92">            return false;</span>
+<span class="nc" id="L93">        ServiceStatusType other = (ServiceStatusType) obj;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L96">                return false;</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L98">            return false;</span>
+<span class="nc" id="L99">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

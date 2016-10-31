@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PaymentGatewayTamperProofSealServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment.service</a> &gt; <span class="el_source">PaymentGatewayTamperProofSealServiceImpl.java</span></div><h1>PaymentGatewayTamperProofSealServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.payment.service;
+
+import org.apache.commons.codec.binary.Base64;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+
+/**
+ * &lt;p&gt;This default implementation encodes the seal using a URL-Safe Base64 encoder
+ * and 'HmacSHA1'&lt;/p&gt;
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+@Service(&quot;blPaymentGatewayTamperProofSealService&quot;)
+<span class="nc" id="L38">public class PaymentGatewayTamperProofSealServiceImpl implements PaymentGatewayTamperProofSealService {</span>
+
+    @Override
+    public String createTamperProofSeal(String secretKey, String customerId, String orderId)
+            throws NoSuchAlgorithmException, InvalidKeyException {
+
+        //Create a URL-Safe Base64 encoder as some of these may get passed back as URL GET parameters
+<span class="nc" id="L45">        Base64 encoder = new Base64(true);</span>
+<span class="nc" id="L46">        Mac sha1Mac = Mac.getInstance(&quot;HmacSHA1&quot;);</span>
+<span class="nc" id="L47">        SecretKeySpec publicKeySpec = new SecretKeySpec(secretKey.getBytes(), &quot;HmacSHA1&quot;);</span>
+<span class="nc" id="L48">        sha1Mac.init(publicKeySpec);</span>
+<span class="nc" id="L49">        String customerOrderString = customerId + orderId;</span>
+<span class="nc" id="L50">        byte[] publicBytes = sha1Mac.doFinal(customerOrderString.getBytes());</span>
+<span class="nc" id="L51">        String publicDigest = encoder.encodeToString(publicBytes);</span>
+
+<span class="nc" id="L53">        return publicDigest.replaceAll(&quot;\\r|\\n&quot;, &quot;&quot;);</span>
+    }
+
+    @Override
+    public Boolean verifySeal(String seal, String secretKey, String customerId, String orderId)
+            throws InvalidKeyException, NoSuchAlgorithmException {
+<span class="nc" id="L59">        Boolean valid = false;</span>
+<span class="nc" id="L60">        String constructedSeal = createTamperProofSeal(secretKey, customerId, orderId);</span>
+
+<span class="nc bnc" id="L62" title="All 4 branches missed.">        if (seal != null &amp;&amp; seal.equals(constructedSeal)) {</span>
+<span class="nc" id="L63">            valid = true;</span>
+        }
+
+<span class="nc" id="L66">        return valid;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

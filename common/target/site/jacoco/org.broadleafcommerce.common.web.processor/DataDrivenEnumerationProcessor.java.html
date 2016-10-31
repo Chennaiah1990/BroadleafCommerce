@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DataDrivenEnumerationProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.processor</a> &gt; <span class="el_source">DataDrivenEnumerationProcessor.java</span></div><h1>DataDrivenEnumerationProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.processor;
+
+import org.apache.commons.lang3.StringUtils;
+import org.broadleafcommerce.common.enumeration.domain.DataDrivenEnumeration;
+import org.broadleafcommerce.common.enumeration.domain.DataDrivenEnumerationValue;
+import org.broadleafcommerce.common.enumeration.service.DataDrivenEnumerationService;
+import org.broadleafcommerce.common.web.dialect.AbstractModelVariableModifierProcessor;
+import org.thymeleaf.Arguments;
+import org.thymeleaf.dom.Element;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+
+/**
+ * Processor that adds a list of {@link DataDriveEnumerationValue}s onto the model for a particular key.
+ *  This will add a new variable on the model called 'enumValues'
+ *
+ * @param key (required) key for the {@link DataDrivenEnumeration} that the {@link DataDrivenEnumerationValue}s should be
+ * apart of. This corresponds to {@link DataDrivenEnumeration#getKey()}.
+ * 
+ * @param sort (optional) &lt;i&gt;ASCENDING&lt;/i&gt; or &lt;i&gt;DESCENDING&lt;/i&gt; if the resulting values should be sorted by not. The sort will be on
+ *          {@link DataDrivenEnumerationValue#getDisplay()}
+ *
+ * @author Phillip Verheyden (phillipuniverse)
+ */
+public class DataDrivenEnumerationProcessor extends AbstractModelVariableModifierProcessor {
+
+    @Resource(name = &quot;blDataDrivenEnumerationService&quot;)
+    protected DataDrivenEnumerationService enumService;
+    
+    /**
+     * @param elementName
+     */
+    public DataDrivenEnumerationProcessor() {
+<span class="nc" id="L59">        super(&quot;enumeration&quot;);</span>
+<span class="nc" id="L60">    }</span>
+
+    @Override
+    protected void modifyModelAttributes(Arguments arguments, Element element) {
+<span class="nc" id="L64">        String key = element.getAttributeValue(&quot;key&quot;);</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (StringUtils.isEmpty(key)) {</span>
+<span class="nc" id="L66">            throw new IllegalArgumentException(&quot;No 'key' parameter was passed to find enumeration values&quot;);</span>
+        }
+        
+<span class="nc" id="L69">        DataDrivenEnumeration ddEnum = enumService.findEnumByKey(key);</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (ddEnum == null) {</span>
+<span class="nc" id="L71">            throw new IllegalArgumentException(&quot;Could not find a data driven enumeration keyed by &quot; + key);</span>
+        }
+<span class="nc" id="L73">        List&lt;DataDrivenEnumerationValue&gt; enumValues = new ArrayList&lt;DataDrivenEnumerationValue&gt;(ddEnum.getEnumValues());</span>
+        
+<span class="nc" id="L75">        final String sort = element.getAttributeValue(&quot;sort&quot;);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (StringUtils.isNotEmpty(sort)) {</span>
+<span class="nc" id="L77">            Collections.sort(enumValues, new Comparator&lt;DataDrivenEnumerationValue&gt;() {</span>
+
+                @Override
+                public int compare(DataDrivenEnumerationValue arg0, DataDrivenEnumerationValue arg1) {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">                    if (sort.equals(&quot;ASCENDING&quot;)) {</span>
+<span class="nc" id="L82">                        return arg0.getDisplay().compareTo(arg1.getDisplay());</span>
+                    } else {
+<span class="nc" id="L84">                        return arg1.getDisplay().compareTo(arg0.getDisplay());</span>
+                    }
+                }
+            });
+        }
+        
+<span class="nc" id="L90">        addToModel(arguments, &quot;enumValues&quot;, enumValues);</span>
+<span class="nc" id="L91">    }</span>
+
+    @Override
+    public int getPrecedence() {
+<span class="nc" id="L95">        return 1;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

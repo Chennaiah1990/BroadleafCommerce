@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BroadleafCachingResourceResolver.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.resource.resolver</a> &gt; <span class="el_source">BroadleafCachingResourceResolver.java</span></div><h1>BroadleafCachingResourceResolver.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * broadleaf-theme
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.resource.resolver;
+
+import org.broadleafcommerce.common.site.domain.Theme;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.core.Ordered;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
+import org.springframework.web.servlet.resource.AbstractResourceResolver;
+import org.springframework.web.servlet.resource.CachingResourceResolver;
+import org.springframework.web.servlet.resource.ResourceResolverChain;
+
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+/**
+ * A ResourceResolver that handles using the theme as part of the cache key and adds in
+ * support to disable with environment properties.
+ *
+ * We bypass {@link CachingResourceResolver} and instead borrow its code in order to be
+ * able to inject the theme key that is needed by BLC since Spring's class could not be
+ * leveraged otherwise.
+ *
+ *  {@code }
+ * 
+ * @author Brian Polster
+ * @since Broadleaf 4.0
+ */
+@Component(&quot;blCacheResourceResolver&quot;)
+public class BroadleafCachingResourceResolver extends AbstractResourceResolver implements Ordered {
+
+    public static final String RESOLVED_RESOURCE_CACHE_KEY_PREFIX = &quot;resolvedResource:&quot;;
+    public static final String RESOLVED_URL_PATH_CACHE_KEY_PREFIX = &quot;resolvedUrlPath:&quot;;
+    public static final String RESOLVED_RESOURCE_CACHE_KEY_PREFIX_NULL = &quot;resolvedResourceNull:&quot;;
+    public static final String RESOLVED_URL_PATH_CACHE_KEY_PREFIX_NULL = &quot;resolvedUrlPathNull:&quot;;
+<span class="nc" id="L61">    private static final Object NULL_REFERENCE = new Object();</span>
+<span class="nc" id="L62">    private int order = BroadleafResourceResolverOrder.BLC_CACHE_RESOURCE_RESOLVER;</span>
+
+    private final Cache cache;
+
+    @javax.annotation.Resource(name = &quot;blSpringCacheManager&quot;)
+    private CacheManager cacheManager;
+    
+    private static final String DEFAULT_CACHE_NAME = &quot;blResourceCacheElements&quot;;
+
+    @Value(&quot;${resource.caching.enabled:true}&quot;)
+    protected boolean resourceCachingEnabled;
+
+    @Autowired
+    public BroadleafCachingResourceResolver(@Qualifier(&quot;blSpringCacheManager&quot;) CacheManager cacheManager) {
+<span class="nc" id="L76">        this(cacheManager.getCache(DEFAULT_CACHE_NAME));</span>
+<span class="nc" id="L77">    }</span>
+
+    // Allows for an implementor to override the default cache settings.
+<span class="nc" id="L80">    public BroadleafCachingResourceResolver(Cache cache) {</span>
+<span class="nc" id="L81">        Assert.notNull(cache, &quot;'cache' is required&quot;);</span>
+<span class="nc" id="L82">        this.cache = cache;</span>
+<span class="nc" id="L83">    }</span>
+
+    /**
+     * Return the configured {@code Cache}.
+     */
+    public Cache getCache() {
+<span class="nc" id="L89">        return this.cache;</span>
+    }
+
+    @Override
+    protected Resource resolveResourceInternal(HttpServletRequest request, String requestPath,
+            List&lt;? extends Resource&gt; locations, ResourceResolverChain chain) {
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (resourceCachingEnabled) {</span>
+<span class="nc" id="L96">            String key = computeKey(request, requestPath) + getThemePathFromBRC();</span>
+<span class="nc" id="L97">            Resource resource = this.cache.get(key, Resource.class);</span>
+
+<span class="nc bnc" id="L99" title="All 2 branches missed.">            if (resource != null) {</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">                if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L101">                    logger.trace(&quot;Found match&quot;);</span>
+                }
+<span class="nc" id="L103">                return resource;</span>
+            }
+
+<span class="nc" id="L106">            resource = chain.resolveResource(request, requestPath, locations);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">            if (resource != null) {</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">                if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L109">                    logger.trace(&quot;Putting resolved resource in cache&quot;);</span>
+                }
+<span class="nc" id="L111">                this.cache.put(key, resource);</span>
+            }
+
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            if (logger.isDebugEnabled()) {</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">                if (resource == null) {</span>
+<span class="nc" id="L116">                    logger.debug(&quot;Cache resolver, returned a null resource &quot; + requestPath);</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">                } else if (!resource.exists()) {</span>
+<span class="nc" id="L118">                    logger.debug(&quot;Cache resolver, returned a resource that doesn't exist &quot;</span>
+                            + requestPath + &quot; - &quot; + resource);
+                }
+            }
+<span class="nc" id="L122">            return resource;</span>
+        } else {
+<span class="nc" id="L124">            return chain.resolveResource(request, requestPath, locations);</span>
+        }
+    }
+
+    /**
+     * Pulled from {@link CachingResourceResolver}
+     *
+     * @param request
+     * @param requestPath
+     * @return
+     */
+    protected String computeKey(HttpServletRequest request, String requestPath) {
+<span class="nc" id="L136">        StringBuilder key = new StringBuilder(RESOLVED_RESOURCE_CACHE_KEY_PREFIX);</span>
+<span class="nc" id="L137">        key.append(requestPath);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (request != null) {</span>
+<span class="nc" id="L139">            String encoding = request.getHeader(&quot;Accept-Encoding&quot;);</span>
+<span class="nc bnc" id="L140" title="All 4 branches missed.">            if (encoding != null &amp;&amp; encoding.contains(&quot;gzip&quot;)) {</span>
+<span class="nc" id="L141">                key.append(&quot;+encoding=gzip&quot;);</span>
+            }
+        }
+<span class="nc" id="L144">        return key.toString();</span>
+    }
+
+    @Override
+    protected String resolveUrlPathInternal(String resourceUrlPath,
+            List&lt;? extends Resource&gt; locations, ResourceResolverChain chain) {
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (resourceCachingEnabled) {</span>
+<span class="nc" id="L151">            String response = null;</span>
+
+<span class="nc" id="L153">            String notFoundKey = RESOLVED_URL_PATH_CACHE_KEY_PREFIX_NULL + resourceUrlPath + getThemePathFromBRC();</span>
+<span class="nc" id="L154">            Object nullResource = getCache().get(notFoundKey, Object.class);</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">            if (nullResource != null) {</span>
+<span class="nc" id="L156">                logNullReferenceUrlPatchMatch(resourceUrlPath);</span>
+<span class="nc" id="L157">                return null;</span>
+            }
+
+<span class="nc" id="L160">            String foundKey = RESOLVED_URL_PATH_CACHE_KEY_PREFIX + resourceUrlPath + getThemePathFromBRC();</span>
+<span class="nc" id="L161">            String resolvedUrlPath = this.cache.get(foundKey, String.class);</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">            if (resolvedUrlPath != null) {</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">                if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L164">                    logger.trace(&quot;Found match&quot;);</span>
+                }
+<span class="nc" id="L166">                response = resolvedUrlPath;</span>
+            } else {
+<span class="nc" id="L168">                resolvedUrlPath = chain.resolveUrlPath(resourceUrlPath, locations);</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">                if (resolvedUrlPath != null) {</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">                    if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L171">                        logger.trace(&quot;Putting resolved resource URL path in cache&quot;);</span>
+                    }
+<span class="nc" id="L173">                    this.cache.put(foundKey, resolvedUrlPath);</span>
+<span class="nc" id="L174">                    response = resolvedUrlPath;</span>
+                }
+            }
+
+<span class="nc bnc" id="L178" title="All 2 branches missed.">            if (response == null) {</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">                if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L180">                    logger.trace(String.format(&quot;Putting resolved null reference url &quot; +</span>
+                            &quot;path in cache for '%s'&quot;, resourceUrlPath));
+                }
+<span class="nc" id="L183">                getCache().put(notFoundKey, NULL_REFERENCE);</span>
+            }
+<span class="nc" id="L185">            return response;</span>
+        } else {
+<span class="nc" id="L187">            return chain.resolveUrlPath(resourceUrlPath, locations);</span>
+        }
+    }
+
+    private void logNullReferenceUrlPatchMatch(String resourceUrlPath) {
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        if (logger.isTraceEnabled()) {</span>
+<span class="nc" id="L193">            logger.trace(String.format(&quot;Found null reference url path match for '%s'&quot;, resourceUrlPath));</span>
+        }
+<span class="nc" id="L195">    }</span>
+
+    /**
+     * Returns the theme path from the {@link org.broadleafcommerce.common.web.BroadleafRequestContext} or an empty
+     * string if no theme was resolved
+     *
+     * @return
+     */
+    protected String getThemePathFromBRC() {
+<span class="nc" id="L204">        String themePath = null;</span>
+<span class="nc" id="L205">        Theme theme = BroadleafRequestContext.getBroadleafRequestContext().getTheme();</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        if (theme != null) {</span>
+<span class="nc" id="L207">            themePath = theme.getPath();</span>
+        }
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        return themePath == null ? &quot;&quot; : &quot;-&quot; + themePath;</span>
+    }
+
+    @Override
+    public int getOrder() {
+<span class="nc" id="L214">        return order;</span>
+    }
+
+    public void setOrder(int order) {
+<span class="nc" id="L218">        this.order = order;</span>
+<span class="nc" id="L219">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

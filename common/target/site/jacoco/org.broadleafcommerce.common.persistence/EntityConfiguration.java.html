@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityConfiguration.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.persistence</a> &gt; <span class="el_source">EntityConfiguration.java</span></div><h1>EntityConfiguration.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.persistence;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.support.GenericXmlApplicationContext;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+@Component(&quot;blEntityConfiguration&quot;)
+<span class="nc" id="L37">public class EntityConfiguration implements ApplicationContextAware {</span>
+
+<span class="nc" id="L39">    private static final Log LOG = LogFactory.getLog(EntityConfiguration.class);</span>
+
+    private ApplicationContext webApplicationContext;
+<span class="nc" id="L42">    private final HashMap&lt;String, Class&lt;?&gt;&gt; entityMap = new HashMap&lt;String, Class&lt;?&gt;&gt;(50);</span>
+    private ApplicationContext applicationcontext;
+    private Resource[] entityContexts;
+
+    @javax.annotation.Resource(name=&quot;blMergedEntityContexts&quot;)
+    protected Set&lt;String&gt; mergedEntityContexts;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+<span class="nc" id="L51">        this.webApplicationContext = applicationContext;</span>
+<span class="nc" id="L52">    }</span>
+
+    @PostConstruct
+    public void configureMergedItems() {
+<span class="nc" id="L56">        Set&lt;Resource&gt; temp = new LinkedHashSet&lt;Resource&gt;();</span>
+<span class="nc bnc" id="L57" title="All 4 branches missed.">        if (mergedEntityContexts != null &amp;&amp; !mergedEntityContexts.isEmpty()) {</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">            for (String location : mergedEntityContexts) {</span>
+<span class="nc" id="L59">                temp.add(webApplicationContext.getResource(location));</span>
+<span class="nc" id="L60">            }</span>
+        }
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (entityContexts != null) {</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">            for (Resource resource : entityContexts) {</span>
+<span class="nc" id="L64">                temp.add(resource);</span>
+            }
+        }
+<span class="nc" id="L67">        entityContexts = temp.toArray(new Resource[temp.size()]);</span>
+<span class="nc" id="L68">        applicationcontext = new GenericXmlApplicationContext(entityContexts);</span>
+<span class="nc" id="L69">    }</span>
+
+    public Class&lt;?&gt; lookupEntityClass(String beanId) {
+        Class&lt;?&gt; clazz;
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (entityMap.containsKey(beanId)) {</span>
+<span class="nc" id="L74">            clazz = entityMap.get(beanId);</span>
+        } else {
+<span class="nc" id="L76">            Object object = applicationcontext.getBean(beanId);</span>
+<span class="nc" id="L77">            clazz = object.getClass();</span>
+<span class="nc" id="L78">            entityMap.put(beanId, clazz);</span>
+        }
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L81">            LOG.debug(&quot;Returning class (&quot; + clazz.getName() + &quot;) configured with bean id (&quot; + beanId + ')');</span>
+        }
+<span class="nc" id="L83">        return clazz;</span>
+    }
+    
+    public String[] getEntityBeanNames() {
+<span class="nc" id="L87">        return applicationcontext.getBeanDefinitionNames();</span>
+    }
+
+    public &lt;T&gt; Class&lt;T&gt; lookupEntityClass(String beanId, Class&lt;T&gt; resultClass) {
+        Class&lt;T&gt; clazz;
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (entityMap.containsKey(beanId)) {</span>
+<span class="nc" id="L93">            clazz = (Class&lt;T&gt;) entityMap.get(beanId);</span>
+        } else {
+<span class="nc" id="L95">            Object object = applicationcontext.getBean(beanId);</span>
+<span class="nc" id="L96">            clazz = (Class&lt;T&gt;) object.getClass();</span>
+<span class="nc" id="L97">            entityMap.put(beanId, clazz);</span>
+        }
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L100">            LOG.debug(&quot;Returning class (&quot; + clazz.getName() + &quot;) configured with bean id (&quot; + beanId + ')');</span>
+        }
+<span class="nc" id="L102">        return clazz;</span>
+    }
+
+    public Object createEntityInstance(String beanId) {
+<span class="nc" id="L106">        Object bean = applicationcontext.getBean(beanId);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L108">            LOG.debug(&quot;Returning instance of class (&quot; + bean.getClass().getName() + &quot;) configured with bean id (&quot; + beanId + ')');</span>
+        }
+<span class="nc" id="L110">        return bean;</span>
+    }
+
+    public &lt;T&gt; T createEntityInstance(String beanId, Class&lt;T&gt; resultClass) {
+<span class="nc" id="L114">        T bean = (T) applicationcontext.getBean(beanId);</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L116">            LOG.debug(&quot;Returning instance of class (&quot; + bean.getClass().getName() + &quot;) configured with bean id (&quot; + beanId + ')');</span>
+        }
+<span class="nc" id="L118">        return bean;</span>
+    }
+
+    public Resource[] getEntityContexts() {
+<span class="nc" id="L122">        return entityContexts;</span>
+    }
+
+    public void setEntityContexts(Resource[] entityContexts) {
+<span class="nc" id="L126">        this.entityContexts = entityContexts;</span>
+<span class="nc" id="L127">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

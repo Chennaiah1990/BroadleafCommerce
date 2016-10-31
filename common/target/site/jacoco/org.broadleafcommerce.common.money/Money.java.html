@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Money.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.money</a> &gt; <span class="el_source">Money.java</span></div><h1>Money.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.money;
+
+import org.broadleafcommerce.common.currency.domain.BroadleafCurrency;
+import org.broadleafcommerce.common.money.util.CurrencyAdapter;
+import org.broadleafcommerce.common.util.xml.BigDecimalRoundingAdapter;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Currency;
+import java.util.Locale;
+
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+
+<span class="nc bnc" id="L45" title="All 2 branches missed.">@XmlAccessorType(XmlAccessType.FIELD)</span>
+@JsonIgnoreProperties({
+        &quot;zero&quot;
+})
+public class Money implements Serializable, Cloneable, Comparable&lt;Money&gt;, Externalizable {
+
+    private static final long serialVersionUID = 1L;
+
+    @XmlElement
+    @XmlJavaTypeAdapter(value = BigDecimalRoundingAdapter.class)
+    private BigDecimal amount;
+
+    @XmlElement
+    @XmlJavaTypeAdapter(CurrencyAdapter.class)
+    private final Currency currency;
+
+<span class="nc" id="L61">    public static final Money ZERO = new Money(BigDecimal.ZERO);</span>
+
+    protected static String getCurrencyCode(BroadleafCurrency blCurrency) {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (blCurrency != null) {</span>
+<span class="nc" id="L65">            return blCurrency.getCurrencyCode();</span>
+        } else {
+<span class="nc" id="L67">            return defaultCurrency().getCurrencyCode();</span>
+        }
+    }
+
+    public Money(Currency currency) {
+<span class="nc" id="L72">        this(BankersRounding.zeroAmount(), currency);</span>
+<span class="nc" id="L73">    }</span>
+
+    public Money(BroadleafCurrency blCurrency) {
+<span class="nc" id="L76">        this(0, Currency.getInstance(getCurrencyCode(blCurrency)));</span>
+<span class="nc" id="L77">    }</span>
+
+    public Money(BigDecimal amount, BroadleafCurrency blCurrency) {
+<span class="nc" id="L80">        this(amount, Currency.getInstance(getCurrencyCode(blCurrency)));</span>
+<span class="nc" id="L81">    }</span>
+
+    public Money(BigDecimal amount, BroadleafCurrency blCurrency, int scale) {
+<span class="nc" id="L84">        this(amount, Currency.getInstance(getCurrencyCode(blCurrency)), scale);</span>
+<span class="nc" id="L85">    }</span>
+
+    public Money() {
+<span class="nc" id="L88">        this(BankersRounding.zeroAmount(), defaultCurrency());</span>
+<span class="nc" id="L89">    }</span>
+
+    public Money(BigDecimal amount) {
+<span class="nc" id="L92">        this(amount, defaultCurrency());</span>
+<span class="nc" id="L93">    }</span>
+
+    public Money(double amount) {
+<span class="nc" id="L96">        this(valueOf(amount), defaultCurrency());</span>
+<span class="nc" id="L97">    }</span>
+
+    public Money(int amount) {
+<span class="nc" id="L100">        this(BigDecimal.valueOf(amount).setScale(BankersRounding.getScaleForCurrency(defaultCurrency()),</span>
+                RoundingMode.HALF_EVEN), defaultCurrency());
+<span class="nc" id="L102">    }</span>
+
+    public Money(long amount) {
+<span class="nc" id="L105">        this(BigDecimal.valueOf(amount).setScale(BankersRounding.getScaleForCurrency(defaultCurrency()),</span>
+                RoundingMode.HALF_EVEN), defaultCurrency());
+<span class="nc" id="L107">    }</span>
+
+    public Money(String amount) {
+<span class="nc" id="L110">        this(valueOf(amount), defaultCurrency());</span>
+<span class="nc" id="L111">    }</span>
+
+    public Money(BigDecimal amount, String currencyCode) {
+<span class="nc" id="L114">        this(amount, Currency.getInstance(currencyCode));</span>
+<span class="nc" id="L115">    }</span>
+
+    public Money(double amount, Currency currency) {
+<span class="nc" id="L118">        this(valueOf(amount), currency);</span>
+<span class="nc" id="L119">    }</span>
+
+    public Money(double amount, String currencyCode) {
+<span class="nc" id="L122">        this(valueOf(amount), Currency.getInstance(currencyCode));</span>
+<span class="nc" id="L123">    }</span>
+
+    public Money(int amount, Currency currency) {
+<span class="nc" id="L126">        this(BigDecimal.valueOf(amount).setScale(BankersRounding.getScaleForCurrency(currency), RoundingMode.HALF_EVEN), currency);</span>
+<span class="nc" id="L127">    }</span>
+
+    public Money(int amount, String currencyCode) {
+<span class="nc" id="L130">        this(BigDecimal.valueOf(amount).setScale(BankersRounding.getScaleForCurrency(Currency.getInstance(currencyCode)), RoundingMode.HALF_EVEN), Currency.getInstance(currencyCode));</span>
+<span class="nc" id="L131">    }</span>
+
+    public Money(long amount, Currency currency) {
+<span class="nc" id="L134">        this(BigDecimal.valueOf(amount).setScale(BankersRounding.getScaleForCurrency(currency), RoundingMode.HALF_EVEN), currency);</span>
+<span class="nc" id="L135">    }</span>
+
+    public Money(long amount, String currencyCode) {
+<span class="nc" id="L138">        this(BigDecimal.valueOf(amount).setScale(BankersRounding.getScaleForCurrency(Currency.getInstance(currencyCode)), RoundingMode.HALF_EVEN), Currency.getInstance(currencyCode));</span>
+<span class="nc" id="L139">    }</span>
+
+    public Money(String amount, Currency currency) {
+<span class="nc" id="L142">        this(valueOf(amount), currency);</span>
+<span class="nc" id="L143">    }</span>
+
+    public Money(String amount, String currencyCode) {
+<span class="nc" id="L146">        this(valueOf(amount), Currency.getInstance(currencyCode));</span>
+<span class="nc" id="L147">    }</span>
+
+<span class="nc" id="L149">    public Money(BigDecimal amount, Currency currency) {</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (currency == null) {</span>
+<span class="nc" id="L151">            throw new IllegalArgumentException(&quot;currency cannot be null&quot;);</span>
+        }
+<span class="nc" id="L153">        this.currency = currency;</span>
+<span class="nc" id="L154">        this.amount = BankersRounding.setScale(BankersRounding.getScaleForCurrency(currency), amount);</span>
+<span class="nc" id="L155">    }</span>
+
+<span class="nc" id="L157">    public Money(BigDecimal amount, Currency currency, int scale) {</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        if (currency == null) {</span>
+<span class="nc" id="L159">            throw new IllegalArgumentException(&quot;currency cannot be null&quot;);</span>
+        }
+<span class="nc" id="L161">        this.currency = currency;</span>
+<span class="nc" id="L162">        this.amount = BankersRounding.setScale(amount, scale);</span>
+<span class="nc" id="L163">    }</span>
+
+    public BigDecimal getAmount() {
+<span class="nc" id="L166">        return amount;</span>
+    }
+
+    public Currency getCurrency() {
+<span class="nc" id="L170">        return currency;</span>
+    }
+
+    public Money add(Money other) {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (!other.getCurrency().equals(getCurrency())) {</span>
+<span class="nc bnc" id="L175" title="All 6 branches missed.">            if (CurrencyConversionContext.getCurrencyConversionContext() != null &amp;&amp;</span>
+                    CurrencyConversionContext.getCurrencyConversionContext().size() &gt; 0 &amp;&amp;
+                    CurrencyConversionContext.getCurrencyConversionService() != null) {
+<span class="nc" id="L178">                other = CurrencyConversionContext.getCurrencyConversionService().convertCurrency(other, getCurrency(), amount.scale());</span>
+            } else {
+<span class="nc bnc" id="L180" title="All 2 branches missed.">                if (this == Money.ZERO) {</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">                    return new Money(amount.add(other.amount), other.currency, amount.scale() == 0</span>
+                            ? BankersRounding.getScaleForCurrency(other.currency) : amount.scale());
+<span class="nc bnc" id="L183" title="All 2 branches missed.">                } else if (other == Money.ZERO) {</span>
+<span class="nc" id="L184">                    return this;</span>
+                }
+<span class="nc" id="L186">                throw new UnsupportedOperationException(&quot;No currency conversion service is registered, cannot add different currency &quot; +</span>
+                        &quot;types together (&quot; + getCurrency().getCurrencyCode() + &quot; &quot; + other.getCurrency().getCurrencyCode() + &quot;)&quot;);
+            }
+        }
+
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        return new Money(amount.add(other.amount), currency, amount.scale() == 0 ? BankersRounding.getScaleForCurrency(currency) : amount.scale());</span>
+    }
+
+    public Money subtract(Money other) {
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if (!other.getCurrency().equals(getCurrency())) {</span>
+<span class="nc bnc" id="L196" title="All 6 branches missed.">            if (CurrencyConversionContext.getCurrencyConversionContext() != null &amp;&amp;</span>
+                    CurrencyConversionContext.getCurrencyConversionContext().size() &gt; 0 &amp;&amp;
+                    CurrencyConversionContext.getCurrencyConversionService() != null) {
+<span class="nc" id="L199">                other = CurrencyConversionContext.getCurrencyConversionService().convertCurrency(other, getCurrency(), amount.scale());</span>
+            } else {
+<span class="nc bnc" id="L201" title="All 2 branches missed.">                if (other == Money.ZERO) {</span>
+<span class="nc" id="L202">                    return this;</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">                } else if (this == Money.ZERO) {</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">                    return new Money(amount.subtract(other.amount), other.currency, amount.scale() == 0</span>
+                            ? BankersRounding.getScaleForCurrency(other.currency) : amount.scale());
+                }
+<span class="nc" id="L207">                throw new UnsupportedOperationException(&quot;No currency conversion service is registered, cannot subtract different currency &quot; +</span>
+                        &quot;types (&quot; + getCurrency().getCurrencyCode() + &quot;, &quot; + other.getCurrency().getCurrencyCode() + &quot;)&quot;);
+            }
+        }
+
+<span class="nc bnc" id="L212" title="All 2 branches missed.">        return new Money(amount.subtract(other.amount), currency, amount.scale() == 0 ? BankersRounding.getScaleForCurrency(currency) : amount.scale());</span>
+    }
+
+    public Money multiply(double amount) {
+<span class="nc" id="L216">        return multiply(valueOf(amount));</span>
+    }
+
+    public Money multiply(int amount) {
+<span class="nc" id="L220">        BigDecimal value = BigDecimal.valueOf(amount);</span>
+<span class="nc" id="L221">        value = value.setScale(BankersRounding.getScaleForCurrency(currency), RoundingMode.HALF_EVEN);</span>
+<span class="nc" id="L222">        return multiply(value);</span>
+    }
+
+    public Money multiply(BigDecimal multiplier) {
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        return new Money(amount.multiply(multiplier), currency, amount.scale() == 0 ? BankersRounding.getScaleForCurrency(currency) : amount.scale());</span>
+    }
+
+    public Money divide(double amount) {
+<span class="nc" id="L230">        return this.divide(amount, RoundingMode.HALF_EVEN);</span>
+    }
+
+    public Money divide(double amount, RoundingMode roundingMode) {
+<span class="nc" id="L234">        return divide(valueOf(amount), roundingMode);</span>
+    }
+
+    public Money divide(int amount) {
+<span class="nc" id="L238">        return this.divide(amount, RoundingMode.HALF_EVEN);</span>
+    }
+
+    public Money divide(int amount, RoundingMode roundingMode) {
+<span class="nc" id="L242">        BigDecimal value = BigDecimal.valueOf(amount);</span>
+<span class="nc" id="L243">        value = value.setScale(BankersRounding.getScaleForCurrency(currency), RoundingMode.HALF_EVEN);</span>
+<span class="nc" id="L244">        return divide(value, roundingMode);</span>
+    }
+
+    public Money divide(BigDecimal divisor) {
+<span class="nc" id="L248">        return this.divide(divisor, RoundingMode.HALF_EVEN);</span>
+    }
+
+    public Money divide(BigDecimal divisor, RoundingMode roundingMode) {
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        return new Money(amount.divide(divisor, amount.scale(), roundingMode), currency, amount.scale() == 0 ? BankersRounding.getScaleForCurrency(currency) : amount.scale());</span>
+    }
+
+    public Money abs() {
+<span class="nc" id="L256">        return new Money(amount.abs(), currency);</span>
+    }
+
+    public Money min(Money other) {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        if (other == null) {</span>
+<span class="nc" id="L261">            return this;</span>
+        }
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        return lessThan(other) ? this : other;</span>
+    }
+
+    public Money max(Money other) {
+<span class="nc bnc" id="L267" title="All 2 branches missed.">        if (other == null) {</span>
+<span class="nc" id="L268">            return this;</span>
+        }
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        return greaterThan(other) ? this : other;</span>
+    }
+
+    public Money negate() {
+<span class="nc" id="L274">        return new Money(amount.negate(), currency);</span>
+    }
+
+    public boolean isZero() {
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        return amount.compareTo(BankersRounding.zeroAmount()) == 0;</span>
+    }
+
+    public Money zero() {
+<span class="nc" id="L282">        return Money.zero(currency);</span>
+    }
+
+    public boolean lessThan(Money other) {
+<span class="nc bnc" id="L286" title="All 2 branches missed.">        return compareTo(other) &lt; 0;</span>
+    }
+
+    public boolean lessThan(BigDecimal value) {
+<span class="nc bnc" id="L290" title="All 2 branches missed.">        return amount.compareTo(value) &lt; 0;</span>
+    }
+
+    public boolean lessThanOrEqual(Money other) {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">        return compareTo(other) &lt;= 0;</span>
+    }
+
+    public boolean lessThanOrEqual(BigDecimal value) {
+<span class="nc bnc" id="L298" title="All 2 branches missed.">        return amount.compareTo(value) &lt;= 0;</span>
+    }
+
+    public boolean greaterThan(Money other) {
+<span class="nc bnc" id="L302" title="All 2 branches missed.">        return compareTo(other) &gt; 0;</span>
+    }
+
+    public boolean greaterThan(BigDecimal value) {
+<span class="nc bnc" id="L306" title="All 2 branches missed.">        return amount.compareTo(value) &gt; 0;</span>
+    }
+
+    public boolean greaterThanOrEqual(Money other) {
+<span class="nc bnc" id="L310" title="All 2 branches missed.">        return compareTo(other) &gt;= 0;</span>
+    }
+
+    public boolean greaterThanOrEqual(BigDecimal value) {
+<span class="nc bnc" id="L314" title="All 2 branches missed.">        return amount.compareTo(value) &gt;= 0;</span>
+    }
+
+    @Override
+    public int compareTo(Money other) {
+<span class="nc" id="L319">        return amount.compareTo(other.amount);</span>
+    }
+
+    public int compareTo(BigDecimal value) {
+<span class="nc" id="L323">        return amount.compareTo(value);</span>
+    }
+
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L328" title="All 2 branches missed.">        if (this == o) {</span>
+<span class="nc" id="L329">            return true;</span>
+        }
+<span class="nc bnc" id="L331" title="All 2 branches missed.">        if (o == null) return false;</span>
+<span class="nc bnc" id="L332" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(o.getClass())) {</span>
+<span class="nc" id="L333">            return false;</span>
+        }
+
+<span class="nc" id="L336">        Money money = (Money) o;</span>
+
+<span class="nc bnc" id="L338" title="All 6 branches missed.">        if (amount != null ? !amount.equals(money.amount) : money.amount != null) {</span>
+<span class="nc" id="L339">            return false;</span>
+        }
+
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        if (isZero()) {</span>
+<span class="nc" id="L343">            return true;</span>
+        }
+
+<span class="nc bnc" id="L346" title="All 6 branches missed.">        if (currency != null ? !currency.equals(money.currency) : money.currency != null) {</span>
+<span class="nc" id="L347">            return false;</span>
+        }
+
+<span class="nc" id="L350">        return true;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="nc bnc" id="L355" title="All 2 branches missed.">        int result = amount != null ? amount.hashCode() : 0;</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">        result = 31 * result + (currency != null ? currency.hashCode() : 0);</span>
+<span class="nc" id="L357">        return result;</span>
+    }
+
+    @Override
+    public Object clone() {
+<span class="nc" id="L362">        return new Money(amount, currency);</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L367">        return amount.toString();</span>
+    }
+
+    public double doubleValue() {
+        try {
+<span class="nc" id="L372">            return amount.doubleValue();</span>
+<span class="nc" id="L373">        } catch (NumberFormatException e) {</span>
+            // HotSpot bug in JVM &lt; 1.4.2_06.
+<span class="nc bnc" id="L375" title="All 2 branches missed.">            if (e.getMessage().equals(&quot;For input string: \&quot;0.00null\&quot;&quot;)) {</span>
+<span class="nc" id="L376">                return amount.doubleValue();</span>
+            } else {
+<span class="nc" id="L378">                throw e;</span>
+            }
+        }
+    }
+
+    public String stringValue() {
+<span class="nc" id="L384">        return amount.toString() + &quot; &quot; + currency.getCurrencyCode();</span>
+    }
+
+    public static Money zero(String currencyCode) {
+<span class="nc" id="L388">        return zero(Currency.getInstance(currencyCode));</span>
+    }
+
+    public static Money zero(Currency currency) {
+<span class="nc" id="L392">        return new Money(BankersRounding.zeroAmount(), currency);</span>
+    }
+
+    public static Money abs(Money money) {
+<span class="nc" id="L396">        return new Money(money.amount.abs(), money.currency);</span>
+    }
+
+    public static Money min(Money left, Money right) {
+<span class="nc" id="L400">        return left.min(right);</span>
+    }
+
+    public static Money max(Money left, Money right) {
+<span class="nc" id="L404">        return left.max(right);</span>
+    }
+
+    public static BigDecimal toAmount(Money money) {
+<span class="nc bnc" id="L408" title="All 2 branches missed.">        return ((money == null) ? null : money.amount);</span>
+    }
+
+    public static Currency toCurrency(Money money) {
+<span class="nc bnc" id="L412" title="All 2 branches missed.">        return ((money == null) ? null : money.currency);</span>
+    }
+
+    /**
+     * Ensures predictable results by converting the double into a string then calling the BigDecimal string constructor.
+     * @param amount The amount
+     * @return BigDecimal a big decimal with a predictable value
+     */
+    private static BigDecimal valueOf(double amount) {
+<span class="nc" id="L421">        return valueOf(String.valueOf(amount));</span>
+    }
+
+    private static BigDecimal valueOf(String amount) {
+<span class="nc" id="L425">        BigDecimal value = new BigDecimal(amount);</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        if (value.scale() &lt; 2) {</span>
+<span class="nc" id="L427">            value = value.setScale(BankersRounding.getScaleForCurrency(defaultCurrency()), RoundingMode.HALF_EVEN);</span>
+        }
+
+<span class="nc" id="L430">        return value;</span>
+    }
+
+    /**
+     * Attempts to load a default currency by using the default locale. {@link Currency#getInstance(Locale)} uses the country component of the locale to resolve the currency. In some instances, the locale may not have a country component, in which case the default currency can be controlled with a
+     * system property.
+     * @return The default currency to use when none is specified
+     */
+    public static Currency defaultCurrency() {
+<span class="nc bnc" id="L439" title="All 6 branches missed.">        if (CurrencyConsiderationContext.getCurrencyConsiderationContext() != null &amp;&amp;</span>
+                CurrencyConsiderationContext.getCurrencyConsiderationContext().size() &gt; 0 &amp;&amp;
+                CurrencyConsiderationContext.getCurrencyDeterminationService() != null) {
+<span class="nc" id="L442">            return Currency.getInstance(CurrencyConsiderationContext.getCurrencyDeterminationService().getCurrencyCode(CurrencyConsiderationContext.getCurrencyConsiderationContext()));</span>
+        }
+
+        // Check the BLC Thread
+<span class="nc" id="L446">        BroadleafRequestContext brc = BroadleafRequestContext.getBroadleafRequestContext();</span>
+
+<span class="nc bnc" id="L448" title="All 4 branches missed.">        if (brc != null &amp;&amp; brc.getBroadleafCurrency() != null) {</span>
+<span class="nc bnc" id="L449" title="All 4 branches missed.">            assert brc.getBroadleafCurrency().getCurrencyCode() != null;</span>
+<span class="nc" id="L450">            return Currency.getInstance(brc.getBroadleafCurrency().getCurrencyCode());</span>
+        }
+
+<span class="nc bnc" id="L453" title="All 2 branches missed.">        if (System.getProperty(&quot;currency.default&quot;) != null) {</span>
+<span class="nc" id="L454">            return Currency.getInstance(System.getProperty(&quot;currency.default&quot;));</span>
+        }
+<span class="nc" id="L456">        Locale locale = Locale.getDefault();</span>
+<span class="nc bnc" id="L457" title="All 4 branches missed.">        if (locale.getCountry() != null &amp;&amp; locale.getCountry().length() == 2) {</span>
+<span class="nc" id="L458">            return Currency.getInstance(locale);</span>
+        }
+<span class="nc" id="L460">        return Currency.getInstance(&quot;USD&quot;);</span>
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        // Read in the server properties from the client representation.
+<span class="nc" id="L466">        amount = new BigDecimal(in.readFloat());</span>
+
+<span class="nc" id="L468">    }</span>
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        // Write out the client properties from the server representation.
+<span class="nc" id="L473">        out.writeFloat(amount.floatValue());</span>
+        // out.writeObject(currency);
+<span class="nc" id="L475">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

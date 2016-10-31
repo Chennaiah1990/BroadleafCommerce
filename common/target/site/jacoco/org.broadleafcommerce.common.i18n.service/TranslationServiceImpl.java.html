@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TranslationServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.i18n.service</a> &gt; <span class="el_source">TranslationServiceImpl.java</span></div><h1>TranslationServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.i18n.service;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.cache.CacheStatType;
+import org.broadleafcommerce.common.cache.StatisticsService;
+import org.broadleafcommerce.common.dao.GenericEntityDao;
+import org.broadleafcommerce.common.extension.ExtensionResultHolder;
+import org.broadleafcommerce.common.extension.ItemStatus;
+import org.broadleafcommerce.common.extension.ResultType;
+import org.broadleafcommerce.common.extension.StandardCacheItem;
+import org.broadleafcommerce.common.i18n.dao.TranslationDao;
+import org.broadleafcommerce.common.i18n.domain.TranslatedEntity;
+import org.broadleafcommerce.common.i18n.domain.Translation;
+import org.broadleafcommerce.common.i18n.domain.TranslationImpl;
+import org.broadleafcommerce.common.locale.service.LocaleService;
+import org.broadleafcommerce.common.locale.util.LocaleUtil;
+import org.broadleafcommerce.common.sandbox.SandBoxHelper;
+import org.broadleafcommerce.common.web.BroadleafRequestContext;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.annotation.Resource;
+
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Element;
+
+
+@Service(&quot;blTranslationService&quot;)
+<span class="nc" id="L60">public class TranslationServiceImpl implements TranslationService {</span>
+
+<span class="nc" id="L62">    protected static final Log LOG = LogFactory.getLog(TranslationServiceImpl.class);</span>
+<span class="nc" id="L63">    private static final Translation DELETED_TRANSLATION = new TranslationImpl();</span>
+    
+    @Resource(name = &quot;blTranslationDao&quot;)
+    protected TranslationDao dao;
+
+    @Resource(name=&quot;blStatisticsService&quot;)
+    protected StatisticsService statisticsService;
+
+    @Resource(name=&quot;blSandBoxHelper&quot;)
+    protected SandBoxHelper sandBoxHelper;
+    
+    protected Cache cache;
+
+    @Resource(name=&quot;blTranslationServiceExtensionManager&quot;)
+    protected TranslationServiceExtensionManager extensionManager;
+
+    @Value(&quot;${translation.thresholdForFullCache:1000}&quot;)
+    protected int thresholdForFullCache;
+
+    @Value(&quot;${returnBlankTranslationForNotDefaultLocale:false}&quot;)
+    protected boolean returnBlankTranslationForNotDefaultLocale;
+
+<span class="nc" id="L85">    @Resource(name = &quot;blTranslationExceptionProperties&quot;)</span>
+    protected List&lt;String&gt; translationExceptionProperties = new ArrayList&lt;String&gt;();
+
+    @Resource(name = &quot;blLocaleService&quot;)
+    protected LocaleService localeService;
+
+    @Resource(name=&quot;blGenericEntityDao&quot;)
+    protected GenericEntityDao genericEntityDao;
+    
+    @Override
+    @Transactional(&quot;blTransactionManager&quot;)
+    public Translation save(Translation translation) {
+<span class="nc" id="L97">        return dao.save(translation);</span>
+    }
+    
+    @Override
+    @Transactional(&quot;blTransactionManager&quot;)
+    public Translation save(String entityType, String entityId, String fieldName, String localeCode, 
+            String translatedValue) {
+<span class="nc" id="L104">        TranslatedEntity te = getEntityType(entityType);</span>
+        
+<span class="nc" id="L106">        Translation translation = getTranslation(te, entityId, fieldName, localeCode);</span>
+        
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (translation == null) {</span>
+<span class="nc" id="L109">            translation = dao.create();</span>
+<span class="nc" id="L110">            translation.setEntityType(te);</span>
+<span class="nc" id="L111">            translation.setEntityId(entityId);</span>
+<span class="nc" id="L112">            translation.setFieldName(fieldName);</span>
+<span class="nc" id="L113">            translation.setLocaleCode(localeCode);</span>
+        }
+        
+<span class="nc" id="L116">        translation.setTranslatedValue(translatedValue);</span>
+<span class="nc" id="L117">        return save(translation);</span>
+    }
+
+    @Override
+    public Translation findTranslationById(Long id) {
+<span class="nc" id="L122">        return dao.readTranslationById(id);</span>
+    }
+    
+    @Override
+    @Transactional(&quot;blTransactionManager&quot;)
+    public Translation update(Long translationId, String localeCode, String translatedValue) {
+<span class="nc" id="L128">        Translation t = dao.readTranslationById(translationId);</span>
+        
+        // Check to see if there is another translation that matches this updated one. We'll remove it if it exists
+<span class="nc" id="L131">        Translation t2 = dao.readTranslation(t.getEntityType(), t.getEntityId(), t.getFieldName(), localeCode);</span>
+<span class="nc bnc" id="L132" title="All 4 branches missed.">        if (t2 != null &amp;&amp; t != t2) {</span>
+<span class="nc" id="L133">            dao.delete(t2);</span>
+        }
+        
+<span class="nc" id="L136">        t.setLocaleCode(localeCode);</span>
+<span class="nc" id="L137">        t.setTranslatedValue(translatedValue);</span>
+<span class="nc" id="L138">        return save(t);</span>
+    }
+    
+    @Override
+    @Transactional(&quot;blTransactionManager&quot;)
+    public void deleteTranslationById(Long translationId) {
+<span class="nc" id="L144">        Translation t = dao.readTranslationById(translationId);</span>
+<span class="nc" id="L145">        dao.delete(t);</span>
+<span class="nc" id="L146">    }</span>
+    
+    @Override
+    public Translation getTranslation(TranslatedEntity entity, String entityId, String fieldName, String localeCode) {
+<span class="nc" id="L150">        return dao.readTranslation(entity, entityId, fieldName, localeCode);</span>
+    }
+    
+    @Override
+    public List&lt;Translation&gt; getTranslations(String ceilingEntityClassname, String entityId, String property) {
+<span class="nc" id="L155">        TranslatedEntity entityType = getEntityType(ceilingEntityClassname);</span>
+<span class="nc" id="L156">        return dao.readTranslations(entityType, entityId, property);</span>
+    }
+
+    @Override
+    public Cache getCache() {
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        if (cache == null) {</span>
+<span class="nc" id="L162">            cache = CacheManager.getInstance().getCache(&quot;blTranslationElements&quot;);</span>
+        }
+<span class="nc" id="L164">        return cache;</span>
+    }
+
+    @Override
+    public String getTranslatedValue(Object entity, String property, Locale locale) {
+<span class="nc" id="L169">        TranslatedEntity entityType = getEntityType(entity);</span>
+<span class="nc" id="L170">        String entityId = dao.getEntityId(entityType, entity);</span>
+
+<span class="nc" id="L172">        String localeCode = locale.getLanguage();</span>
+<span class="nc" id="L173">        String localeCountryCode = localeCode;</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (StringUtils.isNotBlank(locale.getCountry())) {</span>
+<span class="nc" id="L175">            localeCountryCode += &quot;_&quot; + locale.getCountry();</span>
+        }
+        
+<span class="nc bnc" id="L178" title="All 4 branches missed.">        if (TranslationBatchReadCache.getCache() != null &amp;&amp; TranslationBatchReadCache.getCache().getSize() != 0) {</span>
+<span class="nc" id="L179">            Translation translation = TranslationBatchReadCache.getFromCache(entityType, entityId, property, localeCountryCode);</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">            if (translation != null) {</span>
+<span class="nc" id="L181">                return translation.getTranslatedValue();</span>
+            } else {
+                // There is no translation for this entity if it is not in the cache
+<span class="nc" id="L184">                return null;</span>
+            }
+        }
+        
+<span class="nc" id="L188">        boolean isValidForCache = false;</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        if (extensionManager != null) {</span>
+<span class="nc" id="L190">            ExtensionResultHolder&lt;Boolean&gt; response = new ExtensionResultHolder&lt;Boolean&gt;();</span>
+<span class="nc" id="L191">            response.setResult(false);</span>
+<span class="nc" id="L192">            extensionManager.getProxy().isValidState(response);</span>
+<span class="nc" id="L193">            isValidForCache = response.getResult();</span>
+        }
+<span class="nc bnc" id="L195" title="All 4 branches missed.">        if (!BroadleafRequestContext.getBroadleafRequestContext().isProductionSandBox() || !isValidForCache) {</span>
+<span class="nc" id="L196">            Translation translation = dao.readTranslation(entityType, entityId, property, localeCode, localeCountryCode,</span>
+                    ResultType.IGNORE);
+<span class="nc bnc" id="L198" title="All 2 branches missed.">            if (translation != null) {</span>
+<span class="nc" id="L199">                return translation.getTranslatedValue();</span>
+            } else {
+<span class="nc" id="L201">                return null;</span>
+            }
+        }
+
+<span class="nc" id="L205">        return getOverrideTranslatedValue(property, entityType, entityId, localeCode, localeCountryCode);</span>
+    }
+
+    @Override
+    public void removeTranslationFromCache(Translation translation) {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">        if (BroadleafRequestContext.getBroadleafRequestContext().isProductionSandBox()) {</span>
+<span class="nc" id="L211">            ResultType resultType = ResultType.STANDARD;</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">            if (extensionManager != null) {</span>
+<span class="nc" id="L213">                ExtensionResultHolder&lt;ResultType&gt; response = new ExtensionResultHolder&lt;ResultType&gt;();</span>
+<span class="nc" id="L214">                extensionManager.getProxy().getResultType(translation, response);</span>
+<span class="nc" id="L215">                resultType = response.getResult();</span>
+            }
+<span class="nc" id="L217">            String key = getCacheKey(resultType, translation.getEntityType());</span>
+<span class="nc" id="L218">            getCache().remove(key);</span>
+        }
+<span class="nc" id="L220">    }</span>
+
+    protected String getOverrideTranslatedValue(String property, TranslatedEntity entityType,
+                                                String entityId, String localeCode, String localeCountryCode) {
+<span class="nc" id="L224">        String specificPropertyKey = property + &quot;_&quot; + localeCountryCode;</span>
+<span class="nc" id="L225">        String generalPropertyKey = property + &quot;_&quot; + localeCode;</span>
+<span class="nc" id="L226">        String cacheKey = getCacheKey(ResultType.STANDARD, entityType);</span>
+<span class="nc" id="L227">        Element cacheResult = getCache().get(cacheKey);</span>
+<span class="nc" id="L228">        Element result = null;</span>
+<span class="nc" id="L229">        String response = null;</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">        if (cacheResult == null) {</span>
+<span class="nc" id="L231">            statisticsService.addCacheStat(CacheStatType.TRANSLATION_CACHE_HIT_RATE.toString(), false);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">            if (dao.countTranslationEntries(entityType, ResultType.STANDARD_CACHE) &lt; getThresholdForFullCache()) {</span>
+<span class="nc" id="L233">                Map&lt;String, Map&lt;String, StandardCacheItem&gt;&gt; propertyTranslationMap = new HashMap&lt;String, Map&lt;String, StandardCacheItem&gt;&gt;();</span>
+<span class="nc" id="L234">                List&lt;StandardCacheItem&gt; convertedList = dao.readConvertedTranslationEntries(entityType, ResultType.STANDARD_CACHE);</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">                if (!CollectionUtils.isEmpty(convertedList)) {</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">                    for (StandardCacheItem standardCache : convertedList) {</span>
+<span class="nc" id="L237">                        Translation translation = (Translation) standardCache.getCacheItem();</span>
+<span class="nc" id="L238">                        String key = translation.getFieldName() + &quot;_&quot; + translation.getLocaleCode();</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">                        if (!propertyTranslationMap.containsKey(key)) {</span>
+<span class="nc" id="L240">                            propertyTranslationMap.put(key, new HashMap&lt;String, StandardCacheItem&gt;());</span>
+                        }
+<span class="nc" id="L242">                        propertyTranslationMap.get(key).put(translation.getEntityId(), standardCache);</span>
+<span class="nc" id="L243">                    }</span>
+                }
+<span class="nc" id="L245">                Element newElement = new Element(cacheKey, propertyTranslationMap);</span>
+<span class="nc" id="L246">                getCache().put(newElement);</span>
+<span class="nc" id="L247">                result = newElement;</span>
+<span class="nc" id="L248">            } else {</span>
+<span class="nc" id="L249">                Translation translation = dao.readTranslation(entityType, entityId, property, localeCode, localeCountryCode, ResultType.IGNORE);</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">                if (translation != null) {</span>
+<span class="nc" id="L251">                    response = translation.getTranslatedValue();</span>
+                }
+<span class="nc" id="L253">            }</span>
+        } else {
+<span class="nc" id="L255">            result = cacheResult;</span>
+<span class="nc" id="L256">            statisticsService.addCacheStat(CacheStatType.TRANSLATION_CACHE_HIT_RATE.toString(), true);</span>
+        }
+
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        if (result != null) {</span>
+<span class="nc" id="L260">            Map&lt;String, Map&lt;String, StandardCacheItem&gt;&gt; propertyTranslationMap =</span>
+                    (Map&lt;String, Map&lt;String, StandardCacheItem&gt;&gt;) result.getObjectValue();
+
+<span class="nc" id="L263">            boolean specificTranslationDeleted = false;</span>
+<span class="nc" id="L264">            boolean generalTranslationDeleted = false;</span>
+
+            // Check For a Specific Standard Site Match (language and country)
+<span class="nc" id="L267">            StandardCacheItem specificTranslation = lookupTranslationFromMap(specificPropertyKey, propertyTranslationMap,</span>
+                    entityId);            
+<span class="nc bnc" id="L269" title="All 2 branches missed.">            if (specificTranslation != null) {</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">                if (ItemStatus.DELETED.equals(specificTranslation.getItemStatus())) {</span>
+<span class="nc" id="L271">                    specificTranslationDeleted = true;</span>
+                } else {
+<span class="nc" id="L273">                    response = ((Translation) specificTranslation.getCacheItem()).getTranslatedValue();</span>
+<span class="nc" id="L274">                    return replaceEmptyWithNullResponse(response);</span>
+                }
+            }
+                
+            // Check For a General Match (language and country)
+<span class="nc" id="L279">            StandardCacheItem generalTranslation = lookupTranslationFromMap(generalPropertyKey, propertyTranslationMap,</span>
+                    entityId);
+<span class="nc bnc" id="L281" title="All 2 branches missed.">            if (generalTranslation != null) {</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">                if (ItemStatus.DELETED.equals(generalTranslation.getItemStatus())) {</span>
+<span class="nc" id="L283">                    generalTranslationDeleted = true;</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">                    if (specificTranslationDeleted) {</span>
+<span class="nc" id="L285">                        return null;</span>
+                    }
+                }
+            
+<span class="nc bnc" id="L289" title="All 2 branches missed.">                if (specificTranslationDeleted) {</span>
+<span class="nc" id="L290">                    response = ((Translation) generalTranslation.getCacheItem()).getTranslatedValue();</span>
+<span class="nc" id="L291">                    return replaceEmptyWithNullResponse(response);</span>
+                }
+            }
+            
+            // Check for a Template Match
+<span class="nc bnc" id="L296" title="All 2 branches missed.">            if (specificTranslationDeleted) {</span>
+                // only check general properties since we explicitly deleted specific properties at standard (site) level            
+<span class="nc" id="L298">                specificPropertyKey = generalPropertyKey;</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">            } else if (generalTranslationDeleted) {</span>
+                // only check specific properties since we explicitly deleted general properties at standard (site) level            
+<span class="nc" id="L301">                generalPropertyKey = specificPropertyKey;                </span>
+            }
+            
+<span class="nc" id="L304">            response = getTemplateTranslatedValue(cacheKey, property, entityType, entityId, localeCode,</span>
+                        localeCountryCode, specificPropertyKey, generalPropertyKey);            
+        }
+
+<span class="nc" id="L308">        return replaceEmptyWithNullResponse(response);</span>
+    }
+
+    protected String replaceEmptyWithNullResponse(String response) {
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        if (!StringUtils.isEmpty(response)) {</span>
+<span class="nc" id="L313">            return response;</span>
+        }
+<span class="nc" id="L315">        return null;</span>
+    }
+
+    protected String getTemplateTranslatedValue(String standardCacheKey, String property, TranslatedEntity entityType,
+                        String entityId, String localeCode, String localeCountryCode, String specificPropertyKey, String generalPropertyKey) {
+<span class="nc" id="L320">        String cacheKey = getCacheKey(ResultType.TEMPLATE, entityType);</span>
+<span class="nc bnc" id="L321" title="All 2 branches missed.">        if (standardCacheKey.equals(cacheKey)) {</span>
+<span class="nc" id="L322">            return null;</span>
+        }
+<span class="nc" id="L324">        Element cacheResult = getCache().get(cacheKey);</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">        if (cacheResult == null) {</span>
+<span class="nc" id="L326">            statisticsService.addCacheStat(CacheStatType.TRANSLATION_CACHE_HIT_RATE.toString(), false);</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">            if (dao.countTranslationEntries(entityType, ResultType.TEMPLATE_CACHE) &lt; getThresholdForFullCache()) {</span>
+<span class="nc" id="L328">                Map&lt;String, Map&lt;String, Translation&gt;&gt; propertyTranslationMap = new HashMap&lt;String, Map&lt;String, Translation&gt;&gt;();</span>
+<span class="nc" id="L329">                List&lt;Translation&gt; translationList = dao.readAllTranslationEntries(entityType, ResultType.TEMPLATE_CACHE);</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">                if (!CollectionUtils.isEmpty(translationList)) {</span>
+<span class="nc bnc" id="L331" title="All 2 branches missed.">                    for (Translation translation : translationList) {</span>
+<span class="nc" id="L332">                        String key = translation.getFieldName() + &quot;_&quot; + translation.getLocaleCode();</span>
+<span class="nc bnc" id="L333" title="All 2 branches missed.">                        if (!propertyTranslationMap.containsKey(key)) {</span>
+<span class="nc" id="L334">                            propertyTranslationMap.put(key, new HashMap&lt;String, Translation&gt;());</span>
+                        }
+<span class="nc" id="L336">                        propertyTranslationMap.get(key).put(translation.getEntityId(), translation);</span>
+<span class="nc" id="L337">                    }</span>
+                }
+<span class="nc" id="L339">                getCache().put(new Element(cacheKey, propertyTranslationMap));</span>
+<span class="nc" id="L340">                Translation translation = findBestTemplateTranslation(specificPropertyKey, generalPropertyKey, propertyTranslationMap, entityId);</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">                if (translation != null) {</span>
+<span class="nc" id="L342">                    return translation.getTranslatedValue();</span>
+                } else {
+<span class="nc" id="L344">                    return null;</span>
+                }
+            } else {
+<span class="nc" id="L347">                Translation translation = dao.readTranslation(entityType, entityId, property, localeCode, localeCountryCode, ResultType.TEMPLATE);</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">                if (translation != null) {</span>
+<span class="nc" id="L349">                    return translation.getTranslatedValue();</span>
+                } else {
+<span class="nc" id="L351">                    return null;</span>
+                }
+            }
+        } else {
+<span class="nc" id="L355">            statisticsService.addCacheStat(CacheStatType.TRANSLATION_CACHE_HIT_RATE.toString(), true);</span>
+<span class="nc" id="L356">            Map&lt;String, Map&lt;String, Translation&gt;&gt; propertyTranslationMap = (Map&lt;String, Map&lt;String, Translation&gt;&gt;) cacheResult.getObjectValue();</span>
+<span class="nc" id="L357">            Translation bestTranslation = findBestTemplateTranslation(specificPropertyKey, generalPropertyKey, propertyTranslationMap, entityId);</span>
+<span class="nc bnc" id="L358" title="All 2 branches missed.">            if (bestTranslation != null) {</span>
+<span class="nc" id="L359">                return bestTranslation.getTranslatedValue();</span>
+            } else {
+<span class="nc" id="L361">                return null;</span>
+            }
+        }
+    }
+
+    protected StandardCacheItem lookupTranslationFromMap(String key,
+            Map&lt;String, Map&lt;String, StandardCacheItem&gt;&gt; propertyTranslationMap, String entityId) {
+
+<span class="nc" id="L369">        StandardCacheItem cacheItem = null;</span>
+<span class="nc bnc" id="L370" title="All 2 branches missed.">        if (propertyTranslationMap.containsKey(key)) {</span>
+<span class="nc" id="L371">            Map&lt;String, StandardCacheItem&gt; byEntity = propertyTranslationMap.get(key);</span>
+<span class="nc" id="L372">            cacheItem = byEntity.get(entityId);</span>
+        }
+<span class="nc" id="L374">        return cacheItem;</span>
+    }
+
+    protected Translation findBestTemplateTranslation(String specificPropertyKey, String generalPropertyKey, Map&lt;String, Map&lt;String, Translation&gt;&gt; propertyTranslationMap, String entityId) {
+<span class="nc" id="L378">        Translation translation = null;</span>
+<span class="nc bnc" id="L379" title="All 2 branches missed.">        if (propertyTranslationMap.containsKey(specificPropertyKey)) {</span>
+<span class="nc" id="L380">            Map&lt;String, Translation&gt; byEntity = propertyTranslationMap.get(specificPropertyKey);</span>
+<span class="nc" id="L381">            translation = byEntity.get(entityId);</span>
+        }
+<span class="nc bnc" id="L383" title="All 4 branches missed.">        if (translation == null &amp;&amp; propertyTranslationMap.containsKey(generalPropertyKey)) {</span>
+<span class="nc" id="L384">            Map&lt;String, Translation&gt; byEntity = propertyTranslationMap.get(generalPropertyKey);</span>
+<span class="nc" id="L385">            translation = byEntity.get(entityId);</span>
+        }
+<span class="nc" id="L387">        return translation;</span>
+    }
+    
+    protected TranslatedEntity getEntityType(Class&lt;?&gt; entityClass) {
+<span class="nc bnc" id="L391" title="All 2 branches missed.">        for (Entry&lt;String, TranslatedEntity&gt; entry : TranslatedEntity.getTypes().entrySet()) {</span>
+            try {
+<span class="nc" id="L393">                Class&lt;?&gt; clazz = Class.forName(entry.getKey());</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">                if (clazz.isAssignableFrom(entityClass)) {</span>
+<span class="nc" id="L395">                    return entry.getValue();</span>
+                }
+<span class="nc" id="L397">            } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L398">                throw new IllegalArgumentException(&quot;TranslatedEntity type was not set to a known class&quot;, e);</span>
+<span class="nc" id="L399">            }</span>
+<span class="nc" id="L400">        }</span>
+<span class="nc" id="L401">        throw new IllegalArgumentException(entityClass.getName() + &quot; is not a known translatable class&quot;);</span>
+    }
+    
+    protected TranslatedEntity getEntityType(Object entity) {
+<span class="nc" id="L405">        return getEntityType(entity.getClass());</span>
+    }
+    
+    protected TranslatedEntity getEntityType(String className) {
+        try {
+<span class="nc" id="L410">            Class&lt;?&gt; clazz = Class.forName(className);</span>
+<span class="nc" id="L411">            return getEntityType(clazz);</span>
+<span class="nc" id="L412">        } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L413">            throw new IllegalArgumentException(className + &quot; is not a known translatable class&quot;);</span>
+        }
+    }
+
+    protected String getCacheKey(ResultType resultType, TranslatedEntity entityType) {
+<span class="nc" id="L418">        String cacheKey = StringUtils.join(new String[] { entityType.getFriendlyType()}, &quot;|&quot;);</span>
+<span class="nc bnc" id="L419" title="All 2 branches missed.">        if (extensionManager != null) {</span>
+<span class="nc" id="L420">            ExtensionResultHolder&lt;String&gt; result = new ExtensionResultHolder&lt;String&gt;();</span>
+<span class="nc" id="L421">            extensionManager.getProxy().getCacheKey(cacheKey, resultType, result);</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">            if (result.getResult() != null) {</span>
+<span class="nc" id="L423">                cacheKey = result.getResult();</span>
+            }
+        }
+<span class="nc" id="L426">        return cacheKey;</span>
+    }
+
+    protected int getThresholdForFullCache() {
+<span class="nc bnc" id="L430" title="All 2 branches missed.">        if (BroadleafRequestContext.getBroadleafRequestContext().isProductionSandBox()) {</span>
+<span class="nc" id="L431">            return thresholdForFullCache;</span>
+        } else {
+            // don't cache when not in a SandBox
+<span class="nc" id="L434">            return -1;</span>
+        }
+    }
+
+    @Override
+    public String getDefaultTranslationValue(Object entity, String property, Locale locale,
+            String requestedDefaultValue) {
+
+<span class="nc bnc" id="L442" title="All 6 branches missed.">        if (returnBlankTranslationForNotDefaultLocale &amp;&amp; !localeMatchesDefaultLocale(locale) &amp;&amp; !propertyInDefaultLocaleExceptionList(entity, property)) {</span>
+<span class="nc" id="L443">            return &quot;&quot;;</span>
+        }
+
+<span class="nc" id="L446">        return requestedDefaultValue;</span>
+    }
+
+    /**
+     * Returns true if the passed in entity / property combination is in the defaultLocaleExceptionList
+     * 
+     * The default implementation checks the &quot;translationExceptionProperties&quot; list to see if the
+     * property matches one of the regularExpressions in that list.
+     * 
+     * Implementors are expected to override this method for implementation specific needs. 
+     * 
+     * @param entity
+     * @param property
+     * @return
+     */
+    protected boolean propertyInDefaultLocaleExceptionList(Object entity, String property) {
+<span class="nc" id="L462">        TranslatedEntity entityType = getEntityType(entity);</span>
+<span class="nc bnc" id="L463" title="All 4 branches missed.">        if (entityType != null &amp;&amp; entityType.getFriendlyType() != null) {</span>
+<span class="nc bnc" id="L464" title="All 2 branches missed.">            for (String exceptionProperty : translationExceptionProperties) {</span>
+<span class="nc bnc" id="L465" title="All 2 branches missed.">                if (property.matches(exceptionProperty)) {</span>
+<span class="nc" id="L466">                    return true;</span>
+                }
+<span class="nc" id="L468">            }</span>
+        }
+<span class="nc" id="L470">        return false;</span>
+    }
+
+    /**
+     * Returns true if the passed in locale's language matches the Broadleaf default locale.
+     * @param locale
+     * @return
+     */
+    protected boolean localeMatchesDefaultLocale(Locale locale) {
+<span class="nc" id="L479">        String defaultLanguage = LocaleUtil.findLanguageCode(localeService.findDefaultLocale());</span>
+
+<span class="nc bnc" id="L481" title="All 4 branches missed.">        if (defaultLanguage != null &amp;&amp; locale != null) {</span>
+<span class="nc" id="L482">            return defaultLanguage.equals(locale.getLanguage());</span>
+        }
+<span class="nc" id="L484">        return false;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

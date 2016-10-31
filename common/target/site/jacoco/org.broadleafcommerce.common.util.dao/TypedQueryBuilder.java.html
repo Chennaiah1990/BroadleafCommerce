@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TypedQueryBuilder.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util.dao</a> &gt; <span class="el_source">TypedQueryBuilder.java</span></div><h1>TypedQueryBuilder.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util.dao;
+
+import org.apache.commons.collections.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
+
+/**
+ * Utility class to construct typed query-language queries. This has an advantage over CriteriaQuery in that it will
+ * be automatically responsive to polymorphism thanks to Hibernate's handling of query-language strings.
+ * 
+ * @author Andre Azzolini (apazzolini)
+ *
+ * @param &lt;T&gt; the class that is being queried for
+ */
+public class TypedQueryBuilder&lt;T&gt; {
+    
+    protected Class&lt;T&gt; rootClass;
+    protected String rootAlias;
+<span class="fc" id="L45">    protected List&lt;TQRestriction&gt; restrictions = new ArrayList&lt;TQRestriction&gt;();</span>
+<span class="fc" id="L46">    protected List&lt;TQJoin&gt; joins = new ArrayList&lt;TQJoin&gt;();</span>
+<span class="fc" id="L47">    protected List&lt;TQOrder&gt; orders = new ArrayList&lt;TQOrder&gt;();</span>
+<span class="fc" id="L48">    protected Map&lt;String, Object&gt; paramMap = new HashMap&lt;String, Object&gt;();</span>
+
+    /**
+     * Creates a new TypedQueryBuilder that will utilize the rootAlias as the named object of the class
+     * 
+     * @param rootClass
+     * @param rootAlias
+     */
+<span class="fc" id="L56">    public TypedQueryBuilder(Class&lt;T&gt; rootClass, String rootAlias) {</span>
+<span class="fc" id="L57">        this.rootClass = rootClass;</span>
+<span class="fc" id="L58">        this.rootAlias = rootAlias;</span>
+<span class="fc" id="L59">    }</span>
+    
+    /**
+     * Adds a simple restriction to the query. Note that all restrictions present on the TypedQueryBuilder will be joined
+     * with an AND clause.
+     * 
+     * @param expression
+     * @param operation
+     * @param parameter
+     */
+    public TypedQueryBuilder&lt;T&gt; addRestriction(String expression, String operation, Object parameter) {
+<span class="fc" id="L70">        restrictions.add(new TQRestriction(expression, operation, parameter));</span>
+<span class="fc" id="L71">        return this;</span>
+    }
+    
+    /**
+     * Adds an explicit TQRestriction object. Note that all restrictions present on the TypedQueryBuilder will be joined
+     * with an AND clause.
+     * 
+     * @param restriction
+     * @return
+     */
+    public TypedQueryBuilder&lt;T&gt; addRestriction(TQRestriction restriction) {
+<span class="fc" id="L82">        restrictions.add(restriction);</span>
+<span class="fc" id="L83">        return this;</span>
+    }
+
+    public TypedQueryBuilder&lt;T&gt; addJoin(TQJoin join) {
+<span class="nc" id="L87">        joins.add(join);</span>
+<span class="nc" id="L88">        return this;</span>
+    }
+
+    public TypedQueryBuilder&lt;T&gt; addOrder(TQOrder order) {
+<span class="nc" id="L92">        orders.add(order);</span>
+<span class="nc" id="L93">        return this;</span>
+    }
+    
+    /**
+     * Generates the query string based on the current contents of this builder. As the string is generated, this method
+     * will also populate the paramMap, which binds actual restriction values.
+     * 
+     * Note that this method should typically not be invoked through DAOs. Instead, utilize {@link #toQuery(EntityManager)},
+     * which will automatically generate the TypedQuery and populate the required parameters.
+     * 
+     * @return the QL string
+     */
+    public String toQueryString() {
+<span class="fc" id="L106">        return toQueryString(false);</span>
+    }
+    
+    /**
+     * Generates the query string based on the current contents of this builder. As the string is generated, this method
+     * will also populate the paramMap, which binds actual restriction values.
+     * 
+     * Note that this method should typically not be invoked through DAOs. Instead, utilize {@link #toQuery(EntityManager)},
+     * which will automatically generate the TypedQuery and populate the required parameters.
+     * 
+     * If you are using this as a COUNT query, you should look at the corresponding {@link #toCountQuery(EntityManager)}
+     * 
+     * @param whether or not the resulting query string should be used as a count query or not
+     * @return the QL string
+     */
+    public String toQueryString(boolean count) {
+<span class="fc" id="L122">        StringBuilder sb = getSelectClause(new StringBuilder(), count)</span>
+                .append(&quot; FROM &quot;).append(rootClass.getName()).append(&quot; &quot;).append(rootAlias);
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">        if (CollectionUtils.isNotEmpty(joins)) {</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">            for (TQJoin join : joins) {</span>
+<span class="nc" id="L126">                sb.append(&quot; JOIN&quot;);</span>
+<span class="nc" id="L127">                sb.append(&quot; &quot;);</span>
+<span class="nc" id="L128">                sb.append(join.toQl());</span>
+<span class="nc" id="L129">            }</span>
+        }
+<span class="fc bfc" id="L131" title="All 2 branches covered.">        if (CollectionUtils.isNotEmpty(restrictions)) {</span>
+<span class="fc" id="L132">            sb.append(&quot; WHERE &quot;);</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">            for (int i = 0; i &lt; restrictions.size(); i++) {</span>
+<span class="fc" id="L134">                TQRestriction r = restrictions.get(i);</span>
+<span class="fc" id="L135">                sb.append(r.toQl(&quot;p&quot; + i, paramMap));</span>
+<span class="fc bfc" id="L136" title="All 2 branches covered.">                if (i != restrictions.size() - 1) {</span>
+<span class="fc" id="L137">                    sb.append(&quot; AND &quot;);</span>
+                }
+            }
+        }
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">        if (CollectionUtils.isNotEmpty(orders)) {</span>
+<span class="nc" id="L142">            sb.append(&quot; ORDER BY&quot;);</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">            for (int j=0;j&lt;orders.size();j++){</span>
+<span class="nc" id="L144">                sb.append(&quot; &quot;);</span>
+<span class="nc" id="L145">                sb.append(orders.get(j).toQl());</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                if (j &lt; orders.size() - 1) {</span>
+<span class="nc" id="L147">                    sb.append(&quot;,&quot;);</span>
+                }
+            }
+        }
+<span class="fc" id="L151">        return sb.toString();</span>
+    }
+
+    /**
+     * Adds the select query from {@link #toQueryString()}
+     * 
+     * @return &lt;b&gt;sb&lt;/b&gt; with the select query appended to it
+     */
+    protected StringBuilder getSelectClause(StringBuilder sb, boolean count) {
+<span class="fc" id="L160">        sb.append(&quot;SELECT &quot;);</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        if (count) {</span>
+<span class="fc" id="L162">            return sb.append(&quot;COUNT(*)&quot;);</span>
+        } else {
+<span class="fc" id="L164">            return sb.append(rootAlias);</span>
+        }
+    }
+    
+    /**
+     * Returns a TypedQuery that represents this builder object. It will already have all of the appropriate parameter
+     * values set and is able to be immediately queried against.
+     * 
+     * @param em
+     * @return the TypedQuery
+     */
+    public TypedQuery&lt;T&gt; toQuery(EntityManager em) {
+<span class="nc" id="L176">        TypedQuery&lt;T&gt; q = em.createQuery(toQueryString(), rootClass);</span>
+<span class="nc" id="L177">        fillParameterMap(q);</span>
+<span class="nc" id="L178">        return q;</span>
+    }
+    
+    public TypedQuery&lt;Long&gt; toCountQuery(EntityManager em) {
+<span class="nc" id="L182">        TypedQuery&lt;Long&gt; q = em.createQuery(toQueryString(true), Long.class);</span>
+<span class="nc" id="L183">        fillParameterMap(q);</span>
+<span class="nc" id="L184">        return q;</span>
+    }
+    
+    protected void fillParameterMap(TypedQuery&lt;?&gt; q) {
+<span class="nc bnc" id="L188" title="All 2 branches missed.">        for (Entry&lt;String, Object&gt; entry : paramMap.entrySet()) {</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">            if (entry.getValue() != null) {</span>
+<span class="nc" id="L190">                q.setParameter(entry.getKey(), entry.getValue());</span>
+            }
+<span class="nc" id="L192">        }</span>
+<span class="nc" id="L193">    }</span>
+    
+    /**
+     * @return the paramMap
+     */
+    public Map&lt;String, Object&gt; getParamMap() {
+<span class="fc" id="L199">        return paramMap;</span>
+    }
+    
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

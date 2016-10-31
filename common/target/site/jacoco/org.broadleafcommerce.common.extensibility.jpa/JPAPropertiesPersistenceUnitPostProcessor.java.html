@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>JPAPropertiesPersistenceUnitPostProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa</a> &gt; <span class="el_source">JPAPropertiesPersistenceUnitPostProcessor.java</span></div><h1>JPAPropertiesPersistenceUnitPostProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
+import javax.annotation.PostConstruct;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.orm.jpa.persistenceunit.MutablePersistenceUnitInfo;
+
+/**
+ *   This class allows us to override Persistence Unit properties on a per-environment basis. Spring's
+ *   PersistenceUnitManager allows us to pass in a list of PersistenceUnitPostProcessors.  This class will allow us to override
+ *   or add custom JPA properties to the Persistence Unit.  This is useful when different environments have different requirements
+ *   for JPA properties.  The best example of this is SQL Dialect.  You may want to use a dialect such as Oracle for production
+ *   and test environments, and perhaps HSQLDB for local and integration testing.  You can set the dialect property using the
+ *   &lt;code&gt;RuntimeEnvironmentPropertiesConfigurer&lt;/code&gt;.  The keys will be the same in each environment, but the values
+ *   would be defined the environment-specific properties files.  If you want the property to be added only to certain environments,
+ *   add the value &quot;null&quot; to the properties file.  For example:
+ *
+ *
+ *   &lt;bean id=&quot;blPersistenceUnitManager&quot; class=&quot;org.broadleafcommerce.profile.extensibility.jpa.MergePersistenceUnitManager&quot;&gt;
+ *       &lt;property name=&quot;persistenceXmlLocations&quot;&gt;
+ *           &lt;list&gt;
+ *               &lt;value&gt;classpath*:/META-INF/mycompany_persistence.xml&lt;/value&gt;
+ *           &lt;/list&gt;
+ *        &lt;/property&gt;
+ *        &lt;property name=&quot;persistenceUnitPostProcessors&quot;&gt;
+ *            &lt;list&gt;
+ *                &lt;bean class=&quot;org.broadleafcommerce.common.extensibility.jpa.JPAPropertiesPersistenceUnitPostProcessor&quot;&gt;
+ *                    &lt;property name=&quot;persistenceUnitProperties&quot;&gt;
+ *                        &lt;map&gt;
+ *                            &lt;!-- Notice that the value will be replaced by property substitution from an environment
+ *                                 specific file. Also note that the Persistence Unit name is prepended to the key and value to allow for configuration of
+ *                                 multiple Persistence Units. This needs to be keyed this way in the properties file. The prepended persistence 
+ *                                 unit name will be removed from the property name when it is added to the Persistence Unit. --&gt;
+ *                            &lt;entry key=&quot;blPU.hibernate.dialect&quot; value=&quot;${blPU.hibernate.dialect}&quot;/&gt;
+ *                        &lt;/map&gt;
+ *                    &lt;/property&gt;
+ *                &lt;/bean&gt;
+ *            &lt;/list&gt;
+ *        &lt;/property&gt;
+ *    &lt;/bean&gt;
+ *
+ */
+<span class="nc" id="L67">public class JPAPropertiesPersistenceUnitPostProcessor implements org.springframework.orm.jpa.persistenceunit.PersistenceUnitPostProcessor {</span>
+
+<span class="nc" id="L69">    protected Map&lt;String, String&gt; persistenceUnitProperties = new HashMap&lt;String, String&gt;();</span>
+<span class="nc" id="L70">    protected Map&lt;String, String&gt; overrideProperties = new HashMap&lt;String, String&gt;();</span>
+
+    @Value(&quot;${blPU.hibernate.hbm2ddl.auto}&quot;)
+    protected String blPUHibernateHbm2ddlAuto;
+    @Value(&quot;${blPU.hibernate.dialect}&quot;)
+    protected String blPUHibernateDialect;
+    @Value(&quot;${blPU.hibernate.show_sql}&quot;)
+    protected String blPUHibernateShow_sql;
+    @Value(&quot;${blPU.hibernate.cache.use_second_level_cache}&quot;)
+    protected String blPUHibernateCacheUse_second_level_cache;
+    @Value(&quot;${blPU.hibernate.cache.use_query_cache}&quot;)
+    protected String blPUHibernateCacheUse_query_cache;
+    @Value(&quot;${blPU.hibernate.hbm2ddl.import_files}&quot;)
+    protected String blPUHibernateHbm2ddlImport_files;
+    @Value(&quot;${blPU.hibernate.hbm2ddl.import_files_sql_extractor}&quot;)
+    protected String blPUHibernateHbm2ddlImport_files_sql_extractor;
+
+    @Value(&quot;${blCMSStorage.hibernate.hbm2ddl.auto}&quot;)
+    protected String blCMSStorageHibernateHbm2ddlAuto;
+    @Value(&quot;${blCMSStorage.hibernate.dialect}&quot;)
+    protected String blCMSStorageHibernateDialect;
+    @Value(&quot;${blCMSStorage.hibernate.show_sql}&quot;)
+    protected String blCMSStorageHibernateShow_sql;
+    @Value(&quot;${blCMSStorage.hibernate.cache.use_second_level_cache}&quot;)
+    protected String blCMSStorageHibernateCacheUse_second_level_cache;
+    @Value(&quot;${blCMSStorage.hibernate.cache.use_query_cache}&quot;)
+    protected String blCMSStorageHibernateCacheUse_query_cache;
+    @Value(&quot;${blCMSStorage.hibernate.hbm2ddl.import_files}&quot;)
+    protected String blCMSStorageHibernateHbm2ddlImport_files;
+    @Value(&quot;${blCMSStorage.hibernate.hbm2ddl.import_files_sql_extractor}&quot;)
+    protected String blCMSStorageHibernateHbm2ddlImport_files_sql_extractor;
+
+    @Value(&quot;${blSecurePU.hibernate.hbm2ddl.auto}&quot;)
+    protected String blSecurePUHibernateHbm2ddlAuto;
+    @Value(&quot;${blSecurePU.hibernate.dialect}&quot;)
+    protected String blSecurePUHibernateDialect;
+    @Value(&quot;${blSecurePU.hibernate.show_sql}&quot;)
+    protected String blSecurePUHibernateShow_sql;
+    @Value(&quot;${blSecurePU.hibernate.cache.use_second_level_cache}&quot;)
+    protected String blSecurePUHibernateCacheUse_second_level_cache;
+    @Value(&quot;${blSecurePU.hibernate.cache.use_query_cache}&quot;)
+    protected String blSecurePUHibernateCacheUse_query_cache;
+    @Value(&quot;${blSecurePU.hibernate.hbm2ddl.import_files}&quot;)
+    protected String blSecurePUHibernateHbm2ddlImport_files;
+    @Value(&quot;${blSecurePU.hibernate.hbm2ddl.import_files_sql_extractor}&quot;)
+    protected String blSecurePUHibernateHbm2ddlImport_files_sql_extractor;
+
+    @PostConstruct
+    public void populatePresetProperties() {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (!blPUHibernateHbm2ddlAuto.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blPU.hibernate.hbm2ddl.auto&quot;, blPUHibernateHbm2ddlAuto);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (!blPUHibernateDialect.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blPU.hibernate.dialect&quot;, blPUHibernateDialect);</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (!blPUHibernateShow_sql.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blPU.hibernate.show_sql&quot;, blPUHibernateShow_sql);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (!blPUHibernateCacheUse_second_level_cache.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blPU.hibernate.cache.use_second_level_cache&quot;, blPUHibernateCacheUse_second_level_cache);</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if (!blPUHibernateCacheUse_query_cache.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blPU.hibernate.cache.use_query_cache&quot;, blPUHibernateCacheUse_query_cache);</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (!blPUHibernateHbm2ddlImport_files.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blPU.hibernate.hbm2ddl.import_files&quot;, blPUHibernateHbm2ddlImport_files);</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (!blPUHibernateHbm2ddlImport_files_sql_extractor.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blPU.hibernate.hbm2ddl.import_files_sql_extractor&quot;, blPUHibernateHbm2ddlImport_files_sql_extractor);</span>
+
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (!blCMSStorageHibernateHbm2ddlAuto.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blCMSStorage.hibernate.hbm2ddl.auto&quot;, blCMSStorageHibernateHbm2ddlAuto);</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        if (!blCMSStorageHibernateDialect.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blCMSStorage.hibernate.dialect&quot;, blCMSStorageHibernateDialect);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (!blCMSStorageHibernateShow_sql.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blCMSStorage.hibernate.show_sql&quot;, blCMSStorageHibernateShow_sql);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (!blCMSStorageHibernateCacheUse_second_level_cache.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blCMSStorage.hibernate.cache.use_second_level_cache&quot;, blCMSStorageHibernateCacheUse_second_level_cache);</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (!blCMSStorageHibernateCacheUse_query_cache.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blCMSStorage.hibernate.cache.use_query_cache&quot;, blCMSStorageHibernateCacheUse_query_cache);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        if (!blCMSStorageHibernateHbm2ddlImport_files.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blCMSStorage.hibernate.hbm2ddl.import_files&quot;, blCMSStorageHibernateHbm2ddlImport_files);</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (!blCMSStorageHibernateHbm2ddlImport_files_sql_extractor.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blCMSStorage.hibernate.hbm2ddl.import_files_sql_extractor&quot;, blCMSStorageHibernateHbm2ddlImport_files_sql_extractor);</span>
+
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        if (!blSecurePUHibernateHbm2ddlAuto.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blSecurePU.hibernate.hbm2ddl.auto&quot;, blSecurePUHibernateHbm2ddlAuto);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        if (!blSecurePUHibernateDialect.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blSecurePU.hibernate.dialect&quot;, blSecurePUHibernateDialect);</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if (!blSecurePUHibernateShow_sql.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blSecurePU.hibernate.show_sql&quot;, blSecurePUHibernateShow_sql);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (!blSecurePUHibernateCacheUse_second_level_cache.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blSecurePU.hibernate.cache.use_second_level_cache&quot;, blSecurePUHibernateCacheUse_second_level_cache);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        if (!blSecurePUHibernateCacheUse_query_cache.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blSecurePU.hibernate.cache.use_query_cache&quot;, blSecurePUHibernateCacheUse_query_cache);</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (!blSecurePUHibernateHbm2ddlImport_files.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blSecurePU.hibernate.hbm2ddl.import_files&quot;, blSecurePUHibernateHbm2ddlImport_files);</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        if (!blSecurePUHibernateHbm2ddlImport_files_sql_extractor.startsWith(&quot;${&quot;)) persistenceUnitProperties.put(&quot;blSecurePU.hibernate.hbm2ddl.import_files_sql_extractor&quot;, blSecurePUHibernateHbm2ddlImport_files_sql_extractor);</span>
+
+<span class="nc" id="L143">        persistenceUnitProperties.putAll(overrideProperties);</span>
+<span class="nc" id="L144">    }</span>
+    
+    @Override
+    public void postProcessPersistenceUnitInfo(MutablePersistenceUnitInfo pui) {
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (persistenceUnitProperties != null) {</span>
+<span class="nc" id="L149">            String puName = pui.getPersistenceUnitName() + &quot;.&quot;;</span>
+<span class="nc" id="L150">            Set&lt;String&gt; keys = persistenceUnitProperties.keySet();</span>
+<span class="nc" id="L151">            Properties props = pui.getProperties();</span>
+
+<span class="nc bnc" id="L153" title="All 2 branches missed.">            for (String key : keys) {</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">                if (key.startsWith(puName)){</span>
+<span class="nc" id="L155">                    String value = persistenceUnitProperties.get(key);</span>
+<span class="nc" id="L156">                    String newKey = key.substring(puName.length());</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">                    if (&quot;null&quot;.equalsIgnoreCase(value)){</span>
+<span class="nc" id="L158">                        props.remove(newKey);</span>
+<span class="nc bnc" id="L159" title="All 4 branches missed.">                    } else if (value != null &amp;&amp; ! &quot;&quot;.equals(value)) {</span>
+<span class="nc" id="L160">                        props.put(newKey, value);</span>
+                    }
+                }
+<span class="nc" id="L163">            }</span>
+<span class="nc" id="L164">            pui.setProperties(props);</span>
+        }
+<span class="nc" id="L166">    }</span>
+    
+    public void setPersistenceUnitProperties(Map&lt;String, String&gt; properties) {
+<span class="nc" id="L169">        this.overrideProperties = properties;</span>
+<span class="nc" id="L170">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

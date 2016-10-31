@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DeepLink.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.deeplink</a> &gt; <span class="el_source">DeepLink.java</span></div><h1>DeepLink.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.deeplink;
+
+/**
+ * DTO Class that contains enough information to allow the client site application to generate
+ * the necessary information for a link to an admin screen
+ * 
+ * @author Andre Azzolini (apazzolini)
+ */
+<span class="nc" id="L28">public class DeepLink {</span>
+
+    protected String adminBaseUrl;
+    protected String urlFragment;
+    protected String displayText;
+    protected Object sourceObject;
+
+    /* ******************* *
+     * WITH FLUID BUILDERS *
+     * ******************* */
+    
+    public DeepLink withAdminBaseUrl(String adminBaseUrl) {
+<span class="nc" id="L40">        setAdminBaseUrl(adminBaseUrl);</span>
+<span class="nc" id="L41">        return this;</span>
+    }
+
+    public DeepLink withUrlFragment(String urlFragment) {
+<span class="nc" id="L45">        setUrlFragment(urlFragment);</span>
+<span class="nc" id="L46">        return this;</span>
+    }
+
+    public DeepLink withDisplayText(String displayText) {
+<span class="nc" id="L50">        setDisplayText(displayText);</span>
+<span class="nc" id="L51">        return this;</span>
+    }
+    
+    public DeepLink withSourceObject(Object sourceObject) {
+<span class="nc" id="L55">        setSourceObject(sourceObject);</span>
+<span class="nc" id="L56">        return this;</span>
+    }
+
+    /* ************************ *
+     * CUSTOM GETTERS / SETTERS *
+     * ************************ */
+
+    public void setAdminBaseUrl(String adminBaseUrl) {
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        if (adminBaseUrl.charAt(adminBaseUrl.length() - 1) == '/') {</span>
+<span class="nc" id="L65">            adminBaseUrl = adminBaseUrl.substring(0, adminBaseUrl.length() - 1);</span>
+        }
+<span class="nc" id="L67">        this.adminBaseUrl = adminBaseUrl;</span>
+<span class="nc" id="L68">    }</span>
+
+    public void setUrlFragment(String urlFragment) {
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (urlFragment.charAt(0) == '/') {</span>
+<span class="nc" id="L72">            urlFragment = urlFragment.substring(1);</span>
+        }
+<span class="nc" id="L74">        this.urlFragment = urlFragment;</span>
+<span class="nc" id="L75">    }</span>
+    
+    public String getFullUrl() {
+<span class="nc" id="L78">        return adminBaseUrl + &quot;/&quot; + urlFragment;</span>
+    }
+
+    /* ************************* *
+     * GENERIC GETTERS / SETTERS *
+     * ************************* */
+
+    public String getAdminBaseUrl() {
+<span class="nc" id="L86">        return adminBaseUrl;</span>
+    }
+
+    public String getUrlFragment() {
+<span class="nc" id="L90">        return urlFragment;</span>
+    }
+
+    public String getDisplayText() {
+<span class="nc" id="L94">        return displayText;</span>
+    }
+
+    public void setDisplayText(String displayText) {
+<span class="nc" id="L98">        this.displayText = displayText;</span>
+<span class="nc" id="L99">    }</span>
+    
+    public Object getSourceObject() {
+<span class="nc" id="L102">        return sourceObject;</span>
+    }
+    
+    public void setSourceObject(Object sourceObject) {
+<span class="nc" id="L106">        this.sourceObject = sourceObject;</span>
+<span class="nc" id="L107">    }</span>
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

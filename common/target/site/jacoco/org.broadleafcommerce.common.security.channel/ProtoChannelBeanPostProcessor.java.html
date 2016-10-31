@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ProtoChannelBeanPostProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.security.channel</a> &gt; <span class="el_source">ProtoChannelBeanPostProcessor.java</span></div><h1>ProtoChannelBeanPostProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.security.channel;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.core.Ordered;
+import org.springframework.security.web.access.channel.ChannelDecisionManagerImpl;
+import org.springframework.security.web.access.channel.ChannelProcessor;
+import org.springframework.security.web.access.channel.InsecureChannelProcessor;
+import org.springframework.security.web.access.channel.SecureChannelProcessor;
+
+import java.lang.reflect.Field;
+import java.util.List;
+
+import javax.servlet.ServletRequest;
+
+/**
+ * &lt;p&gt;This class is designed to work in both a load-balanced and non load-balanced environment by replacing the existing
+ * default Spring channel processors which do not work in a load balanced environment. Configuration should be done
+ * as follows in your applicationContext-security:&lt;/p&gt;
+ * 
+ * &lt;b&gt;Deploying to a load balanced environment with SSL termination at the load balancer as well as an environment
+ * with SSL termination at Tomcat/Apache:&lt;/b&gt;
+ * 
+ * &lt;pre&gt;
+ * {@code
+ *   &lt;bean class=&quot;org.broadleafcommerce.common.security.channel.ProtoChannelBeanPostProcessor&quot;&gt;
+ *       &lt;property name=&quot;channelProcessorOverrides&quot;&gt;
+ *           &lt;list&gt;
+ *              &lt;bean class=&quot;org.broadleafcommerce.common.security.channel.ProtoInsecureChannelProcessor&quot; /&gt;
+ *              &lt;bean class=&quot;org.broadleafcommerce.common.security.channel.ProtoSecureChannelProcessor&quot; /&gt;
+ *          &lt;/list&gt;
+ *      &lt;/property&gt;
+ *  &lt;/bean&gt;
+ *  }
+ * &lt;/pre&gt;
+ * 
+ * &lt;p&gt;That said, this solution only overrides the Spring Security directives but does not make any attempts to override
+ * any invocations to {@link ServletRequest#isSecure}. If your application server supports it, we recommend instead using
+ * that approach which will encapsulate any functionality encapsulated within the Proto processors. For more information
+ * on configuring your specific servlet container, see
+ * &lt;a href=&quot;https://github.com/BroadleafCommerce/BroadleafCommerce/issues/424&quot;&gt;this issue report&lt;/a&gt;
+ * &lt;/p&gt;
+ * 
+ * @author Jeff Fischer
+ * @author Phillip Verheyden (phillipuniverse)
+ * @see {@link ProtoSecureChannelProcessor}
+ * @see {@link ProtoInsecureChannelProcessor}
+ * @see {@link SecureChannelProcessor}
+ * @see {@link InsecureChannelProcessor}
+ */
+<span class="nc" id="L72">public class ProtoChannelBeanPostProcessor implements BeanPostProcessor, Ordered {</span>
+
+<span class="nc" id="L74">    Log LOG = LogFactory.getLog(ProtoChannelBeanPostProcessor.class);</span>
+    
+    protected List&lt;ChannelProcessor&gt; channelProcessorOverrides;
+    
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+<span class="nc" id="L80">        return bean;</span>
+    }
+
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (bean instanceof ChannelDecisionManagerImpl) {</span>
+            try {
+<span class="nc" id="L87">                ChannelDecisionManagerImpl manager = (ChannelDecisionManagerImpl) bean;</span>
+<span class="nc" id="L88">                Field channelProcessors = manager.getClass().getDeclaredField(&quot;channelProcessors&quot;);</span>
+<span class="nc" id="L89">                channelProcessors.setAccessible(true);</span>
+<span class="nc" id="L90">                List&lt;ChannelProcessor&gt; list = (List&lt;ChannelProcessor&gt;) channelProcessors.get(manager);</span>
+<span class="nc" id="L91">                list.clear();</span>
+<span class="nc" id="L92">                manager.setChannelProcessors(channelProcessorOverrides);</span>
+<span class="nc" id="L93">                LOG.info(&quot;Replacing the standard Spring Security channel processors with custom processors that look for a &quot; +</span>
+                		&quot;'X-Forwarded-Proto' request header. This allows Spring Security to sit behind a load balancer with SSL termination.&quot;);
+<span class="nc" id="L95">            } catch (Exception e) {</span>
+<span class="nc" id="L96">                throw new RuntimeException(e);</span>
+<span class="nc" id="L97">            }</span>
+        }
+<span class="nc" id="L99">        return bean;</span>
+    }
+
+    @Override
+    public int getOrder() {
+<span class="nc" id="L104">        return 9999;</span>
+    }
+
+    /**
+     * @return the channelProcessors
+     */
+    public List&lt;ChannelProcessor&gt; getChannelProcessorOverrides() {
+<span class="nc" id="L111">        return channelProcessorOverrides;</span>
+    }
+    
+    /**
+     * @param channelProcessors the channelProcessors to set
+     */
+    public void setChannelProcessorOverrides(List&lt;ChannelProcessor&gt; channelProcessorOverrides) {
+<span class="nc" id="L118">        this.channelProcessorOverrides = channelProcessorOverrides;</span>
+<span class="nc" id="L119">    }</span>
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

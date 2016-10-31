@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractExternalPaymentGatewayCall.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.payment.service</a> &gt; <span class="el_source">AbstractExternalPaymentGatewayCall.java</span></div><h1>AbstractExternalPaymentGatewayCall.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.payment.service;
+
+import org.broadleafcommerce.common.vendor.service.exception.PaymentException;
+import org.broadleafcommerce.common.vendor.service.monitor.ServiceStatusDetectable;
+import org.broadleafcommerce.common.vendor.service.type.ServiceStatusType;
+
+/**
+ * &lt;p&gt;All payment gateway classes that intend to make an external call, either manually
+ * from an HTTP Post or through an SDK which makes its own external call, should
+ * extend this class. The implementations should override the abstract methods:
+ * communicateWithVendor(), and getFailureReportingThreshold();&lt;/p&gt;
+ *
+ * &lt;p&gt;The generic Type 'T' represents the payment request object that is going to be sent to the external gateway.
+ * The generic Type 'R' represents the payment result object that will be returned&lt;/p&gt;
+ *
+ * &lt;p&gt;This allows anyone using the framework to configure the ServiceMonitor AOP hooks
+ * and detect any outages to provide (email/logging) feedback when necessary.&lt;/p&gt;
+ *
+ * @see org.broadleafcommerce.common.vendor.service.monitor.ServiceMonitor
+ * @see org.broadleafcommerce.common.vendor.service.monitor.StatusHandler
+ * @see ServiceStatusDetectable
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+<span class="nc" id="L45">public abstract class AbstractExternalPaymentGatewayCall&lt;T, R&gt; implements ServiceStatusDetectable&lt;T&gt;, FailureCountExposable {</span>
+
+<span class="nc" id="L47">    protected Integer failureCount = 0;</span>
+<span class="nc" id="L48">    protected Boolean isUp = true;</span>
+
+    public synchronized void clearStatus() {
+<span class="nc" id="L51">        isUp = true;</span>
+<span class="nc" id="L52">        failureCount = 0;</span>
+<span class="nc" id="L53">    }</span>
+
+    public synchronized void incrementFailure() {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (failureCount &gt;= getFailureReportingThreshold()) {</span>
+<span class="nc" id="L57">            isUp = false;</span>
+        } else {
+<span class="nc" id="L59">            failureCount++;</span>
+        }
+<span class="nc" id="L61">    }</span>
+
+    @Override
+    public synchronized ServiceStatusType getServiceStatus() {
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (isUp) {</span>
+<span class="nc" id="L66">            return ServiceStatusType.UP;</span>
+        } else {
+<span class="nc" id="L68">            return ServiceStatusType.DOWN;</span>
+        }
+    }
+
+    @Override
+    public R process(T paymentRequest) throws PaymentException {
+        R response;
+        try {
+<span class="nc" id="L76">            response = communicateWithVendor(paymentRequest);</span>
+<span class="nc" id="L77">        } catch (Exception e) {</span>
+<span class="nc" id="L78">            incrementFailure();</span>
+<span class="nc" id="L79">            throw new PaymentException(e);</span>
+<span class="nc" id="L80">        }</span>
+<span class="nc" id="L81">        clearStatus();</span>
+
+<span class="nc" id="L83">        return response;</span>
+    }
+
+    public abstract R communicateWithVendor(T paymentRequest) throws Exception;
+
+    public abstract Integer getFailureReportingThreshold();
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

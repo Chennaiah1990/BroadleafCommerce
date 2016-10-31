@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SiteMapGenerationResponse.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.sitemap.service</a> &gt; <span class="el_source">SiteMapGenerationResponse.java</span></div><h1>SiteMapGenerationResponse.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.sitemap.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Represents the outcome of a SiteMap generation request.   Can be extended for specific domain objectives but 
+ * generally provides the directory location where the SiteMap request is stored.
+ * 
+ * @author bpolster
+ */
+<span class="fc" id="L32">public class SiteMapGenerationResponse {</span>
+
+<span class="fc" id="L34">    private String sitemapIndexFileName = &quot;sitemap.xml&quot;;</span>
+<span class="fc" id="L35">    private List&lt;String&gt; siteMapFilePaths = new ArrayList&lt;String&gt;();</span>
+<span class="fc" id="L36">    private boolean hasError = false;</span>
+    private String errorCode;
+
+    /**
+     * Returns the name of the main SiteMap index file.
+     * @return
+     */
+    public String getSitemapIndexFileName() {
+<span class="nc" id="L44">        return sitemapIndexFileName;</span>
+    }
+
+    /**
+     * Sets the name of the main index file.
+     * @param sitemapIndexFileName
+     */
+    public void setSitemapIndexFileName(String sitemapIndexFileName) {
+<span class="nc" id="L52">        this.sitemapIndexFileName = sitemapIndexFileName;</span>
+<span class="nc" id="L53">    }</span>
+
+    /**
+     * List of files representing the siteMap files.   The default Broadleaf generator will always create 
+     * a SiteMap index file with at least one additional Sitemap file.   
+     * 
+     * @return
+     */
+    public List&lt;String&gt; getSiteMapFilePaths() {
+<span class="nc" id="L62">        return siteMapFilePaths;</span>
+    }
+
+    /**
+     * Sets the individual sitemap files.
+     * @param siteMapFilePaths
+     */
+    public void setSiteMapFilePaths(List&lt;String&gt; siteMapFilePaths) {
+<span class="fc" id="L70">        this.siteMapFilePaths = siteMapFilePaths;</span>
+<span class="fc" id="L71">    }</span>
+
+    /**
+     * Returns true if the sitemap generation process resulted in an error.
+     * @return
+     */
+    public boolean isHasError() {
+<span class="fc" id="L78">        return hasError;</span>
+    }
+
+    /**
+     * Sets that this response represents an error when generating the SiteMap.
+     * @return
+     */
+
+    public void setHasError(boolean hasError) {
+<span class="nc" id="L87">        this.hasError = hasError;</span>
+<span class="nc" id="L88">    }</span>
+
+    /**
+     * Returns a code representing the error.   Undefined if called in the context of a response with no error.
+     * @return
+     */
+    public String getErrorCode() {
+<span class="nc" id="L95">        return errorCode;</span>
+    }
+
+    /**
+     * Sets the error code associated with this SiteMap Generation.
+     * @param errorCode
+     */
+    public void setErrorCode(String errorCode) {
+<span class="nc" id="L103">        this.errorCode = errorCode;</span>
+<span class="nc" id="L104">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

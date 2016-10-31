@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SystemSupportLoggerAdapter.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.logging</a> &gt; <span class="el_source">SystemSupportLoggerAdapter.java</span></div><h1>SystemSupportLoggerAdapter.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2014 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.logging;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+/**
+ * &lt;p&gt;Default Implementation of SupportLoggerAdapter that sends all support log messages to the console ({@code System.out}).
+ * The following System Properties are supported to configure the behavior of this logger:&lt;/p&gt;
+ * &lt;/p&gt;
+ *
+ * &lt;ul&gt;
+ * &lt;li&gt;&lt;code&gt;SystemSupportLoggerAdapter.showDateTime&lt;/code&gt; - Set to &lt;code&gt;true&lt;/code&gt; if you want the current date and
+ * time to be included in output messages. Default is &lt;code&gt;true&lt;/code&gt;&lt;/li&gt;
+ *
+ * &lt;li&gt;&lt;code&gt;SystemSupportLoggerAdapter.dateTimeFormat&lt;/code&gt; - The date and time format to be used in the output messages.
+ * The pattern describing the date and time format is defined by
+ * &lt;a href=&quot;http://docs.oracle.com/javase/1.5.0/docs/api/java/text/SimpleDateFormat.html&quot;&gt;&lt;code&gt;SimpleDateFormat&lt;/code&gt;&lt;/a&gt;.
+ * If the format is not specified or is invalid, the number of milliseconds since start up will be output. &lt;/li&gt;
+ *
+ * &lt;li&gt;&lt;code&gt;SystemSupportLoggerAdapter.showThreadName&lt;/code&gt; - Set to &lt;code&gt;true&lt;/code&gt; if you want to output the current
+ * thread name. Defaults to &lt;code&gt;false&lt;/code&gt;.&lt;/li&gt;
+ *
+ * &lt;li&gt;&lt;code&gt;SystemSupportLoggerAdapter.showLogName&lt;/code&gt; - Set to &lt;code&gt;true&lt;/code&gt; if you want the Logger instance name
+ * to be included in output messages. Defaults to &lt;code&gt;true&lt;/code&gt;.&lt;/li&gt;
+ *
+ * &lt;li&gt;&lt;code&gt;SystemSupportLoggerAdapter.levelInBrackets&lt;/code&gt; - Should the level string be output in brackets? Defaults
+ * to &lt;code&gt;true&lt;/code&gt;.&lt;/li&gt;
+ *
+ * &lt;li&gt;&lt;code&gt;SystemSupportLoggerAdapter.showNonSupportLevels&lt;/code&gt; - Show non-support level logs
+ * (i.e. DEBUG, ERROR, FATAL, INFO, WARN) Defaults to &lt;code&gt;false&lt;/code&gt;.&lt;/li&gt;
+ *
+ * &lt;/ul&gt;
+ *
+ * &lt;p&gt;This implementation is heavily inspired by
+ * &lt;a href=&quot;http://www.slf4j.org/&quot;&gt;SLF4J&lt;/a&gt;'s SimpleLogger.&lt;/p&gt;
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+<span class="nc" id="L59">public class SystemSupportLoggerAdapter extends AbstractSupportLoggerAdapter implements SupportLoggerAdapter {</span>
+
+    public static final String SHOW_DATE_TIME_KEY = &quot;SystemSupportLoggerAdapter.showDateTime&quot;;
+    public static final String DATE_TIME_FORMAT_KEY = &quot;SystemSupportLoggerAdapter.dateTimeFormat&quot;;
+    public static final String SHOW_THREAD_NAME_KEY = &quot;SystemSupportLoggerAdapter.showThreadName&quot;;
+    public static final String SHOW_LOG_NAME_KEY = &quot;SystemSupportLoggerAdapter.showLogName&quot;;
+    public static final String LEVEL_IN_BRACKETS_KEY = &quot;SystemSupportLoggerAdapter.levelInBrackets&quot;;
+    public static final String SHOW_NON_SUPPORT_LEVELS_KEY = &quot;SystemSupportLoggerAdapter.showNonSupportLevels&quot;;
+
+    private String name;
+
+    /**
+     * Generate a SUPPORT level log message
+     *
+     * @param message the log message
+     */
+    @Override
+    public void support(String message) {
+<span class="nc" id="L77">        log(LOG_LEVEL_SUPPORT, message, null);</span>
+<span class="nc" id="L78">    }</span>
+
+    /**
+     * Generate a SUPPORT level log message with an accompanying Throwable
+     *
+     * @param message the log message
+     * @param t the exception to accompany the log message - will result in a stack track in the log
+     */
+    @Override
+    public void support(String message, Throwable t) {
+<span class="nc" id="L88">        log(LOG_LEVEL_SUPPORT, message, t);</span>
+<span class="nc" id="L89">    }</span>
+
+    /**
+     * Generate a specialized SUPPORT level log message that includes a LifeCycleEvent
+     * in the message.
+     *
+     * @param lifeCycleEvent The module life cycle type for this log message
+     * @param message the log message
+     */
+    @Override
+    public void lifecycle(LifeCycleEvent lifeCycleEvent, String message) {
+<span class="nc" id="L100">        log(LOG_LEVEL_SUPPORT, message, null);</span>
+<span class="nc" id="L101">    }</span>
+
+    @Override
+    public void debug(String message) {
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L106">            log(LOG_LEVEL_DEBUG, message, null);</span>
+        }
+<span class="nc" id="L108">    }</span>
+
+    @Override
+    public void debug(String message, Throwable t) {
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L113">            log(LOG_LEVEL_DEBUG, message, t);</span>
+        }
+<span class="nc" id="L115">    }</span>
+
+    @Override
+    public void error(String message) {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L120">            log(LOG_LEVEL_ERROR, message, null);</span>
+        }
+<span class="nc" id="L122">    }</span>
+
+    @Override
+    public void error(String message, Throwable t) {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L127">            log(LOG_LEVEL_ERROR, message, t);</span>
+        }
+<span class="nc" id="L129">    }</span>
+
+    @Override
+    public void fatal(String message) {
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L134">            log(LOG_LEVEL_FATAL, message, null);</span>
+        }
+<span class="nc" id="L136">    }</span>
+
+    @Override
+    public void fatal(String message, Throwable t) {
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L141">            log(LOG_LEVEL_FATAL, message, t);</span>
+        }
+<span class="nc" id="L143">    }</span>
+
+    @Override
+    public void info(String message) {
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L148">            log(LOG_LEVEL_INFO, message, null);</span>
+        }
+<span class="nc" id="L150">    }</span>
+
+    @Override
+    public void info(String message, Throwable t) {
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L155">            log(LOG_LEVEL_INFO, message, t);</span>
+        }
+<span class="nc" id="L157">    }</span>
+
+    @Override
+    public void warn(String message) {
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L162">            log(LOG_LEVEL_WARN, message, null);</span>
+        }
+<span class="nc" id="L164">    }</span>
+
+    @Override
+    public void warn(String message, Throwable t) {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        if (getShowNonSupportLevels()) {</span>
+<span class="nc" id="L169">            log(LOG_LEVEL_WARN, message, t);</span>
+        }
+<span class="nc" id="L171">    }</span>
+
+    protected void log(int level, String message, Throwable t) {
+
+<span class="nc" id="L175">        StringBuffer buf = new StringBuffer(32);</span>
+
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        if (getLevelInBrackets()) {</span>
+<span class="nc" id="L178">            buf.append('[');</span>
+        }
+
+        // Append a readable representation of the log level
+<span class="nc bnc" id="L182" title="All 7 branches missed.">        switch (level) {</span>
+            case LOG_LEVEL_TRACE:
+<span class="nc" id="L184">                buf.append(TRACE);</span>
+<span class="nc" id="L185">                break;</span>
+            case LOG_LEVEL_DEBUG:
+<span class="nc" id="L187">                buf.append(DEBUG);</span>
+<span class="nc" id="L188">                break;</span>
+            case LOG_LEVEL_INFO:
+<span class="nc" id="L190">                buf.append(INFO);</span>
+<span class="nc" id="L191">                break;</span>
+            case LOG_LEVEL_WARN:
+<span class="nc" id="L193">                buf.append(WARN);</span>
+<span class="nc" id="L194">                break;</span>
+            case LOG_LEVEL_ERROR:
+<span class="nc" id="L196">                buf.append(ERROR);</span>
+<span class="nc" id="L197">                break;</span>
+            case LOG_LEVEL_FATAL:
+<span class="nc" id="L199">                buf.append(FATAL);</span>
+<span class="nc" id="L200">                break;</span>
+            default:
+<span class="nc" id="L202">                buf.append(SUPPORT);</span>
+        }
+
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        if (getLevelInBrackets()) {</span>
+<span class="nc" id="L206">            buf.append(']');</span>
+<span class="nc" id="L207">            buf.append(' ');</span>
+        }
+
+        // Append date-time if so configured
+<span class="nc bnc" id="L211" title="All 4 branches missed.">        if (getShowDateTime() &amp;&amp; getDateFormatter() != null) {</span>
+<span class="nc" id="L212">                buf.append(getFormattedDate());</span>
+<span class="nc" id="L213">                buf.append(' ');</span>
+        }
+
+        // Append current thread name if so configured
+<span class="nc bnc" id="L217" title="All 2 branches missed.">        if (getShowThreadName()) {</span>
+<span class="nc" id="L218">            buf.append('[');</span>
+<span class="nc" id="L219">            buf.append(Thread.currentThread().getName());</span>
+<span class="nc" id="L220">            buf.append(&quot;] &quot;);</span>
+        }
+
+        // Append the name of the log instance if so configured
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (getShowLogName()) {</span>
+<span class="nc" id="L225">            buf.append(String.valueOf(name)).append(&quot; - &quot;);</span>
+        }
+
+        // Append the message
+<span class="nc" id="L229">        buf.append(message);</span>
+
+<span class="nc" id="L231">        write(buf, t);</span>
+
+<span class="nc" id="L233">    }</span>
+
+    protected void write(StringBuffer buf, Throwable t) {
+<span class="nc" id="L236">        System.out.println(buf.toString());</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">        if (t != null) {</span>
+<span class="nc" id="L238">            t.printStackTrace(System.out);</span>
+        }
+<span class="nc" id="L240">        System.out.flush();</span>
+<span class="nc" id="L241">    }</span>
+
+    protected String getFormattedDate() {
+<span class="nc" id="L244">        Date now = new Date();</span>
+        String dateText;
+<span class="nc" id="L246">        synchronized (getDateFormatter()) {</span>
+<span class="nc" id="L247">            dateText = getDateFormatter().format(now);</span>
+<span class="nc" id="L248">        }</span>
+<span class="nc" id="L249">        return dateText;</span>
+    }
+
+    protected boolean getShowDateTime() {
+<span class="nc" id="L253">        String property = System.getProperty(SHOW_DATE_TIME_KEY, &quot;true&quot;);</span>
+<span class="nc" id="L254">        return Boolean.valueOf(property);</span>
+    }
+
+    protected DateFormat getDateFormatter() {
+<span class="nc" id="L258">        String property = System.getProperty(DATE_TIME_FORMAT_KEY, &quot;HH:mm:ss&quot;);</span>
+<span class="nc" id="L259">        return new SimpleDateFormat(property);</span>
+    }
+
+    protected boolean getShowThreadName() {
+<span class="nc" id="L263">        String property = System.getProperty(SHOW_THREAD_NAME_KEY, &quot;false&quot;);</span>
+<span class="nc" id="L264">        return Boolean.valueOf(property);</span>
+    }
+
+    protected boolean getShowLogName() {
+<span class="nc" id="L268">        String property = System.getProperty(SHOW_LOG_NAME_KEY, &quot;true&quot;);</span>
+<span class="nc" id="L269">        return Boolean.valueOf(property);</span>
+    }
+
+    protected boolean getLevelInBrackets() {
+<span class="nc" id="L273">        String property = System.getProperty(LEVEL_IN_BRACKETS_KEY, &quot;true&quot;);</span>
+<span class="nc" id="L274">        return Boolean.valueOf(property);</span>
+    }
+
+    protected boolean getShowNonSupportLevels() {
+<span class="nc" id="L278">        String property = System.getProperty(SHOW_NON_SUPPORT_LEVELS_KEY, &quot;false&quot;);</span>
+<span class="nc" id="L279">        return Boolean.valueOf(property);</span>
+    }
+
+    @Override
+    public String getName() {
+<span class="nc" id="L284">        return name;</span>
+    }
+
+    @Override
+    public void setName(String name) {
+<span class="nc" id="L289">        this.name = name;</span>
+<span class="nc" id="L290">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

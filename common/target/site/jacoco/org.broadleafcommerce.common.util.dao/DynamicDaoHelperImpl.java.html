@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>DynamicDaoHelperImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util.dao</a> &gt; <span class="el_source">DynamicDaoHelperImpl.java</span></div><h1>DynamicDaoHelperImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util.dao;
+
+import javassist.util.proxy.ProxyFactory;
+
+import org.apache.commons.collections4.map.LRUMap;
+import org.apache.commons.lang3.ArrayUtils;
+import org.broadleafcommerce.common.exception.ExceptionHelper;
+import org.broadleafcommerce.common.exception.ProxyDetectionException;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.ejb.HibernateEntityManager;
+import org.hibernate.mapping.PersistentClass;
+import org.hibernate.metadata.ClassMetadata;
+import org.hibernate.type.Type;
+import org.springframework.util.ReflectionUtils;
+
+import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.persistence.Entity;
+import javax.persistence.EntityManager;
+
+
+<span class="nc" id="L52">public class DynamicDaoHelperImpl implements DynamicDaoHelper {</span>
+    
+<span class="nc" id="L54">    public static final Object LOCK_OBJECT = new Object();</span>
+<span class="nc" id="L55">    public static final Map&lt;Class&lt;?&gt;, Class&lt;?&gt;[]&gt; POLYMORPHIC_ENTITY_CACHE = new LRUMap&lt;Class&lt;?&gt;, Class&lt;?&gt;[]&gt;(1000);</span>
+<span class="nc" id="L56">    public static final Map&lt;Class&lt;?&gt;, Class&lt;?&gt;[]&gt; POLYMORPHIC_ENTITY_CACHE_WO_EXCLUSIONS = new LRUMap&lt;Class&lt;?&gt;, Class&lt;?&gt;[]&gt;(1000);</span>
+    public static final String JAVASSIST_PROXY_KEY_PHRASE = &quot;_$$_&quot;;
+
+    public static Class&lt;?&gt; getNonProxyImplementationClassIfNecessary(Class&lt;?&gt; candidate) {
+<span class="nc" id="L60">        Class&lt;?&gt; response = candidate;</span>
+        //TODO Although unusual, there are other proxy types in Hibernate than just javassist proxies (Broadleaf defaults to javassist).
+        //At some point, should try to account for those here in a performant way.
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (ProxyFactory.isProxyClass(candidate)) {</span>
+            //TODO This is not ideal. While this works consistently, I don't think it's guaranteed that the proxy classname
+            //will always have this format in the future. We'll at least throw an exception if our formatting detection fails
+            //so that we're aware of it.
+<span class="nc bnc" id="L67" title="All 2 branches missed.">            if (!candidate.getName().contains(JAVASSIST_PROXY_KEY_PHRASE)) {</span>
+<span class="nc" id="L68">                throw new ProxyDetectionException(String.format(&quot;Cannot determine the original implementation class for &quot; +</span>
+                        &quot;the javassist proxy. Expected to find the keyphrase (%s) in the proxy classname (%s).&quot;,
+                        JAVASSIST_PROXY_KEY_PHRASE, candidate.getName()));
+            }
+<span class="nc" id="L72">            String implName = candidate.getName().substring(0, candidate.getName().lastIndexOf(JAVASSIST_PROXY_KEY_PHRASE));</span>
+            try {
+<span class="nc" id="L74">                response = Class.forName(implName);</span>
+<span class="nc" id="L75">            } catch (ClassNotFoundException e) {</span>
+<span class="nc" id="L76">                throw ExceptionHelper.refineException(e);</span>
+<span class="nc" id="L77">            }</span>
+        }
+<span class="nc" id="L79">        return response;</span>
+    }
+    
+    @Override
+    public Class&lt;?&gt;[] getAllPolymorphicEntitiesFromCeiling(Class&lt;?&gt; ceilingClass, SessionFactory sessionFactory,
+            boolean includeUnqualifiedPolymorphicEntities, boolean useCache) {
+<span class="nc" id="L85">        ceilingClass = getNonProxyImplementationClassIfNecessary(ceilingClass);</span>
+<span class="nc" id="L86">        Class&lt;?&gt;[] cache = null;</span>
+<span class="nc" id="L87">        synchronized(LOCK_OBJECT) {</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">            if (useCache) {</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">                if (includeUnqualifiedPolymorphicEntities) {</span>
+<span class="nc" id="L90">                    cache = POLYMORPHIC_ENTITY_CACHE.get(ceilingClass);</span>
+                } else {
+<span class="nc" id="L92">                    cache = POLYMORPHIC_ENTITY_CACHE_WO_EXCLUSIONS.get(ceilingClass);</span>
+                }
+            }
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if (cache == null) {</span>
+<span class="nc" id="L96">                List&lt;Class&lt;?&gt;&gt; entities = new ArrayList&lt;Class&lt;?&gt;&gt;();</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">                for (Object item : sessionFactory.getAllClassMetadata().values()) {</span>
+<span class="nc" id="L98">                    ClassMetadata metadata = (ClassMetadata) item;</span>
+<span class="nc" id="L99">                    Class&lt;?&gt; mappedClass = metadata.getMappedClass();</span>
+<span class="nc bnc" id="L100" title="All 4 branches missed.">                    if (mappedClass != null &amp;&amp; ceilingClass.isAssignableFrom(mappedClass)) {</span>
+<span class="nc" id="L101">                        entities.add(mappedClass);</span>
+                    }
+<span class="nc" id="L103">                }</span>
+<span class="nc" id="L104">                Class&lt;?&gt;[] sortedEntities = sortEntities(ceilingClass, entities);</span>
+
+<span class="nc" id="L106">                List&lt;Class&lt;?&gt;&gt; filteredSortedEntities = new ArrayList&lt;Class&lt;?&gt;&gt;();</span>
+
+<span class="nc bnc" id="L108" title="All 2 branches missed.">                for (int i = 0; i &lt; sortedEntities.length; i++) {</span>
+<span class="nc" id="L109">                    Class&lt;?&gt; item = sortedEntities[i];</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">                    if (includeUnqualifiedPolymorphicEntities) {</span>
+<span class="nc" id="L111">                        filteredSortedEntities.add(sortedEntities[i]);</span>
+                    } else {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">                        if (isExcludeClassFromPolymorphism(item)) {</span>
+<span class="nc" id="L114">                            continue;</span>
+                        } else {
+<span class="nc" id="L116">                            filteredSortedEntities.add(sortedEntities[i]);</span>
+                        }
+                    }
+                }
+
+<span class="nc" id="L121">                Class&lt;?&gt;[] filteredEntities = new Class&lt;?&gt;[filteredSortedEntities.size()];</span>
+<span class="nc" id="L122">                filteredEntities = filteredSortedEntities.toArray(filteredEntities);</span>
+<span class="nc" id="L123">                cache = filteredEntities;</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">                if (includeUnqualifiedPolymorphicEntities) {</span>
+<span class="nc" id="L125">                    POLYMORPHIC_ENTITY_CACHE.put(ceilingClass, filteredEntities);</span>
+                } else {
+<span class="nc" id="L127">                    POLYMORPHIC_ENTITY_CACHE_WO_EXCLUSIONS.put(ceilingClass, filteredEntities);</span>
+                }
+            }
+<span class="nc" id="L130">        }</span>
+
+<span class="nc" id="L132">        return cache;</span>
+    }
+
+    @Override
+    public Class&lt;?&gt;[] getUpDownInheritance(Class&lt;?&gt; testClass, SessionFactory sessionFactory,
+                boolean includeUnqualifiedPolymorphicEntities, boolean useCache, EJB3ConfigurationDao ejb3ConfigurationDao) {
+<span class="nc" id="L138">        Class&lt;?&gt;[] pEntities = getAllPolymorphicEntitiesFromCeiling(testClass, sessionFactory, includeUnqualifiedPolymorphicEntities, useCache);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        if (ArrayUtils.isEmpty(pEntities)) {</span>
+<span class="nc" id="L140">            return pEntities;</span>
+        }
+<span class="nc" id="L142">        Class&lt;?&gt; topConcreteClass = pEntities[pEntities.length - 1];</span>
+<span class="nc" id="L143">        List&lt;Class&lt;?&gt;&gt; temp = new ArrayList&lt;Class&lt;?&gt;&gt;(pEntities.length);</span>
+<span class="nc" id="L144">        temp.addAll(Arrays.asList(pEntities));</span>
+<span class="nc" id="L145">        Collections.reverse(temp);</span>
+<span class="nc" id="L146">        boolean eof = false;</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        while (!eof) {</span>
+<span class="nc" id="L148">            Class&lt;?&gt; superClass = topConcreteClass.getSuperclass();</span>
+<span class="nc" id="L149">            PersistentClass persistentClass = ejb3ConfigurationDao.getConfiguration().getClassMapping(superClass.getName());</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            if (persistentClass == null) {</span>
+<span class="nc" id="L151">                eof = true;</span>
+            } else {
+<span class="nc" id="L153">                temp.add(0, superClass);</span>
+<span class="nc" id="L154">                topConcreteClass = superClass;</span>
+            }
+<span class="nc" id="L156">        }</span>
+
+<span class="nc" id="L158">        return temp.toArray(new Class&lt;?&gt;[temp.size()]);</span>
+    }
+    
+    @Override
+    public Class&lt;?&gt;[] sortEntities(Class&lt;?&gt; ceilingClass, List&lt;Class&lt;?&gt;&gt; entities) {
+        /*
+         * Sort entities with the most derived appearing first
+         */
+<span class="nc" id="L166">        Class&lt;?&gt;[] sortedEntities = new Class&lt;?&gt;[entities.size()];</span>
+<span class="nc" id="L167">        List&lt;Class&lt;?&gt;&gt; stageItems = new ArrayList&lt;Class&lt;?&gt;&gt;();</span>
+<span class="nc" id="L168">        stageItems.add(ceilingClass);</span>
+<span class="nc" id="L169">        int j = 0;</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        while (j &lt; sortedEntities.length) {</span>
+<span class="nc" id="L171">            List&lt;Class&lt;?&gt;&gt; newStageItems = new ArrayList&lt;Class&lt;?&gt;&gt;();</span>
+<span class="nc" id="L172">            boolean topLevelClassFound = false;</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">            for (Class&lt;?&gt; stageItem : stageItems) {</span>
+<span class="nc" id="L174">                Iterator&lt;Class&lt;?&gt;&gt; itr = entities.iterator();</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">                while(itr.hasNext()) {</span>
+<span class="nc" id="L176">                    Class&lt;?&gt; entity = itr.next();</span>
+                    checkitem: {
+<span class="nc bnc" id="L178" title="All 4 branches missed.">                        if (ArrayUtils.contains(entity.getInterfaces(), stageItem) || entity.equals(stageItem)) {</span>
+<span class="nc" id="L179">                            topLevelClassFound = true;</span>
+<span class="nc" id="L180">                            break checkitem;</span>
+                        }
+
+<span class="nc bnc" id="L183" title="All 2 branches missed.">                        if (topLevelClassFound) {</span>
+<span class="nc" id="L184">                            continue;</span>
+                        }
+
+<span class="nc bnc" id="L187" title="All 4 branches missed.">                        if (entity.getSuperclass().equals(stageItem) &amp;&amp; j &gt; 0) {</span>
+                            break checkitem;
+                        }
+
+                        continue;
+                    }
+<span class="nc" id="L193">                    sortedEntities[j] = entity;</span>
+<span class="nc" id="L194">                    itr.remove();</span>
+<span class="nc" id="L195">                    j++;</span>
+<span class="nc" id="L196">                    newStageItems.add(entity);</span>
+<span class="nc" id="L197">                }</span>
+<span class="nc" id="L198">            }</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">            if (newStageItems.isEmpty()) {</span>
+<span class="nc" id="L200">                throw new IllegalArgumentException(&quot;There was a gap in the inheritance hierarchy for (&quot; + ceilingClass.getName() + &quot;)&quot;);</span>
+            }
+<span class="nc" id="L202">            stageItems = newStageItems;</span>
+<span class="nc" id="L203">        }</span>
+<span class="nc" id="L204">        ArrayUtils.reverse(sortedEntities);</span>
+<span class="nc" id="L205">        return sortedEntities;</span>
+    }
+    
+    @Override
+    public boolean isExcludeClassFromPolymorphism(Class&lt;?&gt; clazz) {
+        //We filter out abstract classes because they can't be instantiated.
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        if (Modifier.isAbstract(clazz.getModifiers())) {</span>
+<span class="nc" id="L212">            return true;</span>
+        }
+
+        //We filter out classes that are marked to exclude from polymorphism
+<span class="nc" id="L216">        AdminPresentationClass adminPresentationClass = clazz.getAnnotation(AdminPresentationClass.class);</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">        if (adminPresentationClass == null) {</span>
+<span class="nc" id="L218">            return false;</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        } else if (adminPresentationClass.excludeFromPolymorphism()) {</span>
+<span class="nc" id="L220">            return true;</span>
+        }
+<span class="nc" id="L222">        return false;</span>
+    }
+    
+    @Override
+    public Map&lt;String, Object&gt; getIdMetadata(Class&lt;?&gt; entityClass, HibernateEntityManager entityManager) {
+<span class="nc" id="L227">        entityClass = getNonProxyImplementationClassIfNecessary(entityClass);</span>
+<span class="nc" id="L228">        Map&lt;String, Object&gt; response = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L229">        SessionFactory sessionFactory = entityManager.getSession().getSessionFactory();</span>
+        
+<span class="nc" id="L231">        ClassMetadata metadata = sessionFactory.getClassMetadata(entityClass);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">        if (metadata == null) {</span>
+<span class="nc" id="L233">            return null;</span>
+        }
+        
+<span class="nc" id="L236">        String idProperty = metadata.getIdentifierPropertyName();</span>
+<span class="nc" id="L237">        response.put(&quot;name&quot;, idProperty);</span>
+<span class="nc" id="L238">        Type idType = metadata.getIdentifierType();</span>
+<span class="nc" id="L239">        response.put(&quot;type&quot;, idType);</span>
+
+<span class="nc" id="L241">        return response;</span>
+    }
+
+    @Override
+    public List&lt;String&gt; getPropertyNames(Class&lt;?&gt; entityClass, HibernateEntityManager entityManager) {
+<span class="nc" id="L246">        entityClass = getNonProxyImplementationClassIfNecessary(entityClass);</span>
+<span class="nc" id="L247">        ClassMetadata metadata = getSessionFactory(entityManager).getClassMetadata(entityClass);</span>
+<span class="nc" id="L248">        List&lt;String&gt; propertyNames = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L249">        Collections.addAll(propertyNames, metadata.getPropertyNames());</span>
+<span class="nc" id="L250">        return propertyNames;</span>
+    }
+
+    @Override
+    public List&lt;Type&gt; getPropertyTypes(Class&lt;?&gt; entityClass, HibernateEntityManager entityManager) {
+<span class="nc" id="L255">        entityClass = getNonProxyImplementationClassIfNecessary(entityClass);</span>
+<span class="nc" id="L256">        ClassMetadata metadata = getSessionFactory(entityManager).getClassMetadata(entityClass);</span>
+<span class="nc" id="L257">        List&lt;Type&gt; propertyTypes = new ArrayList&lt;Type&gt;();</span>
+<span class="nc" id="L258">        Collections.addAll(propertyTypes, metadata.getPropertyTypes());</span>
+<span class="nc" id="L259">        return propertyTypes;</span>
+    }
+
+    @Override
+    public SessionFactory getSessionFactory(HibernateEntityManager entityManager) {
+<span class="nc" id="L264">        return entityManager.getSession().getSessionFactory();</span>
+    }
+
+    @Override
+    public Serializable getIdentifier(Object entity, EntityManager em) {
+<span class="nc" id="L269">        Class&lt;?&gt; entityClass = getNonProxyImplementationClassIfNecessary(entity.getClass());</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        if (entityClass.getAnnotation(Entity.class) != null) {</span>
+<span class="nc" id="L271">            Field idField = getIdField(entityClass, em);</span>
+            try {
+<span class="nc" id="L273">                return (Serializable) idField.get(entity);</span>
+<span class="nc" id="L274">            } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L275">                throw ExceptionHelper.refineException(e);</span>
+            }
+        }
+<span class="nc" id="L278">        return null;</span>
+    }
+
+    @Override
+    public Serializable getIdentifier(Object entity, Session session) {
+<span class="nc" id="L283">        Class&lt;?&gt; entityClass = getNonProxyImplementationClassIfNecessary(entity.getClass());</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">        if (entityClass.getAnnotation(Entity.class) != null) {</span>
+<span class="nc" id="L285">            Field idField = getIdField(entityClass, session);</span>
+            try {
+<span class="nc" id="L287">                return (Serializable) idField.get(entity);</span>
+<span class="nc" id="L288">            } catch (IllegalAccessException e) {</span>
+<span class="nc" id="L289">                throw ExceptionHelper.refineException(e);</span>
+            }
+        }
+<span class="nc" id="L292">        return null;</span>
+    }
+
+    @Override
+    public Field getIdField(Class&lt;?&gt; clazz, EntityManager em) {
+<span class="nc" id="L297">        clazz = getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L298">        ClassMetadata metadata = em.unwrap(Session.class).getSessionFactory().getClassMetadata(clazz);</span>
+<span class="nc" id="L299">        Field idField = ReflectionUtils.findField(clazz, metadata.getIdentifierPropertyName());</span>
+<span class="nc" id="L300">        idField.setAccessible(true);</span>
+<span class="nc" id="L301">        return idField;</span>
+    }
+
+    @Override
+    public Field getIdField(Class&lt;?&gt; clazz, Session session) {
+<span class="nc" id="L306">        clazz = getNonProxyImplementationClassIfNecessary(clazz);</span>
+<span class="nc" id="L307">        ClassMetadata metadata = session.getSessionFactory().getClassMetadata(clazz);</span>
+<span class="nc" id="L308">        Field idField = ReflectionUtils.findField(clazz, metadata.getIdentifierPropertyName());</span>
+<span class="nc" id="L309">        idField.setAccessible(true);</span>
+<span class="nc" id="L310">        return idField;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

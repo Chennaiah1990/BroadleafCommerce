@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractModelVariableModifierProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.dialect</a> &gt; <span class="el_source">AbstractModelVariableModifierProcessor.java</span></div><h1>AbstractModelVariableModifierProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.dialect;
+
+import org.thymeleaf.Arguments;
+import org.thymeleaf.dom.Element;
+import org.thymeleaf.dom.NestableNode;
+import org.thymeleaf.processor.ProcessorResult;
+import org.thymeleaf.processor.element.AbstractElementProcessor;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * @author apazzolini
+ * 
+ * Wrapper class around Thymeleaf's AbstractElementProcessor that facilitates adding Objects
+ * to the current evaluation context (model) for processing in the remainder of the page.
+ *
+ */
+public abstract class AbstractModelVariableModifierProcessor extends AbstractElementProcessor {
+    
+    public AbstractModelVariableModifierProcessor(String elementName) {
+<span class="nc" id="L43">        super(elementName);</span>
+<span class="nc" id="L44">    }</span>
+
+    @Override
+    public int getPrecedence() {
+<span class="nc" id="L48">        return 1000;</span>
+    }
+
+    /**
+     * This method will handle calling the modifyModelAttributes abstract method and return
+     * an &quot;OK&quot; processor result
+     */
+    @Override
+    protected ProcessorResult processElement(final Arguments arguments, final Element element) {
+<span class="nc" id="L57">        modifyModelAttributes(arguments, element);</span>
+        
+        // Remove the tag from the DOM
+<span class="nc" id="L60">        final NestableNode parent = element.getParent();</span>
+<span class="nc" id="L61">        parent.removeChild(element);</span>
+        
+<span class="nc" id="L63">        return ProcessorResult.OK;</span>
+    }
+    
+    /**
+     * Helper method to add a value to the expression evaluation root (model) Map
+     * @param key the key to add to the model
+     * @param value the value represented by the key
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    protected void addToModel(Arguments arguments, String key, Object value) {
+<span class="nc" id="L73">        ((Map&lt;String, Object&gt;) arguments.getExpressionEvaluationRoot()).put(key, value);</span>
+<span class="nc" id="L74">    }</span>
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    protected &lt;T&gt; void addCollectionToExistingSet(Arguments arguments, String key, Collection&lt;T&gt; value) {
+<span class="nc" id="L78">        Set&lt;T&gt; items = (Set&lt;T&gt;) ((Map&lt;String, Object&gt;) arguments.getExpressionEvaluationRoot()).get(key);</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (items == null) {</span>
+<span class="nc" id="L80">            items = new HashSet&lt;T&gt;();</span>
+<span class="nc" id="L81">            ((Map&lt;String, Object&gt;) arguments.getExpressionEvaluationRoot()).put(key, items);</span>
+        }
+<span class="nc" id="L83">        items.addAll(value);</span>
+<span class="nc" id="L84">    }</span>
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    protected &lt;T&gt; void addItemToExistingSet(Arguments arguments, String key, Object value) {
+<span class="nc" id="L88">        Set&lt;T&gt; items = (Set&lt;T&gt;) ((Map&lt;String, Object&gt;) arguments.getExpressionEvaluationRoot()).get(key);</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (items == null) {</span>
+<span class="nc" id="L90">            items = new HashSet&lt;T&gt;();                         </span>
+<span class="nc" id="L91">            ((Map&lt;String, Object&gt;) arguments.getExpressionEvaluationRoot()).put(key, items);</span>
+        }
+<span class="nc" id="L93">        items.add((T) value);</span>
+<span class="nc" id="L94">    }</span>
+    
+    /**
+     * This method must be overriding by a processor that wishes to modify the model. It will
+     * be called by this abstract processor in the correct precendence in the evaluation chain.
+     * @param arguments
+     * @param element
+     */
+    protected abstract void modifyModelAttributes(Arguments arguments, Element element);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

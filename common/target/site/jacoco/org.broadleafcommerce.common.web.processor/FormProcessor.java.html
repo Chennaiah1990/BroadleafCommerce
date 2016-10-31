@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FormProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.processor</a> &gt; <span class="el_source">FormProcessor.java</span></div><h1>FormProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Framework Web
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.processor;
+
+import org.broadleafcommerce.common.exception.ServiceException;
+import org.broadleafcommerce.common.security.handler.CsrfFilter;
+import org.broadleafcommerce.common.security.service.ExploitProtectionService;
+import org.springframework.stereotype.Component;
+import org.thymeleaf.Arguments;
+import org.thymeleaf.dom.Element;
+import org.thymeleaf.processor.ProcessorResult;
+import org.thymeleaf.processor.element.AbstractElementProcessor;
+import org.thymeleaf.standard.expression.Expression;
+import org.thymeleaf.standard.expression.StandardExpressions;
+
+import javax.annotation.Resource;
+
+/**
+ * Used as a replacement to the HTML {@code &lt;form&gt;} element which adds a CSRF token input field to forms that are submitted
+ * via anything but GET. This is required to properly bypass the {@link CsrfFilter}.
+ * 
+ * @author apazzolini
+ * @see {@link CsrfFilter}
+ */
+@Component(&quot;blFormProcessor&quot;)
+public class FormProcessor extends AbstractElementProcessor {
+    
+    @Resource(name = &quot;blExploitProtectionService&quot;)
+    protected ExploitProtectionService eps;
+    
+    /**
+     * Sets the name of this processor to be used in Thymeleaf template
+     */
+    public FormProcessor() {
+<span class="nc" id="L52">        super(&quot;form&quot;);</span>
+<span class="nc" id="L53">    }</span>
+    
+    /**
+     * We need this replacement to execute as early as possible to allow subsequent processors to act
+     * on this element as if it were a normal form instead of a blc:form
+     */
+    @Override
+    public int getPrecedence() {
+<span class="nc" id="L61">        return 1;</span>
+    }
+
+    @Override
+    protected ProcessorResult processElement(Arguments arguments, Element element) {
+        // If the form will be not be submitted with a GET, we must add the CSRF token
+        // We do this instead of checking for a POST because post is default if nothing is specified
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (!&quot;GET&quot;.equalsIgnoreCase(element.getAttributeValueFromNormalizedName(&quot;method&quot;))) {</span>
+            try {
+<span class="nc" id="L70">                String csrfToken = eps.getCSRFToken();</span>
+
+                //detect multipart form
+<span class="nc bnc" id="L73" title="All 2 branches missed.">                if (&quot;multipart/form-data&quot;.equalsIgnoreCase(element.getAttributeValueFromNormalizedName(&quot;enctype&quot;))) {</span>
+<span class="nc" id="L74">                    Expression expression = (Expression) StandardExpressions.getExpressionParser(arguments.getConfiguration())</span>
+                            .parseExpression(arguments.getConfiguration(), arguments, element.getAttributeValueFromNormalizedName(&quot;th:action&quot;));
+<span class="nc" id="L76">                    String action = (String) expression.execute(arguments.getConfiguration(), arguments);</span>
+<span class="nc" id="L77">                    String csrfQueryParameter = &quot;?&quot; + eps.getCsrfTokenParameter() + &quot;=&quot; + csrfToken;</span>
+<span class="nc" id="L78">                    element.removeAttribute(&quot;th:action&quot;);</span>
+<span class="nc" id="L79">                    element.setAttribute(&quot;action&quot;, action + csrfQueryParameter);</span>
+<span class="nc" id="L80">                } else {</span>
+<span class="nc" id="L81">                    Element csrfNode = new Element(&quot;input&quot;);</span>
+<span class="nc" id="L82">                    csrfNode.setAttribute(&quot;type&quot;, &quot;hidden&quot;);</span>
+<span class="nc" id="L83">                    csrfNode.setAttribute(&quot;name&quot;, eps.getCsrfTokenParameter());</span>
+<span class="nc" id="L84">                    csrfNode.setAttribute(&quot;value&quot;, csrfToken);</span>
+<span class="nc" id="L85">                    element.addChild(csrfNode);</span>
+                }
+
+<span class="nc" id="L88">            } catch (ServiceException e) {</span>
+<span class="nc" id="L89">                throw new RuntimeException(&quot;Could not get a CSRF token for this session&quot;, e);</span>
+<span class="nc" id="L90">            }</span>
+        }
+        
+        // Convert the &lt;blc:form&gt; node to a normal &lt;form&gt; node
+<span class="nc" id="L94">        Element newElement = element.cloneElementNodeWithNewName(element.getParent(), &quot;form&quot;, false);</span>
+<span class="nc" id="L95">        newElement.setRecomputeProcessorsImmediately(true);</span>
+<span class="nc" id="L96">        element.getParent().insertAfter(element, newElement);</span>
+<span class="nc" id="L97">        element.getParent().removeChild(element);</span>
+        
+<span class="nc" id="L99">        return ProcessorResult.OK;</span>
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

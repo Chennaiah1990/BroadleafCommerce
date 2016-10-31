@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GenericEntityServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.service</a> &gt; <span class="el_source">GenericEntityServiceImpl.java</span></div><h1>GenericEntityServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Profile Web
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.service;
+
+import org.broadleafcommerce.common.dao.GenericEntityDao;
+import org.springframework.stereotype.Service;
+
+import java.io.Serializable;
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.persistence.EntityManager;
+
+
+@Service(&quot;blGenericEntityService&quot;)
+<span class="nc" id="L34">public class GenericEntityServiceImpl implements GenericEntityService {</span>
+    
+    @Resource(name = &quot;blGenericEntityDao&quot;)
+    protected GenericEntityDao genericEntityDao;
+    
+    @Override
+    public Object readGenericEntity(String className, Object id) {
+<span class="nc" id="L41">        Class&lt;?&gt; clazz = genericEntityDao.getImplClass(className);</span>
+<span class="nc" id="L42">        return genericEntityDao.readGenericEntity(clazz, id);</span>
+    }
+
+    @Override
+    public &lt;T&gt; T readGenericEntity(Class&lt;T&gt; clazz, Object id) {
+<span class="nc" id="L47">        return genericEntityDao.readGenericEntity(clazz, id);</span>
+    }
+    
+    @Override
+    public &lt;T&gt; T save(T object) {
+<span class="nc" id="L52">        return genericEntityDao.save(object);</span>
+    }
+
+    public void persist(Object object) {
+<span class="nc" id="L56">        genericEntityDao.persist(object);</span>
+<span class="nc" id="L57">    }</span>
+
+    @Override
+    public &lt;T&gt; Long readCountGenericEntity(Class&lt;T&gt; clazz) {
+<span class="nc" id="L61">        return genericEntityDao.readCountGenericEntity(clazz);</span>
+    }
+
+    @Override
+    public &lt;T&gt; List&lt;T&gt; readAllGenericEntity(Class&lt;T&gt; clazz, int limit, int offset) {
+<span class="nc" id="L66">        return genericEntityDao.readAllGenericEntity(clazz, limit, offset);</span>
+    }
+
+    @Override
+    public List&lt;Long&gt; readAllGenericEntityId(Class&lt;?&gt; clazz) {
+<span class="nc" id="L71">        return genericEntityDao.readAllGenericEntityId(clazz);</span>
+    }
+
+    @Override
+    public Serializable getIdentifier(Object entity) {
+<span class="nc" id="L76">        return genericEntityDao.getIdentifier(entity);</span>
+    }
+
+    @Override
+    public void flush() {
+<span class="nc" id="L81">        genericEntityDao.flush();</span>
+<span class="nc" id="L82">    }</span>
+
+    @Override
+    public void clearAutoFlushMode() {
+<span class="nc" id="L86">        genericEntityDao.clearAutoFlushMode();</span>
+<span class="nc" id="L87">    }</span>
+
+    @Override
+    public void enableAutoFlushMode() {
+<span class="nc" id="L91">        genericEntityDao.enableAutoFlushMode();</span>
+<span class="nc" id="L92">    }</span>
+
+    @Override
+    public void clear() {
+<span class="nc" id="L96">        genericEntityDao.clear();</span>
+<span class="nc" id="L97">    }</span>
+
+    @Override
+    public boolean sessionContains(Object object) {
+<span class="nc" id="L101">        return genericEntityDao.sessionContains(object);</span>
+    }
+
+    @Override
+    public Class&lt;?&gt; getCeilingImplClass(String className) {
+<span class="nc" id="L106">        return genericEntityDao.getCeilingImplClass(className);</span>
+    }
+
+    @Override
+    public boolean idAssigned(Object object) {
+<span class="nc" id="L111">        return genericEntityDao.idAssigned(object);</span>
+    }
+
+    @Override
+    public EntityManager getEntityManager() {
+<span class="nc" id="L116">        return genericEntityDao.getEntityManager();</span>
+    }
+
+    @Override
+    public void remove(Object object) {
+<span class="nc" id="L121">        genericEntityDao.remove(object);</span>
+<span class="nc" id="L122">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

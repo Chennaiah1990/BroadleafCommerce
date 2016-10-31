@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>NodeUtil.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util</a> &gt; <span class="el_source">NodeUtil.java</span></div><h1>NodeUtil.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.util;
+
+import org.apache.log4j.Logger;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.TreeSet;
+
+/**
+ * An API for w3c.Nodes manipulation
+ * @author gdiaz
+ *
+ */
+<span class="nc" id="L37">public class NodeUtil {</span>
+
+<span class="nc" id="L39">    static Logger LOG = Logger.getLogger(NodeUtil.class.getName());</span>
+
+    /**
+     * a simple implementation of the Comparator interface, (applied to the Node class) that uses the value of a given 
+     * node attribute as comparison criterion. 
+     * Nodes not having the required attribute (or not having attributes at all) bypass this comparator, i.e., they are considered arbitrarily different
+     * as far as this comparator is concerned.
+     * 
+     * 
+     * @author gdiaz
+     *
+     */
+<span class="nc" id="L51">    public static class NodeComparatorBySingleAttribute implements Comparator&lt;Node&gt; {</span>
+
+        /**
+         * the name of the unique attribute whose value will be compared
+         */
+        private String attributeName;
+
+<span class="nc" id="L58">        public NodeComparatorBySingleAttribute(String attributeName) {</span>
+<span class="nc" id="L59">            this.attributeName = attributeName;</span>
+<span class="nc" id="L60">        }</span>
+
+        @Override
+        public int compare(Node o1, Node o2) {
+<span class="nc" id="L64">            NamedNodeMap attributes1 = o1.getAttributes();</span>
+<span class="nc" id="L65">            NamedNodeMap attributes2 = o2.getAttributes();</span>
+<span class="nc bnc" id="L66" title="All 4 branches missed.">            if (attributes1 == null || attributes2 == null) {</span>
+<span class="nc" id="L67">                return -1;</span>
+            }
+
+<span class="nc" id="L70">            Node id1 = attributes1.getNamedItem(attributeName);</span>
+<span class="nc" id="L71">            Node id2 = attributes2.getNamedItem(attributeName);</span>
+<span class="nc bnc" id="L72" title="All 4 branches missed.">            if (id1 == null || id2 == null) {</span>
+<span class="nc" id="L73">                return -1;</span>
+            }
+<span class="nc" id="L75">            String idVal1 = id1.getNodeValue();</span>
+<span class="nc" id="L76">            String idVal2 = id2.getNodeValue();</span>
+<span class="nc" id="L77">            return idVal1.compareTo(idVal2);</span>
+        }
+    }
+
+    /**
+     * given an array of nodes, returns a subarray containing only those nodes having a non-null specified attribute
+     * @param primaryNodes     the original array of nodes. All nodes are assumed to at least have attributes
+     * @param attributeName    the attribute name
+     * @return
+     */
+    public static Node[] filterByAttribute(Node[] primaryNodes, String attributeName) {
+        //filter out primary nodes that don't have the attribute
+<span class="nc" id="L89">        ArrayList&lt;Node&gt; filterList = new ArrayList&lt;Node&gt;();</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        for (int j = 0; j &lt; primaryNodes.length; j++) {</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">            if (primaryNodes[j].getAttributes().getNamedItem(attributeName) != null) {</span>
+<span class="nc" id="L92">                filterList.add(primaryNodes[j]);</span>
+            }
+        }
+<span class="nc" id="L95">        Node[] filtered = filterList.toArray(new Node[] {});</span>
+<span class="nc" id="L96">        return filtered;</span>
+    }
+
+    /**
+     * tries to find a test Node within an array of nodes
+     * The array is assumed sorted according to a custom comparator by single attribute, but if can be optionally sorted inside the method
+     * @param arrNodes   the haystack
+     * @param testNode   the needle
+     * @param attribute  the attribute used for comparison
+     * @param sortArray  true if the array needs to be sorted, false if it comes already sorted
+     * @return
+     */
+    public static int findNode(Node[] arrNodes, Node testNode, String attributeName, boolean sortArray) {
+
+<span class="nc" id="L110">        NodeComparatorBySingleAttribute comparator = new NodeComparatorBySingleAttribute(attributeName);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (sortArray) {</span>
+<span class="nc" id="L112">            Arrays.sort(arrNodes, comparator);</span>
+        }
+<span class="nc" id="L114">        int position = Arrays.binarySearch(arrNodes, testNode, comparator);</span>
+<span class="nc" id="L115">        return position;</span>
+    }
+
+    /**
+     * creates a sorted list of nodes, with the merged nodes of 2 NodeLists
+     * The comparison criteria is a single-attribute comparator, whose attribute name is also given as a parameter
+     * The original NodeLists are not modified. They can be null. They are not assumed to be sorted.
+     * @param Node   the target node (assumed childless, and within the same document) to which the merged children will be appended 
+     * @param list1 the original list to merge
+     * @param list2 the second list to merge which will overwrite values from &lt;b&gt;list1&lt;/b&gt;
+     * @param attribute
+     */
+    public static void mergeNodeLists(Node targetNode, org.w3c.dom.NodeList list1, org.w3c.dom.NodeList list2, String attributeName) {
+<span class="nc" id="L128">        NodeComparatorBySingleAttribute comparator = new NodeComparatorBySingleAttribute(attributeName);</span>
+<span class="nc" id="L129">        TreeSet&lt;Node&gt; resultSet = new TreeSet&lt;Node&gt;(comparator);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (list1 != null) {</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">            for (int i = 0; i &lt; list1.getLength(); i++) {</span>
+<span class="nc" id="L132">                resultSet.add(list1.item(i));</span>
+            }
+        }
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        if (list2 != null) {</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">            for (int i = 0; i &lt; list2.getLength(); i++) {</span>
+<span class="nc" id="L137">                resultSet.add(list2.item(i));</span>
+            }
+        }
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        for (Node node : resultSet) {</span>
+<span class="nc" id="L141">            targetNode.appendChild(node);</span>
+<span class="nc" id="L142">        }</span>
+<span class="nc" id="L143">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

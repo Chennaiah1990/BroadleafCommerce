@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EntityInformationDto.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.entity.dto</a> &gt; <span class="el_source">EntityInformationDto.java</span></div><h1>EntityInformationDto.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.entity.dto;
+
+import org.broadleafcommerce.common.entity.service.EntityInformationService;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.extensibility.jpa.copy.ProfileEntity;
+
+/**
+ * This class holds information about an entity.
+ * 
+ * It is populated by a call to {@link EntityInformationService}.    The out-of-box implementation 
+ * is a placeholder service.
+ * 
+ * The enterprise-workflow and multi-tenant modules add functionality to properly populate the dto.
+ *    
+ * @author bpolster
+ *
+ */
+<span class="nc" id="L37">public class EntityInformationDto {</span>
+
+    private Long profileId;
+    private Long catalogId;
+    private Long owningSiteId;
+
+    /**
+     * For entities that implement {@link ProfileEntity}, returns the value of the profile with which 
+     * the entity is associated.    Otherwise, returns null.
+     * 
+     * @return the profileId
+     * 
+     */
+    public Long getProfileId() {
+<span class="nc" id="L51">        return profileId;</span>
+    }
+
+    /**
+     * Sets the profileId.  Typically called by {@link EntityInformationService} when creating this dto.
+     *
+     * @param profileId the profileId to set
+     * @see EntityInformationDto#getProfileId()
+     */
+    public void setProfileId(Long profileId) {
+<span class="nc" id="L61">        this.profileId = profileId;</span>
+<span class="nc" id="L62">    }</span>
+
+    /**
+     * For entities that implement {@link DirectCopyTransformTypes.MULTITENANT_CATALOG}, returns the id of the catalog 
+     * with which the entity is associated.    Otherwise, returns null.
+     * 
+     * @return the catalogId
+     */
+    public Long getCatalogId() {
+<span class="nc" id="L71">        return catalogId;</span>
+    }
+
+    /**
+     * Sets the catalogId.  Typically called by {@link EntityInformationService} when creating this dto.
+     *
+     * @param catalogId the catalogId to set
+     * @see EntityInformationDto#getCatalogId()()
+     */
+    public void setCatalogId(Long catalogId) {
+<span class="nc" id="L81">        this.catalogId = catalogId;</span>
+<span class="nc" id="L82">    }</span>
+
+    /**
+     * Return the site that owns this record.     If not in a MultiTenant scenario or if the entity is not
+     * setup for MultiTenant, this method will return null.
+     * @return the siteId
+     */
+    public Long getOwningSiteId() {
+<span class="nc" id="L90">        return owningSiteId;</span>
+    }
+
+    /**
+     * Sets the siteId that owns this record.
+     * @param siteId the siteId to set
+     */
+    public void setOwningSiteId(Long owningSiteId) {
+<span class="nc" id="L98">        this.owningSiteId = owningSiteId;</span>
+<span class="nc" id="L99">    }</span>
+
+    /**
+     * Returns true if this dto represents a profile entity
+     * @return
+     */
+    public boolean isProfileEntity() {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        return getProfileId() != null;</span>
+    }
+
+    /**
+     * Returns true if this dto represents a catalog entity
+     * @return
+     */
+    public boolean isCatalogEntity() {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        return getCatalogId() != null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

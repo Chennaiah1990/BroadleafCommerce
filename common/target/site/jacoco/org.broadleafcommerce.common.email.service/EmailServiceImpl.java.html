@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EmailServiceImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.email.service</a> &gt; <span class="el_source">EmailServiceImpl.java</span></div><h1>EmailServiceImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.email.service;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.broadleafcommerce.common.email.dao.EmailReportingDao;
+import org.broadleafcommerce.common.email.domain.EmailTarget;
+import org.broadleafcommerce.common.email.service.exception.EmailException;
+import org.broadleafcommerce.common.email.service.info.EmailInfo;
+import org.broadleafcommerce.common.email.service.info.NullEmailInfo;
+import org.broadleafcommerce.common.email.service.info.ServerInfo;
+import org.broadleafcommerce.common.email.service.message.EmailPropertyType;
+import org.broadleafcommerce.common.email.service.message.EmailServiceProducer;
+import org.broadleafcommerce.common.email.service.message.MessageCreator;
+import org.springframework.stereotype.Service;
+
+/**
+ * @author jfischer
+ */
+@Service(&quot;blEmailService&quot;)
+<span class="nc" id="L42">public class EmailServiceImpl implements EmailService {</span>
+
+    @Resource(name = &quot;blEmailTrackingManager&quot;)
+    protected EmailTrackingManager emailTrackingManager;
+
+    @Resource(name = &quot;blServerInfo&quot;)
+    protected ServerInfo serverInfo;
+
+    protected EmailServiceProducer emailServiceProducer;
+
+    @Resource(name = &quot;blMessageCreator&quot;)
+    protected MessageCreator messageCreator;
+
+    @Resource(name = &quot;blEmailReportingDao&quot;)
+    protected EmailReportingDao emailReportingDao;
+
+    public boolean sendTemplateEmail(EmailTarget emailTarget, EmailInfo emailInfo, Map&lt;String, Object&gt; props) {
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (props == null) {</span>
+<span class="nc" id="L60">            props = new HashMap&lt;String, Object&gt;();</span>
+        }
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (emailInfo == null) {</span>
+<span class="nc" id="L63">            emailInfo = new EmailInfo();</span>
+        }
+
+<span class="nc" id="L66">        props.put(EmailPropertyType.INFO.getType(), emailInfo);</span>
+<span class="nc" id="L67">        props.put(EmailPropertyType.USER.getType(), emailTarget);</span>
+<span class="nc" id="L68">        Long emailId = emailTrackingManager.createTrackedEmail(emailTarget.getEmailAddress(), emailInfo.getEmailType(), null);</span>
+<span class="nc" id="L69">        props.put(&quot;emailTrackingId&quot;, emailId);</span>
+
+<span class="nc" id="L71">        return sendBasicEmail(emailInfo, emailTarget, props);</span>
+    }
+
+    public boolean sendTemplateEmail(String emailAddress, EmailInfo emailInfo, Map&lt;String, Object&gt; props) {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (!(emailInfo instanceof NullEmailInfo)) {</span>
+<span class="nc" id="L76">            EmailTarget emailTarget = emailReportingDao.createTarget();</span>
+<span class="nc" id="L77">            emailTarget.setEmailAddress(emailAddress);</span>
+<span class="nc" id="L78">            return sendTemplateEmail(emailTarget, emailInfo, props);</span>
+        } else {
+<span class="nc" id="L80">            return true;</span>
+        }
+    }
+
+    public boolean sendBasicEmail(EmailInfo emailInfo, EmailTarget emailTarget, Map&lt;String, Object&gt; props) {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (props == null) {</span>
+<span class="nc" id="L86">            props = new HashMap&lt;String, Object&gt;();</span>
+        }
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (emailInfo == null) {</span>
+<span class="nc" id="L89">            emailInfo = new EmailInfo();</span>
+        }
+
+<span class="nc" id="L92">        props.put(EmailPropertyType.INFO.getType(), emailInfo);</span>
+<span class="nc" id="L93">        props.put(EmailPropertyType.USER.getType(), emailTarget);</span>
+
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (Boolean.parseBoolean(emailInfo.getSendEmailReliableAsync())) {</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">            if (emailServiceProducer == null) {</span>
+<span class="nc" id="L97">                throw new EmailException(&quot;The property sendEmailReliableAsync on EmailInfo is true, but the EmailService does not have an instance of JMSEmailServiceProducer set.&quot;);</span>
+            }
+<span class="nc" id="L99">            emailServiceProducer.send(props);</span>
+        } else {
+<span class="nc" id="L101">            messageCreator.sendMessage(props);</span>
+        }
+
+<span class="nc" id="L104">        return true;</span>
+    }
+
+    /**
+     * @return the emailTrackingManager
+     */
+    public EmailTrackingManager getEmailTrackingManager() {
+<span class="nc" id="L111">        return emailTrackingManager;</span>
+    }
+
+    /**
+     * @param emailTrackingManager the emailTrackingManager to set
+     */
+    public void setEmailTrackingManager(EmailTrackingManager emailTrackingManager) {
+<span class="nc" id="L118">        this.emailTrackingManager = emailTrackingManager;</span>
+<span class="nc" id="L119">    }</span>
+
+    /**
+     * @return the serverInfo
+     */
+    public ServerInfo getServerInfo() {
+<span class="nc" id="L125">        return serverInfo;</span>
+    }
+
+    /**
+     * @param serverInfo the serverInfo to set
+     */
+    public void setServerInfo(ServerInfo serverInfo) {
+<span class="nc" id="L132">        this.serverInfo = serverInfo;</span>
+<span class="nc" id="L133">    }</span>
+
+    /**
+     * @return the emailServiceProducer
+     */
+    public EmailServiceProducer getEmailServiceProducer() {
+<span class="nc" id="L139">        return emailServiceProducer;</span>
+    }
+
+    /**
+     * @param emailServiceProducer the emailServiceProducer to set
+     */
+    public void setEmailServiceProducer(EmailServiceProducer emailServiceProducer) {
+<span class="nc" id="L146">        this.emailServiceProducer = emailServiceProducer;</span>
+<span class="nc" id="L147">    }</span>
+
+    /**
+     * @return the messageCreator
+     */
+    public MessageCreator getMessageCreator() {
+<span class="nc" id="L153">        return messageCreator;</span>
+    }
+
+    /**
+     * @param messageCreator the messageCreator to set
+     */
+    public void setMessageCreator(MessageCreator messageCreator) {
+<span class="nc" id="L160">        this.messageCreator = messageCreator;</span>
+<span class="nc" id="L161">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

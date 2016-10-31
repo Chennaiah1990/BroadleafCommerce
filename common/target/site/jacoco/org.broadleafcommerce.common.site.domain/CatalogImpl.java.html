@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CatalogImpl.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.site.domain</a> &gt; <span class="el_source">CatalogImpl.java</span></div><h1>CatalogImpl.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.site.domain;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.admin.domain.AdminMainEntity;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransform;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformMember;
+import org.broadleafcommerce.common.extensibility.jpa.copy.DirectCopyTransformTypes;
+import org.broadleafcommerce.common.i18n.service.DynamicTranslationProvider;
+import org.broadleafcommerce.common.persistence.ArchiveStatus;
+import org.broadleafcommerce.common.presentation.AdminPresentation;
+import org.broadleafcommerce.common.presentation.AdminPresentationClass;
+import org.broadleafcommerce.common.presentation.RequiredOverride;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.Cascade;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.SQLDelete;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+import javax.persistence.Transient;
+
+/**
+ * @author Jeff Fischer
+ */
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name = &quot;BLC_CATALOG&quot;)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = &quot;blStandardElements&quot;)
+@AdminPresentationClass(friendlyName = &quot;CatalogImpl&quot;)
+@SQLDelete(sql = &quot;UPDATE BLC_CATALOG SET ARCHIVED = 'Y' WHERE CATALOG_ID = ?&quot;)
+@DirectCopyTransform({
+        @DirectCopyTransformMember(templateTokens = DirectCopyTransformTypes.MULTITENANT_SITEMARKER)
+})
+<span class="nc" id="L70">public class CatalogImpl implements Catalog, AdminMainEntity {</span>
+
+<span class="nc" id="L72">    private static final Log LOG = LogFactory.getLog(CatalogImpl.class);</span>
+
+    @Id
+    @GeneratedValue(generator = &quot;CatalogId&quot;)
+    @GenericGenerator(
+            name = &quot;CatalogId&quot;,
+            strategy = &quot;org.broadleafcommerce.common.persistence.IdOverrideTableGenerator&quot;,
+            parameters = {
+                    @Parameter(name = &quot;segment_value&quot;, value = &quot;CatalogImpl&quot;),
+                    @Parameter(name = &quot;entity_name&quot;, value = &quot;org.broadleafcommerce.common.site.domain.CatalogImpl&quot;)
+            })
+    @Column(name = &quot;CATALOG_ID&quot;)
+    protected Long id;
+
+    @Column(name = &quot;NAME&quot;)
+    @AdminPresentation(friendlyName = &quot;Catalog_Name&quot;, gridOrder = 1, order = 1, prominent = true, requiredOverride = RequiredOverride.REQUIRED, translatable = true)
+    protected String name;
+
+<span class="nc" id="L90">    @OneToMany(targetEntity = SiteCatalogXrefImpl.class, mappedBy = &quot;catalog&quot;, orphanRemoval = true)</span>
+    @Cascade(value = { org.hibernate.annotations.CascadeType.MERGE, org.hibernate.annotations.CascadeType.PERSIST })
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = &quot;blStandardElements&quot;)
+    @BatchSize(size = 50)
+    protected List&lt;SiteCatalogXref&gt; siteXrefs = new ArrayList&lt;SiteCatalogXref&gt;();
+
+<span class="nc" id="L96">    @Transient</span>
+    protected List&lt;Site&gt; sites = new ArrayList&lt;Site&gt;();
+
+<span class="nc" id="L99">    @Embedded</span>
+    protected ArchiveStatus archiveStatus = new ArchiveStatus();
+
+    @Override
+    public Long getId() {
+<span class="nc" id="L104">        return id;</span>
+    }
+
+    @Override
+    public void setId(Long id) {
+<span class="nc" id="L109">        this.id = id;</span>
+<span class="nc" id="L110">    }</span>
+
+    @Override
+    public String getName() {
+<span class="nc" id="L114">        return DynamicTranslationProvider.getValue(this, &quot;name&quot;, name);</span>
+    }
+
+    @Override
+    public void setName(String name) {
+<span class="nc" id="L119">        this.name = name;</span>
+<span class="nc" id="L120">    }</span>
+
+    @Override
+    public List&lt;Site&gt; getSites() {
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (sites.isEmpty()) {</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">            for (SiteCatalogXref xref : siteXrefs) {</span>
+<span class="nc" id="L126">                sites.add(xref.getSite());</span>
+<span class="nc" id="L127">            }</span>
+        }
+<span class="nc" id="L129">        return Collections.unmodifiableList(sites);</span>
+    }
+
+    @Override
+    public void setSites(List&lt;Site&gt; sites) {
+<span class="nc" id="L134">        this.sites = sites;</span>
+<span class="nc" id="L135">    }</span>
+
+    @Override
+    public List&lt;SiteCatalogXref&gt; getSiteXrefs() {
+<span class="nc" id="L139">        return siteXrefs;</span>
+    }
+
+    @Override
+    public void setSiteXrefs(List&lt;SiteCatalogXref&gt; siteXrefs) {
+<span class="nc" id="L144">        this.siteXrefs = siteXrefs;</span>
+<span class="nc" id="L145">    }</span>
+
+    public void checkCloneable(Catalog catalog) throws CloneNotSupportedException, SecurityException, NoSuchMethodException {
+<span class="nc" id="L148">        Method cloneMethod = catalog.getClass().getMethod(&quot;clone&quot;, new Class[] {});</span>
+<span class="nc bnc" id="L149" title="All 4 branches missed.">        if (cloneMethod.getDeclaringClass().getName().startsWith(&quot;org.broadleafcommerce&quot;) &amp;&amp; !catalog.getClass().getName().startsWith(&quot;org.broadleafcommerce&quot;)) {</span>
+            //subclass is not implementing the clone method
+<span class="nc" id="L151">            throw new CloneNotSupportedException(&quot;Custom extensions and implementations should implement clone.&quot;);</span>
+        }
+<span class="nc" id="L153">    }</span>
+
+    @Override
+    public Catalog clone() {
+        Catalog clone;
+        try {
+<span class="nc" id="L159">            clone = (Catalog) Class.forName(this.getClass().getName()).newInstance();</span>
+            try {
+<span class="nc" id="L161">                checkCloneable(clone);</span>
+<span class="nc" id="L162">            } catch (CloneNotSupportedException e) {</span>
+<span class="nc" id="L163">                LOG.warn(&quot;Clone implementation missing in inheritance hierarchy outside of Broadleaf: &quot; + clone.getClass().getName(), e);</span>
+<span class="nc" id="L164">            }</span>
+<span class="nc" id="L165">            clone.setId(id);</span>
+<span class="nc" id="L166">            clone.setName(name);</span>
+<span class="nc" id="L167">        } catch (Exception e) {</span>
+<span class="nc" id="L168">            throw new RuntimeException(e);</span>
+<span class="nc" id="L169">        }</span>
+
+<span class="nc" id="L171">        return clone;</span>
+    }
+
+    @Override
+    public String getMainEntityName() {
+<span class="nc" id="L176">        return getName();</span>
+    }
+
+    @Override
+    public Character getArchived() {
+        ArchiveStatus temp;
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (archiveStatus == null) {</span>
+<span class="nc" id="L183">            temp = new ArchiveStatus();</span>
+        } else {
+<span class="nc" id="L185">            temp = archiveStatus;</span>
+        }
+<span class="nc" id="L187">        return temp.getArchived();</span>
+    }
+
+    @Override
+    public void setArchived(Character archived) {
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        if (archiveStatus == null) {</span>
+<span class="nc" id="L193">            archiveStatus = new ArchiveStatus();</span>
+        }
+<span class="nc" id="L195">        archiveStatus.setArchived(archived);</span>
+<span class="nc" id="L196">    }</span>
+
+    @Override
+    public boolean isActive() {
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (LOG.isDebugEnabled()) {</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">            if ('Y' == getArchived()) {</span>
+<span class="nc" id="L202">                LOG.debug(&quot;catalog, &quot; + id + &quot;, inactive due to archived status&quot;);</span>
+            }
+        }
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        return 'Y' != getArchived();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

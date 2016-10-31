@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SingleTableInheritanceClassTransformer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa.convert.inheritance</a> &gt; <span class="el_source">SingleTableInheritanceClassTransformer.java</span></div><h1>SingleTableInheritanceClassTransformer.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa.convert.inheritance;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extensibility.jpa.convert.BroadleafClassTransformer;
+import org.broadleafcommerce.common.extensibility.jpa.copy.AbstractClassTransformer;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.util.StringUtils;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
+
+import javassist.ClassPool;
+import javassist.bytecode.AnnotationsAttribute;
+import javassist.bytecode.ClassFile;
+import javassist.bytecode.ConstPool;
+import javassist.bytecode.annotation.Annotation;
+import javassist.bytecode.annotation.EnumMemberValue;
+import javassist.bytecode.annotation.IntegerMemberValue;
+import javassist.bytecode.annotation.StringMemberValue;
+
+import javax.persistence.DiscriminatorColumn;
+import javax.persistence.DiscriminatorType;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+
+/**
+ * 
+ * @author jfischer
+ *
+ */
+<span class="nc" id="L59">public class SingleTableInheritanceClassTransformer extends AbstractClassTransformer implements BroadleafClassTransformer {</span>
+    
+    public static final String SINGLE_TABLE_ENTITIES = &quot;broadleaf.ejb.entities.override_single_table&quot;;
+    
+<span class="nc" id="L63">    private static final Log LOG = LogFactory.getLog(SingleTableInheritanceClassTransformer.class);</span>
+<span class="nc" id="L64">    protected List&lt;SingleTableInheritanceInfo&gt; infos = new ArrayList&lt;SingleTableInheritanceInfo&gt;();</span>
+
+    @Override
+    public void compileJPAProperties(Properties props, Object key) throws Exception {
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        if (((String) key).equals(SINGLE_TABLE_ENTITIES)) {</span>
+<span class="nc" id="L69">            String[] classes = StringUtils.tokenizeToStringArray(props.getProperty((String) key), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS);</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">            for (String clazz : classes) {</span>
+                String keyName;
+<span class="nc" id="L72">                int pos = clazz.lastIndexOf(&quot;.&quot;);</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">                if (pos &gt;= 0) {</span>
+<span class="nc" id="L74">                    keyName = clazz.substring(pos + 1, clazz.length());</span>
+                } else {
+<span class="nc" id="L76">                    keyName = clazz;</span>
+                }
+<span class="nc" id="L78">                SingleTableInheritanceInfo info = new SingleTableInheritanceInfo();</span>
+<span class="nc" id="L79">                info.setClassName(clazz);</span>
+<span class="nc" id="L80">                String discriminatorName = props.getProperty(&quot;broadleaf.ejb.&quot;+keyName+&quot;.discriminator.name&quot;);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">                if (discriminatorName != null) {</span>
+<span class="nc" id="L82">                    info.setDiscriminatorName(discriminatorName);</span>
+<span class="nc" id="L83">                    String type = props.getProperty(&quot;broadleaf.ejb.&quot;+keyName+&quot;.discriminator.type&quot;);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">                    if (type != null) {</span>
+<span class="nc" id="L85">                        info.setDiscriminatorType(DiscriminatorType.valueOf(type));</span>
+                    }
+<span class="nc" id="L87">                    String length = props.getProperty(&quot;broadleaf.ejb.&quot;+keyName+&quot;.discriminator.length&quot;);</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">                    if (length != null) {</span>
+<span class="nc" id="L89">                        info.setDiscriminatorLength(Integer.parseInt(length));</span>
+                    }
+                }
+<span class="nc" id="L92">                infos.remove(info);</span>
+<span class="nc" id="L93">                infos.add(info);</span>
+            }
+        }
+<span class="nc" id="L96">    }</span>
+
+    @Override
+    public byte[] transform(ClassLoader loader, String className, Class&lt;?&gt; classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+        // Lambdas and anonymous methods in Java 8 do not have a class name defined and so no transformation should be done
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (className == null) {</span>
+<span class="nc" id="L102">            return null;</span>
+        }
+        
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (infos.isEmpty()) {</span>
+<span class="nc" id="L106">            return null;</span>
+        }
+<span class="nc" id="L108">        String convertedClassName = className.replace('/', '.');</span>
+<span class="nc" id="L109">        SingleTableInheritanceInfo key = new SingleTableInheritanceInfo();</span>
+<span class="nc" id="L110">        key.setClassName(convertedClassName);</span>
+<span class="nc" id="L111">        int pos = infos.indexOf(key);</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (pos &gt;= 0) {</span>
+            try {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">                if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L115">                    LOG.debug(&quot;Converting &quot; + convertedClassName + &quot; to a SingleTable inheritance strategy.&quot;); </span>
+                }
+<span class="nc" id="L117">                SingleTableInheritanceInfo myInfo = infos.get(pos);</span>
+<span class="nc" id="L118">                ClassFile classFile = new ClassFile(new DataInputStream(new ByteArrayInputStream(classfileBuffer)));</span>
+<span class="nc" id="L119">                ConstPool constantPool = classFile.getConstPool();</span>
+<span class="nc" id="L120">                AnnotationsAttribute annotationsAttribute = new AnnotationsAttribute(constantPool, AnnotationsAttribute.visibleTag);</span>
+<span class="nc" id="L121">                List&lt;?&gt; attributes = classFile.getAttributes();</span>
+<span class="nc" id="L122">                Iterator&lt;?&gt; itr = attributes.iterator();</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">                while(itr.hasNext()) {</span>
+<span class="nc" id="L124">                    Object object = itr.next();</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">                    if (AnnotationsAttribute.class.isAssignableFrom(object.getClass())) {</span>
+<span class="nc" id="L126">                        AnnotationsAttribute attr = (AnnotationsAttribute) object;</span>
+<span class="nc" id="L127">                        Annotation[] items = attr.getAnnotations();</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">                        for (Annotation annotation : items) {</span>
+<span class="nc" id="L129">                            String typeName = annotation.getTypeName();</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">                            if (!typeName.equals(Inheritance.class.getName())) {</span>
+<span class="nc" id="L131">                                annotationsAttribute.addAnnotation(annotation);</span>
+                            }
+                        }
+<span class="nc" id="L134">                        itr.remove();</span>
+                    }
+<span class="nc" id="L136">                }</span>
+<span class="nc" id="L137">                Annotation inheritance = new Annotation(Inheritance.class.getName(), constantPool);</span>
+<span class="nc" id="L138">                ClassPool pool = ClassPool.getDefault();</span>
+<span class="nc" id="L139">                pool.importPackage(&quot;javax.persistence&quot;);</span>
+<span class="nc" id="L140">                pool.importPackage(&quot;java.lang&quot;);</span>
+<span class="nc" id="L141">                EnumMemberValue strategy = (EnumMemberValue) Annotation.createMemberValue(constantPool, pool.makeClass(&quot;InheritanceType&quot;));</span>
+<span class="nc" id="L142">                strategy.setType(InheritanceType.class.getName());</span>
+<span class="nc" id="L143">                strategy.setValue(InheritanceType.SINGLE_TABLE.name());</span>
+<span class="nc" id="L144">                inheritance.addMemberValue(&quot;strategy&quot;, strategy);</span>
+<span class="nc" id="L145">                annotationsAttribute.addAnnotation(inheritance);</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">                if (myInfo.getDiscriminatorName() != null) {</span>
+<span class="nc" id="L147">                    Annotation discriminator = new Annotation(DiscriminatorColumn.class.getName(), constantPool);</span>
+<span class="nc" id="L148">                    StringMemberValue name = new StringMemberValue(constantPool);</span>
+<span class="nc" id="L149">                    name.setValue(myInfo.getDiscriminatorName());</span>
+<span class="nc" id="L150">                    discriminator.addMemberValue(&quot;name&quot;, name);</span>
+<span class="nc" id="L151">                    EnumMemberValue discriminatorType = (EnumMemberValue) Annotation.createMemberValue(constantPool, pool.makeClass(&quot;DiscriminatorType&quot;));</span>
+<span class="nc" id="L152">                    discriminatorType.setType(DiscriminatorType.class.getName());</span>
+<span class="nc" id="L153">                    discriminatorType.setValue(myInfo.getDiscriminatorType().name());</span>
+<span class="nc" id="L154">                    discriminator.addMemberValue(&quot;discriminatorType&quot;, discriminatorType);</span>
+<span class="nc" id="L155">                    IntegerMemberValue length = new IntegerMemberValue(constantPool);</span>
+<span class="nc" id="L156">                    length.setValue(myInfo.getDiscriminatorLength());</span>
+<span class="nc" id="L157">                    discriminator.addMemberValue(&quot;length&quot;, length);</span>
+                    
+<span class="nc" id="L159">                    annotationsAttribute.addAnnotation(discriminator);</span>
+                }
+<span class="nc" id="L161">                classFile.addAttribute(annotationsAttribute);</span>
+<span class="nc" id="L162">                ByteArrayOutputStream bos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L163">                DataOutputStream os = new DataOutputStream(bos);</span>
+<span class="nc" id="L164">                classFile.write(os);</span>
+<span class="nc" id="L165">                os.close();</span>
+
+<span class="nc" id="L167">                return bos.toByteArray();</span>
+<span class="nc" id="L168">            } catch(Exception ex) {</span>
+<span class="nc" id="L169">                ex.printStackTrace();</span>
+<span class="nc" id="L170">                throw new IllegalClassFormatException(&quot;Unable to convert &quot; + convertedClassName + &quot; to a SingleTable inheritance strategy: &quot; + ex.getMessage());</span>
+            }
+        } else {
+<span class="nc" id="L173">            return null;</span>
+        }
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

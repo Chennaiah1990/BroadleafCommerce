@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>MergeJPAPersistenceResource.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.extensibility.jpa</a> &gt; <span class="el_source">MergeJPAPersistenceResource.java</span></div><h1>MergeJPAPersistenceResource.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.extensibility.jpa;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.broadleafcommerce.common.extensibility.context.ResourceInputStream;
+import org.broadleafcommerce.common.extensibility.context.merge.MergeXmlConfigResource;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeException;
+import org.broadleafcommerce.common.extensibility.context.merge.exceptions.MergeManagerSetupException;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.FatalBeanException;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.util.xml.SimpleSaxErrorHandler;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ *
+ * @author jfischer
+ *
+ */
+<span class="nc" id="L53">public class MergeJPAPersistenceResource extends MergeXmlConfigResource {</span>
+
+<span class="nc" id="L55">    private static final Log LOG = LogFactory.getLog(MergeJPAPersistenceResource.class);</span>
+<span class="nc" id="L56">    private ErrorHandler handler = new SimpleSaxErrorHandler(LOG);</span>
+
+    public Resource getMergedConfigResource(ResourceInputStream[] sources) throws BeansException {
+<span class="nc" id="L59">        Resource configResource = null;</span>
+<span class="nc" id="L60">        ResourceInputStream merged = null;</span>
+        try {
+<span class="nc" id="L62">            List&lt;String&gt; mappingFiles = new ArrayList&lt;String&gt;(20);</span>
+<span class="nc" id="L63">            ResourceInputStream[] inMemoryStreams = new ResourceInputStream[sources.length];</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">            for (int j=0;j&lt;sources.length;j++){</span>
+<span class="nc" id="L65">                byte[] sourceArray = buildArrayFromStream(sources[j]);</span>
+<span class="nc" id="L66">                compileMappingFiles(mappingFiles, sourceArray);</span>
+<span class="nc" id="L67">                inMemoryStreams[j] = new ResourceInputStream(new ByteArrayInputStream(sourceArray), sources[j].getName());</span>
+            }
+
+<span class="nc" id="L70">            merged = merge(inMemoryStreams);</span>
+
+            //read the final stream into a byte array
+<span class="nc" id="L73">            ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L74">            boolean eof = false;</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">            while (!eof) {</span>
+<span class="nc" id="L76">                int temp = merged.read();</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">                if (temp == -1) {</span>
+<span class="nc" id="L78">                    eof = true;</span>
+                } else {
+<span class="nc" id="L80">                    baos.write(temp);</span>
+                }
+<span class="nc" id="L82">            }</span>
+<span class="nc" id="L83">            configResource = new ByteArrayResource(baos.toByteArray());</span>
+
+<span class="nc bnc" id="L85" title="All 2 branches missed.">            if (LOG.isDebugEnabled()) {</span>
+<span class="nc" id="L86">                LOG.debug(&quot;Merged config: \n&quot; + serialize(configResource));</span>
+            }
+<span class="nc" id="L88">        } catch (MergeException e) {</span>
+<span class="nc" id="L89">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L90">        } catch (MergeManagerSetupException e) {</span>
+<span class="nc" id="L91">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L92">        } catch (IOException e) {</span>
+<span class="nc" id="L93">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L94">        } catch (SAXException e) {</span>
+<span class="nc" id="L95">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L96">        } catch (ParserConfigurationException e) {</span>
+<span class="nc" id="L97">            throw new FatalBeanException(&quot;Unable to merge source and patch locations&quot;, e);</span>
+        } finally {
+<span class="nc bnc" id="L99" title="All 4 branches missed.">            if (merged != null) {</span>
+<span class="nc" id="L100">                try{ merged.close(); } catch (Throwable e) {</span>
+<span class="nc" id="L101">                    LOG.error(&quot;Unable to merge source and patch locations&quot;, e);</span>
+<span class="nc" id="L102">                }</span>
+            }
+        }
+
+<span class="nc" id="L106">        return configResource;</span>
+    }
+
+    private void compileMappingFiles(List&lt;String&gt; mappingFiles, byte[] sourceArray) throws IOException, ParserConfigurationException, SAXException {
+<span class="nc" id="L110">        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();</span>
+<span class="nc" id="L111">        dbf.setNamespaceAware(true);</span>
+<span class="nc" id="L112">        DocumentBuilder parser = dbf.newDocumentBuilder();</span>
+<span class="nc" id="L113">        parser.setErrorHandler(handler);</span>
+
+<span class="nc" id="L115">        Document dom = parser.parse(new ByteArrayInputStream(sourceArray));</span>
+
+<span class="nc" id="L117">        NodeList nodes = dom.getElementsByTagName(&quot;/persistence/persistence-unit/mapping-file&quot;);</span>
+<span class="nc bnc" id="L118" title="All 4 branches missed.">        if (nodes != null &amp;&amp; nodes.getLength() &gt; 0) {</span>
+<span class="nc" id="L119">            int length = nodes.getLength();</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">            for (int j=0;j&lt;length;j++){</span>
+<span class="nc" id="L121">                Node node = nodes.item(j);</span>
+<span class="nc" id="L122">                mappingFiles.add(node.getNodeValue());</span>
+            }
+        }
+<span class="nc" id="L125">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

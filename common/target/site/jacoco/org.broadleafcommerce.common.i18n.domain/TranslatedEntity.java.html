@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TranslatedEntity.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.i18n.domain</a> &gt; <span class="el_source">TranslatedEntity.java</span></div><h1>TranslatedEntity.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.i18n.domain;
+
+import org.broadleafcommerce.common.BroadleafEnumerationType;
+
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+/**
+ * An extensible enumeration of entities that have translatable fields. Any entity that wishes to have a translatable
+ * field must register itself in this TYPES map.
+ * 
+ * @author Andre Azzolini (apazzolini)
+ */
+public class TranslatedEntity implements Serializable, BroadleafEnumerationType {
+
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L40">    private static final Map&lt;String, TranslatedEntity&gt; TYPES = new LinkedHashMap&lt;String, TranslatedEntity&gt;();</span>
+
+<span class="nc" id="L42">    public static final TranslatedEntity PRODUCT = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.Product&quot;, &quot;Product&quot;);</span>
+<span class="nc" id="L43">    public static final TranslatedEntity SKU = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.Sku&quot;, &quot;Sku&quot;);</span>
+<span class="nc" id="L44">    public static final TranslatedEntity CATEGORY = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.Category&quot;, &quot;Category&quot;);</span>
+<span class="nc" id="L45">    public static final TranslatedEntity PRODUCT_OPTION = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.ProductOption&quot;, &quot;ProdOption&quot;);</span>
+<span class="nc" id="L46">    public static final TranslatedEntity PRODUCT_OPTION_VALUE = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.ProductOptionValue&quot;, &quot;ProdOptionVal&quot;);</span>
+<span class="nc" id="L47">    public static final TranslatedEntity SITE = new TranslatedEntity(&quot;org.broadleafcommerce.common.site.domain.Site&quot;, &quot;Site&quot;);</span>
+<span class="nc" id="L48">    public static final TranslatedEntity STATIC_ASSET = new TranslatedEntity(&quot;org.broadleafcommerce.cms.file.domain.StaticAsset&quot;, &quot;StaticAsset&quot;);</span>
+<span class="nc" id="L49">    public static final TranslatedEntity SEARCH_FACET = new TranslatedEntity(&quot;org.broadleafcommerce.core.search.domain.SearchFacet&quot;, &quot;SearchFacet&quot;);</span>
+<span class="nc" id="L50">    public static final TranslatedEntity FULFILLMENT_OPTION = new TranslatedEntity(&quot;org.broadleafcommerce.core.order.domain.FulfillmentOption&quot;, &quot;FulfillmentOption&quot;);</span>
+<span class="nc" id="L51">    public static final TranslatedEntity OFFER = new TranslatedEntity(&quot;org.broadleafcommerce.core.offer.domain.Offer&quot;, &quot;Offer&quot;);</span>
+<span class="nc" id="L52">    public static final TranslatedEntity CHALLENGE_QUESTION = new TranslatedEntity(&quot;org.broadleafcommerce.profile.core.domain.ChallengeQuestion&quot;, &quot;ChallengeQuestion&quot;);</span>
+<span class="nc" id="L53">    public static final TranslatedEntity SKU_ATTRIBUTE = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.SkuAttribute&quot;, &quot;SkuAttribute&quot;);</span>
+<span class="nc" id="L54">    public static final TranslatedEntity PRODUCT_ATTRIBUTE = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.ProductAttribute&quot;, &quot;ProductAttribute&quot;);</span>
+<span class="nc" id="L55">    public static final TranslatedEntity CATEGORY_ATTRIBUTE = new TranslatedEntity(&quot;org.broadleafcommerce.core.catalog.domain.CategoryAttribute&quot;, &quot;CategoryAttribute&quot;);</span>
+<span class="nc" id="L56">    public static final TranslatedEntity CUSTOMER_ATTRIBUTE = new TranslatedEntity(&quot;org.broadleafcommerce.profile.core.domain.CustomerAttribute&quot;, &quot;CustomerAttribute&quot;);</span>
+<span class="nc" id="L57">    public static final TranslatedEntity PAGE = new TranslatedEntity(&quot;org.broadleafcommerce.cms.page.domain.Page&quot;, &quot;Page&quot;);</span>
+<span class="nc" id="L58">    public static final TranslatedEntity PAGE_TEMPLATE = new TranslatedEntity(&quot;org.broadleafcommerce.cms.page.domain.PageTemplate&quot;, &quot;PageTemplate&quot;);</span>
+<span class="nc" id="L59">    public static final TranslatedEntity STRUCTURED_CONTENT_TYPE = new TranslatedEntity(&quot;org.broadleafcommerce.cms.structure.domain.StructuredContentType&quot;, &quot;StructuredContentType&quot;);</span>
+<span class="nc" id="L60">    public static final TranslatedEntity COUNTRY = new TranslatedEntity(&quot;org.broadleafcommerce.profile.core.domain.Country&quot;, &quot;Country&quot;);</span>
+<span class="nc" id="L61">    public static final TranslatedEntity COUNTRY_SUBDIVISION = new TranslatedEntity(&quot;org.broadleafcommerce.profile.core.domain.CountrySubdivision&quot;, &quot;CountrySubdivision&quot;);</span>
+<span class="nc" id="L62">    public static final TranslatedEntity COUNTRY_SUBDIVISION_CATEGORY = new TranslatedEntity(&quot;org.broadleafcommerce.profile.core.domain.CountrySubdivisionCategory&quot;, &quot;CountrySubdivisionCategory&quot;);</span>
+<span class="nc" id="L63">    public static final TranslatedEntity CATALOG = new TranslatedEntity(&quot;org.broadleafcommerce.common.site.domain.Catalog&quot;, &quot;Catalog&quot;);</span>
+
+    public static TranslatedEntity getInstance(final String type) {
+<span class="nc" id="L66">        return TYPES.get(type);</span>
+    }
+
+    public static TranslatedEntity getInstanceFromFriendlyType(final String friendlyType) {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        for (Entry&lt;String, TranslatedEntity&gt; entry : TYPES.entrySet()) {</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">            if (entry.getValue().getFriendlyType().equals(friendlyType)) {</span>
+<span class="nc" id="L72">                return entry.getValue();</span>
+            }
+<span class="nc" id="L74">        }</span>
+
+<span class="nc" id="L76">        return null;</span>
+    }
+
+    private String type;
+    private String friendlyType;
+
+<span class="nc" id="L82">    public TranslatedEntity() {</span>
+        //do nothing
+<span class="nc" id="L84">    }</span>
+
+<span class="nc" id="L86">    public TranslatedEntity(final String type, final String friendlyType) {</span>
+<span class="nc" id="L87">        this.friendlyType = friendlyType;</span>
+<span class="nc" id="L88">        setType(type);</span>
+<span class="nc" id="L89">    }</span>
+
+    @Override
+    public String getType() {
+<span class="nc" id="L93">        return type;</span>
+    }
+
+    @Override
+    public String getFriendlyType() {
+<span class="nc" id="L98">        return friendlyType;</span>
+    }
+
+    public static Map&lt;String, TranslatedEntity&gt; getTypes() {
+<span class="nc" id="L102">        return TYPES;</span>
+    }
+
+    private void setType(final String type) {
+<span class="nc" id="L106">        this.type = type;</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (!TYPES.containsKey(type)) {</span>
+<span class="nc" id="L108">            TYPES.put(type, this);</span>
+        }
+<span class="nc" id="L110">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L114">        final int prime = 31;</span>
+<span class="nc" id="L115">        int result = 1;</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        result = prime * result + ((type == null) ? 0 : type.hashCode());</span>
+<span class="nc" id="L117">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (this == obj)</span>
+<span class="nc" id="L123">            return true;</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (obj == null)</span>
+<span class="nc" id="L125">            return false;</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (!getClass().isAssignableFrom(obj.getClass()))</span>
+<span class="nc" id="L127">            return false;</span>
+<span class="nc" id="L128">        TranslatedEntity other = (TranslatedEntity) obj;</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (type == null) {</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">            if (other.type != null)</span>
+<span class="nc" id="L131">                return false;</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        } else if (!type.equals(other.type))</span>
+<span class="nc" id="L133">            return false;</span>
+<span class="nc" id="L134">        return true;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

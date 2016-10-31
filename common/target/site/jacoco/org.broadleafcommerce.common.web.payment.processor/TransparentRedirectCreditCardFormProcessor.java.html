@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TransparentRedirectCreditCardFormProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.payment.processor</a> &gt; <span class="el_source">TransparentRedirectCreditCardFormProcessor.java</span></div><h1>TransparentRedirectCreditCardFormProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+
+package org.broadleafcommerce.common.web.payment.processor;
+
+import org.broadleafcommerce.common.payment.dto.PaymentRequestDTO;
+import org.broadleafcommerce.common.vendor.service.exception.PaymentException;
+import org.springframework.stereotype.Component;
+import org.thymeleaf.Arguments;
+import org.thymeleaf.dom.Attribute;
+import org.thymeleaf.dom.Element;
+import org.thymeleaf.processor.ProcessorResult;
+import org.thymeleaf.processor.element.AbstractElementProcessor;
+import org.thymeleaf.standard.expression.Expression;
+import org.thymeleaf.standard.expression.StandardExpressions;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+/**
+ * &lt;p&gt;The following processor will modify the declared Credit Card Form
+ * and call the Transparent Redirect Service of the configured payment gateway. &lt;/p&gt;
+ *
+ * &lt;p&gt;This processor will change the form's action URL and append any hidden input fields
+ * that are necessary to make the call. Certain gateway implementations accept configuration
+ * settings in order to generate the form. These configuration parameters can be passed into
+ * the module, by prefixing any configuration settings name with &quot;config-&quot; + attribute name = attribute value
+ * &lt;/p&gt;
+ * &lt;p&gt;Here is an example:&lt;/p&gt;
+ *
+ * &lt;pre&gt;&lt;code&gt;
+ *     &lt;blc:transparent_credit_card_form action=&quot;#&quot; method=&quot;POST&quot;
+ *         paymentRequestDTO=&quot;${requestDTO}&quot;
+ *         config-specificGatewayParam=&quot;value1&quot;
+ *         config-specificGatewayParam2=&quot;value2&quot;
+ *         config-specificGatewayParam3=&quot;value3&quot;&gt;
+ *
+ *         &lt;input type=&quot;text&quot; name=&quot;credit_card_num&quot;/&gt;
+ *         ...
+ *
+ *     &lt;/blc:transparent_credit_form&gt;
+ * &lt;/code&gt;&lt;/pre&gt;
+ *
+ * &lt;p&gt;NOTE: please see {@link org.broadleafcommerce.common.web.payment.expression.PaymentGatewayFieldVariableExpression}
+ * to modify the input &quot;name&quot; fields for a particular gateway&lt;/p&gt;
+ *
+ * @see {@link org.broadleafcommerce.common.web.payment.expression.PaymentGatewayFieldVariableExpression}
+ * @see {@link TRCreditCardExtensionHandler}
+ * @see {@link AbstractTRCreditCardExtensionHandler}
+ *
+ * @author Elbert Bautista (elbertbautista)
+ */
+@Component(&quot;blTransparentRedirectCreditCardFormProcessor&quot;)
+public class TransparentRedirectCreditCardFormProcessor extends AbstractElementProcessor {
+
+    @Resource(name = &quot;blTRCreditCardExtensionManager&quot;)
+    protected TRCreditCardExtensionManager extensionManager;
+
+    public TransparentRedirectCreditCardFormProcessor() {
+<span class="nc" id="L81">        super(&quot;transparent_credit_card_form&quot;);</span>
+<span class="nc" id="L82">    }</span>
+
+    @Override
+    public int getPrecedence() {
+<span class="nc" id="L86">        return 1;</span>
+    }
+
+    @Override
+    protected ProcessorResult processElement(Arguments arguments, Element element) {
+<span class="nc" id="L91">        Expression expression = (Expression) StandardExpressions.getExpressionParser(arguments.getConfiguration())</span>
+                .parseExpression(arguments.getConfiguration(), arguments, element.getAttributeValue(&quot;paymentRequestDTO&quot;));
+<span class="nc" id="L93">        PaymentRequestDTO requestDTO = (PaymentRequestDTO) expression.execute(arguments.getConfiguration(), arguments);</span>
+
+<span class="nc" id="L95">        element.removeAttribute(&quot;paymentRequestDTO&quot;);</span>
+
+<span class="nc" id="L97">        Map&lt;String, Map&lt;String,String&gt;&gt; formParameters = new HashMap&lt;String, Map&lt;String,String&gt;&gt;();</span>
+<span class="nc" id="L98">        Map&lt;String, String&gt; configurationSettings = new HashMap&lt;String, String&gt;();</span>
+
+        //Create the configuration settings map to pass into the payment module
+<span class="nc" id="L101">        Map&lt;String, Attribute&gt; attributeMap  = element.getAttributeMap();</span>
+<span class="nc" id="L102">        List&lt;String&gt; keysToRemove = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        for (String key : attributeMap.keySet()) {</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">            if (key.startsWith(&quot;config-&quot;)){</span>
+<span class="nc" id="L105">                final int trimLength = &quot;config-&quot;.length();</span>
+<span class="nc" id="L106">                String configParam = key.substring(trimLength);</span>
+<span class="nc" id="L107">                configurationSettings.put(configParam, attributeMap.get(key).getValue());</span>
+<span class="nc" id="L108">                keysToRemove.add(key);</span>
+            }
+<span class="nc" id="L110">        }</span>
+
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        for (String keyToRemove : keysToRemove) {</span>
+<span class="nc" id="L113">            element.removeAttribute(keyToRemove);</span>
+<span class="nc" id="L114">        }</span>
+
+        try {
+<span class="nc" id="L117">            extensionManager.getProxy().createTransparentRedirectForm(formParameters,</span>
+                    requestDTO, configurationSettings);
+<span class="nc" id="L119">        } catch (PaymentException e) {</span>
+<span class="nc" id="L120">            throw new RuntimeException(&quot;Unable to Create the Transparent Redirect Form&quot;, e);</span>
+<span class="nc" id="L121">        }</span>
+
+<span class="nc" id="L123">        StringBuilder formActionKey = new StringBuilder(&quot;formActionKey&quot;);</span>
+<span class="nc" id="L124">        StringBuilder formHiddenParamsKey = new StringBuilder(&quot;formHiddenParamsKey&quot;);</span>
+<span class="nc" id="L125">        extensionManager.getProxy().setFormActionKey(formActionKey);</span>
+<span class="nc" id="L126">        extensionManager.getProxy().setFormHiddenParamsKey(formHiddenParamsKey);</span>
+
+        //Change the action attribute on the form to the Payment Gateways Endpoint
+<span class="nc" id="L129">        String actionUrl = &quot;&quot;;</span>
+<span class="nc" id="L130">        Map&lt;String,String&gt; actionValue = formParameters.get(formActionKey.toString());</span>
+<span class="nc bnc" id="L131" title="All 4 branches missed.">        if (actionValue != null &amp;&amp; actionValue.size()&gt;0) {</span>
+<span class="nc" id="L132">            String key = (String)actionValue.keySet().toArray()[0];</span>
+<span class="nc" id="L133">            actionUrl = actionValue.get(key);</span>
+        }
+<span class="nc" id="L135">        element.setAttribute(&quot;action&quot;, actionUrl);</span>
+
+        //Append any hidden fields necessary for the Transparent Redirect
+<span class="nc" id="L138">        Map&lt;String, String&gt; hiddenFields = formParameters.get(formHiddenParamsKey.toString());</span>
+<span class="nc bnc" id="L139" title="All 4 branches missed.">        if (hiddenFields != null &amp;&amp; !hiddenFields.isEmpty()) {</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">            for (String key : hiddenFields.keySet()) {</span>
+<span class="nc" id="L141">                Element hiddenNode = new Element(&quot;input&quot;);</span>
+<span class="nc" id="L142">                hiddenNode.setAttribute(&quot;type&quot;, &quot;hidden&quot;);</span>
+<span class="nc" id="L143">                hiddenNode.setAttribute(&quot;name&quot;, key);</span>
+<span class="nc" id="L144">                hiddenNode.setAttribute(&quot;value&quot;, hiddenFields.get(key));</span>
+<span class="nc" id="L145">                element.addChild(hiddenNode);</span>
+<span class="nc" id="L146">            }</span>
+        }
+
+        // Convert the &lt;blc:transparent_credit_card_form&gt; node to a normal &lt;form&gt; node
+<span class="nc" id="L150">        Element newElement = element.cloneElementNodeWithNewName(element.getParent(), &quot;form&quot;, false);</span>
+<span class="nc" id="L151">        newElement.setRecomputeProcessorsImmediately(true);</span>
+<span class="nc" id="L152">        element.getParent().insertAfter(element, newElement);</span>
+<span class="nc" id="L153">        element.getParent().removeChild(element);</span>
+
+<span class="nc" id="L155">        return ProcessorResult.OK;</span>
+    }
+
+    public TRCreditCardExtensionManager getExtensionManager() {
+<span class="nc" id="L159">        return extensionManager;</span>
+    }
+
+    public void setExtensionManager(TRCreditCardExtensionManager extensionManager) {
+<span class="nc" id="L163">        this.extensionManager = extensionManager;</span>
+<span class="nc" id="L164">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

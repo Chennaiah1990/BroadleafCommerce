@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ResourceBundleProcessor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.web.processor</a> &gt; <span class="el_source">ResourceBundleProcessor.java</span></div><h1>ResourceBundleProcessor.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2013 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.web.processor;
+
+import org.apache.commons.lang3.StringUtils;
+import org.broadleafcommerce.common.resource.service.ResourceBundlingService;
+import org.broadleafcommerce.common.util.BLCSystemProperty;
+import org.thymeleaf.Arguments;
+import org.thymeleaf.context.IWebContext;
+import org.thymeleaf.dom.Element;
+import org.thymeleaf.dom.NestableNode;
+import org.thymeleaf.processor.ProcessorResult;
+import org.thymeleaf.processor.element.AbstractElementProcessor;
+import org.thymeleaf.standard.expression.Expression;
+import org.thymeleaf.standard.expression.StandardExpressions;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+
+/**
+ * &lt;p&gt;
+ * Works with the blc:bundle tag.   
+ * 
+ * &lt;p&gt;
+ * This processor does not do the actual bundling.   It merely changes the URL which causes the 
+ * other bundling components to be invoked through the normal static resource handling processes.
+ * 
+ * &lt;p&gt;
+ * This processor relies {@code bundle.enabled}.   If this property is false (typical for dev) then the list of
+ * resources will be output as individual SCRIPT or LINK elements for each JavaScript or CSS file respectively.
+ * 
+ * &lt;p&gt;
+ * To use this processor, supply a name, mapping prefix, and list of files.   
+ * 
+ * &lt;pre&gt;
+ * {@code
+ * &lt;blc:bundle name=&quot;lib.js&quot; 
+ *             mapping-prefix=&quot;/js/&quot;
+ *             files=&quot;plugins.js,
+ *                    libs/jquery.MetaData.js,
+ *                    libs/jquery.rating.pack.js,
+ *                    libs/jquery.dotdotdot-1.5.1.js&quot; /&gt;
+ *  }
+ * &lt;/pre&gt;                  
+ * 
+ * &lt;p&gt;
+ * With bundling enabled this will turn into:
+ * 
+ * &lt;pre&gt;
+ * 
+ * {@code
+ *  &lt;script type=&quot;text/javascript&quot; src=&quot;/js/lib-blbundle12345.js&quot; /&gt;
+ * }
+ * &lt;/pre&gt;
+ * 
+ * &lt;p&gt;
+ * Where the &lt;b&gt;-blbundle12345&lt;/b&gt; is used by the BundleUrlResourceResolver to determine the
+ * actual bundle name.  
+ * 
+ * &lt;p&gt;
+ * With bundling disabled this turns into:
+ * 
+ * &lt;pre&gt;
+ * {@code
+ *  &lt;script type=&quot;text/javascript&quot; src=&quot;/js/plugins.js&quot; /&gt;
+ *  &lt;script type=&quot;text/javascript&quot; src=&quot;/js/jquery.MetaData.js&quot; /&gt;
+ *  &lt;script type=&quot;text/javascript&quot; src=&quot;/js/jquery.rating.pack.js.js&quot; /&gt;
+ *  &lt;script type=&quot;text/javascript&quot; src=&quot;/js/jquery.dotdotdot-1.5.1.js&quot; /&gt;
+ * }
+ * &lt;/pre&gt;
+ * 
+ * &lt;p&gt;
+ * This processor also supports producing the 'async' and 'defer' attributes for Javascript files. For instance:
+ * 
+ * &lt;pre&gt;
+ * {@code
+ * &lt;blc:bundle name=&quot;lib.js&quot; 
+ *             async=&quot;true&quot;
+ *             defer=&quot;true&quot;
+ *             mapping-prefix=&quot;/js/&quot;
+ *             files=&quot;plugins.js,
+ *                    libs/jquery.MetaData.js,
+ *                    libs/jquery.rating.pack.js,
+ *                    libs/jquery.dotdotdot-1.5.1.js&quot; /&gt;
+ *  }
+ * &lt;/pre&gt;
+ * 
+ * &lt;p&gt;
+ * If bundling is turned on, the single output file contains the 'async' and 'defer' name-only attributes. When bundling is
+ * turned off, then those name-only attributes are applied to each individual file reference.
+ * 
+ * &lt;p&gt;
+ * This processor only supports files that end in &lt;b&gt;.js&lt;/b&gt; and &lt;b&gt;.css&lt;/b&gt;
+ * 
+ * @param &lt;b&gt;name&lt;/b&gt;           (required) the final name prefix of the bundle
+ * @param &lt;b&gt;mapping-prefix&lt;/b&gt; (required) the prefix appended to the final tag output whether that be 
+ *                              the list of files or the single minified file
+ * @param &lt;b&gt;files&lt;/b&gt;          (required) a comma-separated list of files that should be bundled together
+ * 
+ * @author apazzolini
+ * @author bpolster
+ * @see {@link ResourceBundlingService}
+ */
+public class ResourceBundleProcessor extends AbstractElementProcessor {
+    
+    @Resource(name = &quot;blResourceBundlingService&quot;)
+    protected ResourceBundlingService bundlingService;
+    
+    protected boolean getBundleEnabled() {
+<span class="nc" id="L131">        return BLCSystemProperty.resolveBooleanSystemProperty(&quot;bundle.enabled&quot;);</span>
+    }
+
+    public ResourceBundleProcessor() {
+<span class="nc" id="L135">        super(&quot;bundle&quot;);</span>
+<span class="nc" id="L136">    }</span>
+    
+    @Override
+    public int getPrecedence() {
+<span class="nc" id="L140">        return 10000;</span>
+    }
+
+    @Override
+    protected ProcessorResult processElement(Arguments arguments, Element element) {
+<span class="nc" id="L145">        String name = element.getAttributeValue(&quot;name&quot;);</span>
+<span class="nc" id="L146">        String mappingPrefix = element.getAttributeValue(&quot;mapping-prefix&quot;);</span>
+<span class="nc" id="L147">        boolean async = element.hasAttribute(&quot;async&quot;);</span>
+<span class="nc" id="L148">        boolean defer = element.hasAttribute(&quot;defer&quot;);</span>
+<span class="nc" id="L149">        NestableNode parent = element.getParent();</span>
+<span class="nc" id="L150">        List&lt;String&gt; files = new ArrayList&lt;String&gt;();</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        for (String file : element.getAttributeValue(&quot;files&quot;).split(&quot;,&quot;)) {</span>
+<span class="nc" id="L152">            files.add(file.trim());</span>
+        }
+<span class="nc" id="L154">        List&lt;String&gt; additionalBundleFiles = bundlingService.getAdditionalBundleFiles(name);</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        if (additionalBundleFiles != null) {</span>
+<span class="nc" id="L156">            files.addAll(additionalBundleFiles);</span>
+        }
+        
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        if (getBundleEnabled()) {</span>
+<span class="nc" id="L160">            String bundleResourceName = bundlingService.resolveBundleResourceName(name, mappingPrefix, files);</span>
+<span class="nc" id="L161">            String bundleUrl = getBundleUrl(arguments, bundleResourceName);</span>
+<span class="nc" id="L162">            Element e = getElement(bundleUrl, async, defer);</span>
+<span class="nc" id="L163">            parent.insertAfter(element, e);</span>
+<span class="nc" id="L164">        } else {</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">            for (String file : files) {</span>
+<span class="nc" id="L166">                file = file.trim();</span>
+<span class="nc" id="L167">                Expression expression = (Expression) StandardExpressions.getExpressionParser(arguments.getConfiguration())</span>
+                        .parseExpression(arguments.getConfiguration(), arguments, &quot;@{'&quot; + mappingPrefix + file + &quot;'}&quot;);
+<span class="nc" id="L169">                String value = (String) expression.execute(arguments.getConfiguration(), arguments);</span>
+<span class="nc" id="L170">                Element e = getElement(value, async, defer);</span>
+<span class="nc" id="L171">                parent.insertBefore(element, e);</span>
+<span class="nc" id="L172">            }</span>
+        }
+        
+<span class="nc" id="L175">        parent.removeChild(element);</span>
+<span class="nc" id="L176">        return ProcessorResult.OK;</span>
+    }
+    
+    /**
+     * Adds the context path to the bundleUrl.    We don't use the Thymeleaf &quot;@&quot; syntax or any other mechanism to 
+     * encode this URL as the resolvers could have a conflict.   
+     * 
+     * For example, resolving a bundle named &quot;style.css&quot; that has a file also named &quot;style.css&quot; creates problems as
+     * the TF or version resolvers both want to version this file.
+     *  
+     * @param arguments
+     * @param bundleName
+     * @return
+     */
+    protected String getBundleUrl(Arguments arguments, String bundleName) {
+<span class="nc" id="L191">        String bundleUrl = bundleName;</span>
+
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (!StringUtils.startsWith(bundleUrl, &quot;/&quot;)) {</span>
+<span class="nc" id="L194">            bundleUrl = &quot;/&quot; + bundleUrl;</span>
+        }
+
+<span class="nc" id="L197">        IWebContext context = (IWebContext) arguments.getContext();</span>
+<span class="nc" id="L198">        HttpServletRequest request = context.getHttpServletRequest();</span>
+<span class="nc" id="L199">        String contextPath = request.getContextPath();</span>
+
+<span class="nc bnc" id="L201" title="All 2 branches missed.">        if (StringUtils.isNotEmpty(contextPath)) {</span>
+<span class="nc" id="L202">            bundleUrl = contextPath + bundleUrl;</span>
+        }
+
+<span class="nc" id="L205">        return bundleUrl;</span>
+    }
+
+    protected Element getScriptElement(String src, boolean async, boolean defer) {
+<span class="nc" id="L209">        Element e = new Element(&quot;script&quot;);</span>
+<span class="nc" id="L210">        e.setAttribute(&quot;type&quot;, &quot;text/javascript&quot;);</span>
+<span class="nc" id="L211">        e.setAttribute(&quot;src&quot;, src);</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">        if (async) {</span>
+<span class="nc" id="L213">            e.setAttribute(&quot;async&quot;, true, null);</span>
+        }
+<span class="nc bnc" id="L215" title="All 2 branches missed.">        if (defer) {</span>
+<span class="nc" id="L216">            e.setAttribute(&quot;defer&quot;, true, null);</span>
+        }
+<span class="nc" id="L218">        return e;</span>
+    }
+    
+    protected Element getLinkElement(String src) {
+<span class="nc" id="L222">        Element e = new Element(&quot;link&quot;);</span>
+<span class="nc" id="L223">        e.setAttribute(&quot;rel&quot;, &quot;stylesheet&quot;);</span>
+<span class="nc" id="L224">        e.setAttribute(&quot;href&quot;, src);</span>
+<span class="nc" id="L225">        return e;</span>
+    }
+    
+    protected Element getElement(String src, boolean async, boolean defer) {
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        if (src.contains(&quot;;&quot;)) {</span>
+<span class="nc" id="L230">            src = src.substring(0, src.indexOf(';'));</span>
+        }
+        
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        if (src.endsWith(&quot;.js&quot;)) {</span>
+<span class="nc" id="L234">            return getScriptElement(src, async, defer);</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        } else if (src.endsWith(&quot;.css&quot;)) {</span>
+<span class="nc" id="L236">            return getLinkElement(src);</span>
+        } else {
+<span class="nc" id="L238">            throw new IllegalArgumentException(&quot;Unknown extension for: &quot; + src + &quot; - only .js and .css are supported&quot;);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

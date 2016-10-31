@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>QueryUtils.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">BroadleafCommerce Common Libraries</a> &gt; <a href="index.source.html" class="el_package">org.broadleafcommerce.common.util.dao</a> &gt; <span class="el_source">QueryUtils.java</span></div><h1>QueryUtils.java</h1><pre class="source lang-java linenums">/*
+ * #%L
+ * BroadleafCommerce Common Libraries
+ * %%
+ * Copyright (C) 2009 - 2015 Broadleaf Commerce
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package org.broadleafcommerce.common.util.dao;
+
+import org.broadleafcommerce.common.persistence.ArchiveStatus;
+
+import java.util.Date;
+import java.util.List;
+
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.Path;
+import javax.persistence.criteria.Predicate;
+
+
+/**
+ * Helper class for criteria queries. 
+ * @author gdiaz
+ *
+ */
+<span class="nc" id="L37">public class QueryUtils {</span>
+    
+    /**
+     * given a list of AND-ed query restrictions, adds to the list the  restrictions necessary for effective-dating
+     * The rules used are:
+     * &lt;ul&gt;
+     *   &lt;li&gt;The &quot;activeStart&quot; effective date has to exist (otherwise, inactive)&lt;/li&gt;
+     *   &lt;li&gt;The &quot;activeStart&quot; effective date has be prior or equal to today&lt;/li&gt;
+     *   &lt;li&gt;For the record to remain active, the &quot;activeEnd&quot; date can be either left unspecified, or be after today&lt;/li&gt;
+     * &lt;ul&gt;
+     * @param builder            the Criteria builder
+     * @param restrictions       the list of AND-ed restrictions
+     * @param datesPath          the Path expression that can be used to retrieve the date fields
+     * @param startDateFieldName the name of the start date field, for example, &quot;activeStartDate&quot;
+     * @param endDateFieldName   the name of the end date field, for example, &quot;activeEndDate&quot;
+     */
+    public static void effectiveDate(CriteriaBuilder builder, List&lt;Predicate&gt; restrictions, Path datesPath, String startDateFieldName, String endDateFieldName) {
+<span class="nc" id="L54">        Date now = new Date();</span>
+<span class="nc" id="L55">        Path&lt;Date&gt; activeStartDate =  datesPath.&lt;Date&gt;get(startDateFieldName);</span>
+<span class="nc" id="L56">        Path&lt;Date&gt; activeEndDate =  datesPath.&lt;Date&gt;get(endDateFieldName);</span>
+<span class="nc" id="L57">        restrictions.add(builder.isNotNull(activeStartDate));</span>
+<span class="nc" id="L58">        restrictions.add(builder.lessThanOrEqualTo(activeStartDate, now));</span>
+<span class="nc" id="L59">        Predicate notExpired = builder.or(builder.isNull(activeEndDate), builder.greaterThan(activeEndDate, now));</span>
+<span class="nc" id="L60">        restrictions.add(notExpired);       </span>
+<span class="nc" id="L61">    }</span>
+
+    /**
+     * a contant ArchiveStatus that is 'N' (the default)
+     */
+<span class="nc" id="L66">    private static final ArchiveStatus statusNotArchived = new ArchiveStatus();</span>
+
+    /**
+     * given a list of AND-ed restrictions, it determines wether or not the record is &quot;archived&quot;, and adds the necessary restrictions.
+     *  A record is considered  &quot;archived&quot; when the ARCHIVED field is explicitly &quot;Y&quot;, so both null and &quot;N&quot; will do as non-archived
+     * @param builder
+     * @param restrictions
+     * @param archivedPath
+     * @param archivedFieldName
+     */
+    public static void notArchived(CriteriaBuilder builder, List&lt;Predicate&gt; restrictions, Path archivedPath, String archivedFieldName) {
+<span class="nc" id="L77">        Path&lt;ArchiveStatus&gt; archiveValue = archivedPath.&lt;ArchiveStatus&gt; get(archivedFieldName);</span>
+<span class="nc" id="L78">        Predicate archivedNull = builder.isNull(archiveValue);</span>
+<span class="nc" id="L79">        Predicate notArchived = builder.equal(archiveValue, statusNotArchived);</span>
+<span class="nc" id="L80">        restrictions.add(builder.or(archivedNull, notArchived));</span>
+<span class="nc" id="L81">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>
